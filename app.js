@@ -119,6 +119,15 @@ function renderReports() {
   $("#report-total").textContent = formatMoney(total);
 }
 
+function renderRegistries() {
+  const renderList = (items, kind) => items.length ? items.map((item, index) => {
+    const count = transactions.filter((transaction) => transaction[kind === "type" ? "expenseType" : "taker"] === item).length;
+    return `<li><span>${escapeHtml(item)} <small>${count} ${count === 1 ? "despesa" : "despesas"}</small></span><span class="registry-actions"><button type="button" class="registry-action" data-edit-registry="${kind}" data-registry-index="${index}" aria-label="Editar ${escapeHtml(item)}">✎</button><button type="button" class="registry-action danger" data-delete-registry="${kind}" data-registry-index="${index}" aria-label="Excluir ${escapeHtml(item)}">×</button></span></li>`;
+  }).join("") : `<li class="registry-empty">Nenhum cadastro criado.</li>`;
+  $("#type-registry-list").innerHTML = renderList(expenseTypes, "type");
+  $("#taker-registry-list").innerHTML = renderList(takers, "taker");
+}
+
 function openDialog(item) {
   $("#dialog-title").textContent = item ? "Editar despesa" : "Nova despesa";
   $("#transaction-id").value = item?.id || "";
@@ -141,7 +150,7 @@ $("#transaction-form").addEventListener("submit", (event) => {
   const id = $("#transaction-id").value;
   const item = { id: id || crypto.randomUUID(), description: $("#description").value.trim(), amount: Number($("#amount").value), type: "expense", expenseType: $("#expense-type").value, taker: $("#taker").value, date: $("#date").value };
   transactions = id ? transactions.map((entry) => entry.id === id ? item : entry) : [item, ...transactions];
-  save().then(() => { setupFormOptions(); render(); renderReports(); $("#transaction-dialog").close(); showFeedback(id ? "Despesa atualizada." : "Despesa adicionada."); }).catch(() => showFeedback("Não foi possível salvar a despesa."));
+  save().then(() => { setupFormOptions(); render(); renderReports(); renderRegistries(); $("#transaction-dialog").close(); showFeedback(id ? "Despesa atualizada." : "Despesa adicionada."); }).catch(() => showFeedback("Não foi possível salvar a despesa."));
 });
 $("#transactions-list").addEventListener("click", (event) => { const button = event.target.closest("[data-edit]"); if (button) openDialog(transactions.find((item) => item.id === button.dataset.edit)); });
 $("#new-transaction").addEventListener("click", () => openDialog());
@@ -161,8 +170,31 @@ function addCatalogItem(kind) {
   const list = kind === "type" ? expenseTypes : takers;
   if (list.some((item) => item.toLowerCase() === value.toLowerCase())) return showFeedback(`${label[0].toUpperCase() + label.slice(1)} já cadastrado.`);
   list.push(value);
-  save().then(() => { setupFormOptions(); showFeedback(`${label[0].toUpperCase() + label.slice(1)} cadastrado.`); }).catch(() => showFeedback("Não foi possível salvar o cadastro."));
+  save().then(() => { setupFormOptions(); renderRegistries(); showFeedback(`${label[0].toUpperCase() + label.slice(1)} cadastrado.`); }).catch(() => showFeedback("Não foi possível salvar o cadastro."));
 }
+$("#registry-lists").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-edit-registry], [data-delete-registry]");
+  if (!button) return;
+  const kind = button.dataset.editRegistry || button.dataset.deleteRegistry;
+  const list = kind === "type" ? expenseTypes : takers;
+  const index = Number(button.dataset.registryIndex);
+  const current = list[index];
+  if (button.dataset.editRegistry) {
+    const value = prompt(`Editar ${kind === "type" ? "tipo de despesa" : "tomador"}:`, current)?.trim();
+    if (!value || value === current) return;
+    if (list.some((item, itemIndex) => itemIndex !== index && item.toLowerCase() === value.toLowerCase())) return showFeedback("Já existe um cadastro com esse nome.");
+    const property = kind === "type" ? "expenseType" : "taker";
+    transactions = transactions.map((item) => item[property] === current ? { ...item, [property]: value } : item);
+    list[index] = value;
+    save().then(() => { setupFormOptions(); render(); renderReports(); renderRegistries(); showFeedback("Cadastro atualizado."); }).catch(() => showFeedback("Não foi possível atualizar o cadastro."));
+    return;
+  }
+  if (transactions.some((item) => item[kind === "type" ? "expenseType" : "taker"] === current)) return showFeedback("Este cadastro está vinculado a despesas e não pode ser excluído.");
+  if (list.length === 1) return showFeedback("Mantenha pelo menos um cadastro disponível.");
+  if (!confirm(`Excluir "${current}"?`)) return;
+  list.splice(index, 1);
+  save().then(() => { setupFormOptions(); renderRegistries(); showFeedback("Cadastro excluído."); }).catch(() => showFeedback("Não foi possível excluir o cadastro."));
+});
 $("#export-button").addEventListener("click", () => { const blob = new Blob([JSON.stringify(transactions, null, 2)], { type: "application/json" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "clareza-transacoes.json"; link.click(); URL.revokeObjectURL(link.href); showFeedback("Dados exportados."); });
 
-loadData().then(() => { transactions = transactions.map((item) => ({ ...item, expenseType: item.expenseType || item.category || "Outros", taker: item.taker || "Pessoal" })); $("#today-label").textContent = todayLabel(); setupFormOptions(); render(); renderReports(); }).catch(() => { showFeedback("Não foi possível carregar os dados iniciais."); });
+loadData().then(() => { transactions = transactions.map((item) => ({ ...item, expenseType: item.expenseType || item.category || "Outros", taker: item.taker || "Pessoal" })); $("#today-label").textContent = todayLabel(); setupFormOptions(); render(); renderReports(); renderRegistries(); }).catch(() => { showFeedback("Não foi possível carregar os dados iniciais."); });

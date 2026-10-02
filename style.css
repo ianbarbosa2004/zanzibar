@@ -141,7 +141,14 @@ td:first-child { color: var(--ink); font-weight: 650; }
 .registry-panel .panel-header { align-items: flex-start; }
 .small-button { padding: 8px 10px; border-radius: 7px; color: var(--accent-dark); background: #e5f3ea; font-size: 10px; font-weight: 700; white-space: nowrap; }
 .small-button:hover { background: #cfeadb; }
-.registry-panel .muted { max-width: 460px; margin-top: 20px; }
+.registry-list { display: flex; flex-direction: column; gap: 7px; margin: 22px 0 0; padding: 0; list-style: none; }
+.registry-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; color: #566760; background: #fbfcfb; font-size: 10px; }
+.registry-list li small { margin-left: 6px; color: var(--muted); font-size: 9px; }
+.registry-actions { display: flex; gap: 3px; }
+.registry-action { width: 25px; height: 25px; padding: 0; border-radius: 6px; color: var(--accent-dark); background: #e5f3ea; font-size: 13px; }
+.registry-action:hover { background: #cfeadb; }
+.registry-action.danger { color: #96751f; background: #fbf3d9; }
+.registry-empty { justify-content: center !important; color: var(--muted) !important; }
 .feedback { height: 0; color: #438a68; font-size: 11px; opacity: 0; text-align: right; transition: opacity .2s; }
 .feedback.visible { height: auto; margin: -17px 0 13px; opacity: 1; }
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
