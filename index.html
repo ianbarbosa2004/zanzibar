@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Controle simples das suas finanças pessoais." />
     <title>Clareza | Financeiro pessoal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
@@ -12,85 +15,98 @@
       <aside class="sidebar">
         <a class="brand" href="/" aria-label="Clareza início">
           <span class="brand-mark">C</span>
-          <span>clareza</span>
+          <span>clareza<small>finanças pessoais</small></span>
         </a>
-        <nav aria-label="Navegação principal">
-          <a class="nav-link active" href="#visao-geral"><span>⌂</span> Visão geral</a>
-          <a class="nav-link" href="#transacoes"><span>↔</span> Transações</a>
-          <a class="nav-link" href="#planejamento"><span>◷</span> Planejamento</a>
+        <nav class="main-nav" aria-label="Navegação principal">
+          <p class="nav-label">Menu</p>
+          <a class="nav-link active" href="#transacoes"><span>↔</span> Lançamentos</a>
+          <a class="nav-link" href="#visao-geral"><span>⌂</span> Resumo</a>
+          <a class="nav-link" href="#relatorios"><span>▥</span> Relatórios</a>
+          <a class="nav-link" href="#cadastros"><span>⚙</span> Cadastros</a>
         </nav>
-        <div class="sidebar-tip">
-          <span class="tip-icon">✦</span>
-          <strong>Pequenos passos.</strong>
-          <p>Registrar seus gastos hoje deixa o amanhã mais leve.</p>
+        <div class="sidebar-bottom">
+          <div class="sidebar-tip">
+            <span class="tip-icon">✦</span>
+            <strong>Pequenos passos.</strong>
+            <p>Registrar seus gastos hoje deixa o amanhã mais leve.</p>
+          </div>
+          <button class="sidebar-footer" id="export-button" type="button"><span>↓</span> Exportar dados</button>
         </div>
-        <button class="sidebar-footer" id="export-button" type="button">↓ Exportar dados</button>
       </aside>
 
       <section class="content">
         <header class="topbar">
           <div>
-            <p class="eyebrow">Sexta-feira, 02 de outubro</p>
+            <p class="eyebrow" id="today-label">Seu espaço financeiro</p>
             <h1>Olá, Paulo <span aria-hidden="true">✳</span></h1>
           </div>
-          <button class="avatar" type="button" aria-label="Perfil de Paulo">P</button>
+          <div class="topbar-actions"><button class="notification-button" type="button" aria-label="Notificações">♢<i></i></button><button class="avatar" type="button" aria-label="Perfil de Paulo">P</button></div>
         </header>
 
         <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
         <section id="visao-geral" class="overview">
           <div class="balance-card">
             <div class="card-heading">
-              <span>Saldo disponível</span>
-              <button class="icon-button" id="toggle-balance" type="button" aria-label="Ocultar saldo">◉</button>
+              <span class="card-label">Despesas do mês <small>● atualizado agora</small></span>
+              <button class="icon-button" id="toggle-balance" type="button" aria-label="Ocultar despesas">◉</button>
             </div>
-            <strong id="balance-value" class="balance-value">R$ 0,00</strong>
-            <p id="balance-caption" class="balance-caption">Neste mês</p>
+            <strong id="expense-value" class="balance-value">R$ 0,00</strong>
+            <p id="expense-caption" class="balance-caption">0 despesas registradas</p>
+            <div class="balance-decoration" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
           </div>
-          <div class="metric-card income">
-            <span class="metric-icon">↗</span>
-            <div><span>Entradas</span><strong id="income-value">R$ 0,00</strong></div>
+        </section>
+
+        <section id="transacoes" class="transactions-section">
+          <div class="section-heading">
+            <div><p class="eyebrow">Lançamentos</p><h2>Despesas registradas</h2><p class="section-description">Tudo que foi lançado no mês selecionado, em um só lugar.</p></div>
+            <div class="section-actions"><select id="month-filter" aria-label="Selecionar mês"></select><button class="primary-button" id="new-transaction" type="button"><span>＋</span> Nova despesa</button></div>
           </div>
-          <div class="metric-card expense">
-            <span class="metric-icon">↘</span>
-            <div><span>Saídas</span><strong id="expense-value">R$ 0,00</strong></div>
+          <div class="toolbar">
+            <label class="search-box"><span>⌕</span><input id="search-input" type="search" placeholder="Buscar despesa..." /></label>
+            <select id="type-filter" aria-label="Filtrar por tipo"><option value="all">Todos os tipos</option></select>
+            <select id="taker-filter" aria-label="Filtrar por tomador"><option value="all">Todos os tomadores</option></select>
+            <span class="toolbar-hint">Use os filtros para encontrar um lançamento</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Descrição</th><th>Tipo</th><th>Tomador</th><th>Data</th><th class="align-right">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead>
+              <tbody id="transactions-list"></tbody>
+            </table>
+            <div id="empty-state" class="empty-state" hidden>Nenhuma transação encontrada.</div>
           </div>
         </section>
 
         <section class="dashboard-grid">
           <article id="planejamento" class="panel spending-panel">
             <div class="panel-header">
-              <div><p class="eyebrow">Visão mensal</p><h2>Fluxo de caixa</h2></div>
-              <select id="month-filter" aria-label="Selecionar mês"></select>
+              <div><p class="eyebrow">Comportamento</p><h2>Despesas por dia</h2></div>
+              <span class="panel-note">últimos lançamentos</span>
             </div>
-            <div id="chart" class="chart" aria-label="Gráfico de entradas e saídas"></div>
-            <div class="chart-legend"><span><i class="dot income-dot"></i> Entradas</span><span><i class="dot expense-dot"></i> Saídas</span></div>
+            <div id="chart" class="chart" aria-label="Gráfico de despesas por dia"></div>
+            <div class="chart-legend"><span><i class="dot expense-dot"></i> Despesas</span></div>
           </article>
-
-          <article class="panel goal-panel">
-            <div class="panel-header"><div><p class="eyebrow">Meta do mês</p><h2>Reserva de emergência</h2></div><span class="goal-emoji">☀</span></div>
-            <div class="goal-amount"><strong id="goal-value">R$ 0,00</strong><span>de R$ 1.000,00</span></div>
-            <div class="progress-track"><div id="goal-progress" class="progress-value"></div></div>
-            <p id="goal-caption" class="muted">Adicione uma entrada para acompanhar sua meta.</p>
-            <button class="text-button" id="goal-button" type="button">Editar meta <span>→</span></button>
+          <article class="panel quick-panel">
+            <p class="eyebrow">Atalho</p>
+            <h2>Registre enquanto lembra</h2>
+            <p class="muted">Um lançamento detalhado facilita seus relatórios e deixa os gastos mais fáceis de entender.</p>
+            <button class="secondary-button quick-action" id="quick-new-transaction" type="button">Adicionar despesa <span>→</span></button>
           </article>
         </section>
 
-        <section id="transacoes" class="transactions-section">
-          <div class="section-heading">
-            <div><p class="eyebrow">Movimentações</p><h2>Transações recentes</h2></div>
-            <button class="primary-button" id="new-transaction" type="button"><span>＋</span> Nova transação</button>
+        <section id="relatorios" class="reports-section">
+          <div class="section-heading"><div><p class="eyebrow">Análise do período</p><h2>Relatórios de despesas</h2></div><strong id="report-total" class="report-total">R$ 0,00</strong></div>
+          <div class="reports-grid">
+            <article class="panel report-panel"><div class="panel-header"><div><p class="eyebrow">Linha do tempo</p><h3>Por dia</h3></div><span class="report-icon">◷</span></div><div id="daily-report" class="report-list"></div></article>
+            <article class="panel report-panel"><div class="panel-header"><div><p class="eyebrow">Classificação</p><h3>Por tipo de despesa</h3></div><span class="report-icon">◌</span></div><div id="type-report" class="report-list"></div></article>
+            <article class="panel report-panel"><div class="panel-header"><div><p class="eyebrow">Responsabilidade</p><h3>Por tomador</h3></div><span class="report-icon">◎</span></div><div id="taker-report" class="report-list"></div></article>
           </div>
-          <div class="toolbar">
-            <label class="search-box"><span>⌕</span><input id="search-input" type="search" placeholder="Buscar transação..." /></label>
-            <select id="type-filter" aria-label="Filtrar por tipo"><option value="all">Todos os tipos</option><option value="income">Entradas</option><option value="expense">Saídas</option></select>
-            <select id="category-filter" aria-label="Filtrar por categoria"><option value="all">Todas as categorias</option></select>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Descrição</th><th>Categoria</th><th>Data</th><th>Tipo</th><th class="align-right">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead>
-              <tbody id="transactions-list"></tbody>
-            </table>
-            <div id="empty-state" class="empty-state" hidden>Nenhuma transação encontrada.</div>
+        </section>
+
+        <section id="cadastros" class="registries-section">
+          <div class="section-heading"><div><p class="eyebrow">Configuração</p><h2>Cadastros auxiliares</h2></div></div>
+          <div class="registry-grid">
+            <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">Classificação</p><h3>Tipos de despesa</h3></div><button id="add-type" class="small-button" type="button">＋ Novo tipo</button></div><p class="muted">Use tipos para organizar e comparar seus gastos.</p></article>
+            <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">Pessoas ou áreas</p><h3>Tomadores da despesa</h3></div><button id="add-taker" class="small-button" type="button">＋ Novo tomador</button></div><p class="muted">Identifique quem realizou ou ficou responsável pelo gasto.</p></article>
           </div>
         </section>
       </section>
@@ -98,12 +114,13 @@
 
     <dialog id="transaction-dialog">
       <form id="transaction-form" method="dialog">
-        <div class="dialog-heading"><div><p class="eyebrow">Lançamento</p><h2 id="dialog-title">Nova transação</h2></div><button class="close-button" id="close-dialog" type="button" aria-label="Fechar">×</button></div>
+        <div class="dialog-heading"><div><p class="eyebrow">Nova movimentação</p><h2 id="dialog-title">Nova despesa</h2></div><button class="close-button" id="close-dialog" type="button" aria-label="Fechar">×</button></div>
         <input id="transaction-id" type="hidden" />
         <label>Descrição<input id="description" name="description" required maxlength="60" placeholder="Ex.: Mercado do mês" /></label>
-        <div class="form-row"><label>Valor<input id="amount" name="amount" type="number" min="0.01" step="0.01" required placeholder="0,00" /></label><label>Tipo<select id="transaction-type" name="type"><option value="expense">Saída</option><option value="income">Entrada</option></select></label></div>
-        <div class="form-row"><label>Categoria<select id="category" name="category"></select></label><label>Data<input id="date" name="date" type="date" required /></label></div>
-        <div class="dialog-actions"><button class="secondary-button" id="cancel-dialog" type="button">Cancelar</button><button class="primary-button" type="submit">Salvar transação</button></div>
+        <label>Valor<input id="amount" name="amount" type="number" min="0.01" step="0.01" required placeholder="0,00" /></label>
+        <div class="form-row"><label>Tipo de despesa<select id="expense-type" name="expenseType"></select></label><label>Tomador<select id="taker" name="taker"></select></label></div>
+        <label>Data<input id="date" name="date" type="date" required /></label>
+        <div class="dialog-actions"><button class="secondary-button" id="cancel-dialog" type="button">Cancelar</button><button class="primary-button" type="submit">Salvar despesa</button></div>
       </form>
     </dialog>
     <script type="module" src="./app.js"></script>

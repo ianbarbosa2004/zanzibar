@@ -32,10 +32,10 @@ function send(response, status, payload, contentType = "application/json") {
 
 const server = createServer(async (request, response) => {
   try {
-    if (isDataApi(request.url) && request.method === "GET") return send(response, 200, { transactions: await readJson(dataFile, []), settings: await readJson(settingsFile, { goal: 1000 }) });
+    if (isDataApi(request.url) && request.method === "GET") return send(response, 200, { transactions: await readJson(dataFile, []), settings: await readJson(settingsFile, {}) });
     if (isDataApi(request.url) && request.method === "PUT") {
       const payload = await body(request);
-      if (!Array.isArray(payload.transactions) || typeof payload.settings?.goal !== "number") return send(response, 400, { error: "Dados inválidos." });
+      if (!Array.isArray(payload.transactions) || typeof payload.settings !== "object" || payload.settings === null) return send(response, 400, { error: "Dados inválidos." });
       await fs.writeFile(dataFile, JSON.stringify(payload.transactions, null, 2) + "\n");
       await fs.writeFile(settingsFile, JSON.stringify(payload.settings, null, 2) + "\n");
       return send(response, 200, { ok: true });
