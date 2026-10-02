@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Controle simples das suas finanças pessoais." />
+    <title>Clareza | Financeiro pessoal</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="sidebar">
+        <a class="brand" href="/" aria-label="Clareza início">
+          <span class="brand-mark">C</span>
+          <span>clareza</span>
+        </a>
+        <nav aria-label="Navegação principal">
+          <a class="nav-link active" href="#visao-geral"><span>⌂</span> Visão geral</a>
+          <a class="nav-link" href="#transacoes"><span>↔</span> Transações</a>
+          <a class="nav-link" href="#planejamento"><span>◷</span> Planejamento</a>
+        </nav>
+        <div class="sidebar-tip">
+          <span class="tip-icon">✦</span>
+          <strong>Pequenos passos.</strong>
+          <p>Registrar seus gastos hoje deixa o amanhã mais leve.</p>
+        </div>
+        <button class="sidebar-footer" id="export-button" type="button">↓ Exportar dados</button>
+      </aside>
+
+      <section class="content">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Sexta-feira, 02 de outubro</p>
+            <h1>Olá, Paulo <span aria-hidden="true">✳</span></h1>
+          </div>
+          <button class="avatar" type="button" aria-label="Perfil de Paulo">P</button>
+        </header>
+
+        <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
+        <section id="visao-geral" class="overview">
+          <div class="balance-card">
+            <div class="card-heading">
+              <span>Saldo disponível</span>
+              <button class="icon-button" id="toggle-balance" type="button" aria-label="Ocultar saldo">◉</button>
+            </div>
+            <strong id="balance-value" class="balance-value">R$ 0,00</strong>
+            <p id="balance-caption" class="balance-caption">Neste mês</p>
+          </div>
+          <div class="metric-card income">
+            <span class="metric-icon">↗</span>
+            <div><span>Entradas</span><strong id="income-value">R$ 0,00</strong></div>
+          </div>
+          <div class="metric-card expense">
+            <span class="metric-icon">↘</span>
+            <div><span>Saídas</span><strong id="expense-value">R$ 0,00</strong></div>
+          </div>
+        </section>
+
+        <section class="dashboard-grid">
+          <article id="planejamento" class="panel spending-panel">
+            <div class="panel-header">
+              <div><p class="eyebrow">Visão mensal</p><h2>Fluxo de caixa</h2></div>
+              <select id="month-filter" aria-label="Selecionar mês"></select>
+            </div>
+            <div id="chart" class="chart" aria-label="Gráfico de entradas e saídas"></div>
+            <div class="chart-legend"><span><i class="dot income-dot"></i> Entradas</span><span><i class="dot expense-dot"></i> Saídas</span></div>
+          </article>
+
+          <article class="panel goal-panel">
+            <div class="panel-header"><div><p class="eyebrow">Meta do mês</p><h2>Reserva de emergência</h2></div><span class="goal-emoji">☀</span></div>
+            <div class="goal-amount"><strong id="goal-value">R$ 0,00</strong><span>de R$ 1.000,00</span></div>
+            <div class="progress-track"><div id="goal-progress" class="progress-value"></div></div>
+            <p id="goal-caption" class="muted">Adicione uma entrada para acompanhar sua meta.</p>
+            <button class="text-button" id="goal-button" type="button">Editar meta <span>→</span></button>
+          </article>
+        </section>
+
+        <section id="transacoes" class="transactions-section">
+          <div class="section-heading">
+            <div><p class="eyebrow">Movimentações</p><h2>Transações recentes</h2></div>
+            <button class="primary-button" id="new-transaction" type="button"><span>＋</span> Nova transação</button>
+          </div>
+          <div class="toolbar">
+            <label class="search-box"><span>⌕</span><input id="search-input" type="search" placeholder="Buscar transação..." /></label>
+            <select id="type-filter" aria-label="Filtrar por tipo"><option value="all">Todos os tipos</option><option value="income">Entradas</option><option value="expense">Saídas</option></select>
+            <select id="category-filter" aria-label="Filtrar por categoria"><option value="all">Todas as categorias</option></select>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Descrição</th><th>Categoria</th><th>Data</th><th>Tipo</th><th class="align-right">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead>
+              <tbody id="transactions-list"></tbody>
+            </table>
+            <div id="empty-state" class="empty-state" hidden>Nenhuma transação encontrada.</div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <dialog id="transaction-dialog">
+      <form id="transaction-form" method="dialog">
+        <div class="dialog-heading"><div><p class="eyebrow">Lançamento</p><h2 id="dialog-title">Nova transação</h2></div><button class="close-button" id="close-dialog" type="button" aria-label="Fechar">×</button></div>
+        <input id="transaction-id" type="hidden" />
+        <label>Descrição<input id="description" name="description" required maxlength="60" placeholder="Ex.: Mercado do mês" /></label>
+        <div class="form-row"><label>Valor<input id="amount" name="amount" type="number" min="0.01" step="0.01" required placeholder="0,00" /></label><label>Tipo<select id="transaction-type" name="type"><option value="expense">Saída</option><option value="income">Entrada</option></select></label></div>
+        <div class="form-row"><label>Categoria<select id="category" name="category"></select></label><label>Data<input id="date" name="date" type="date" required /></label></div>
+        <div class="dialog-actions"><button class="secondary-button" id="cancel-dialog" type="button">Cancelar</button><button class="primary-button" type="submit">Salvar transação</button></div>
+      </form>
+    </dialog>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
