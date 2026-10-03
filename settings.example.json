@@ -1,0 +1,19 @@
+{
+  "expenseTypes": [
+    "Alimentação",
+    "Contas",
+    "Educação",
+    "Lazer",
+    "Moradia",
+    "Outros",
+    "Saúde",
+    "Transporte"
+  ],
+  "takers": [
+    "Pessoal"
+  ],
+  "locations": [
+    "Casa",
+    "Zanzibar"
+  ]
+}

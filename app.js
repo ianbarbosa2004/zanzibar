@@ -1,41 +1,62 @@
-const categories = ["Salário", "Extra", "Moradia", "Alimentação", "Contas", "Transporte", "Lazer", "Saúde", "Educação", "Outros"];
+const defaultExpenseTypes = ["Moradia", "Alimentação", "Contas", "Transporte", "Lazer", "Saúde", "Educação", "Outros"];
+const defaultTakers = ["Pessoal"];
+const defaultLocations = ["Casa", "Zanzibar"];
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const dateFormat = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" });
 const API_URL = new URL("api/data", document.baseURI).pathname;
 let transactions = [];
 let balanceVisible = true;
-let goal = 1000;
+let expenseTypes = [...defaultExpenseTypes];
+let takers = [...defaultTakers];
+let locations = [...defaultLocations];
 
 const $ = (selector) => document.querySelector(selector);
 const formatMoney = (value) => money.format(value).replace(/\u00a0/g, " ");
-const currentMonth = () => new Date().toISOString().slice(0, 7);
+const currentMonth = () => localDate().slice(0, 7);
 const selectedMonth = () => $("#month-filter").value || currentMonth();
+const todayLabel = () => new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "2-digit", month: "long" }).format(new Date());
+const localDate = () => {
+  const now = new Date();
+  const utcMinusThree = -180;
+  const offset = utcMinusThree - now.getTimezoneOffset();
+  return new Date(now.getTime() + offset * 60000).toISOString().slice(0, 10);
+};
+const formatInputAmount = (value) => formatMoney(Number(value) || 0);
+const parseInputAmount = (value) => {
+  const digits = String(value).replace(/\D/g, "");
+  return Number(digits) / 100;
+};
 
 async function loadData() {
   try {
     const response = await fetch(API_URL);
     if (!response.ok) throw new Error("API indisponível.");
     const data = await response.json();
-    transactions = data.transactions;
-    goal = data.settings.goal;
+    transactions = data.transactions.map((item) => ({ ...item, type: "expense" }));
+    expenseTypes = data.settings.expenseTypes?.length ? data.settings.expenseTypes : [...defaultExpenseTypes];
+    takers = data.settings.takers?.length ? data.settings.takers : [...defaultTakers];
+    locations = data.settings.locations?.length ? data.settings.locations : [...defaultLocations];
     return;
   } catch {
     const savedTransactions = localStorage.getItem("clareza-transactions");
-    const savedGoal = localStorage.getItem("clareza-goal");
     if (savedTransactions) {
-      transactions = JSON.parse(savedTransactions);
-      goal = Number(savedGoal) || 1000;
+      transactions = JSON.parse(savedTransactions).map((item) => ({ ...item, type: "expense" }));
+      expenseTypes = JSON.parse(localStorage.getItem("clareza-expense-types") || "null") || [...defaultExpenseTypes];
+      takers = JSON.parse(localStorage.getItem("clareza-takers") || "null") || [...defaultTakers];
+      locations = JSON.parse(localStorage.getItem("clareza-locations") || "null") || [...defaultLocations];
       return;
     }
     const response = await fetch("./data.json");
-    transactions = await response.json();
+    transactions = (await response.json()).map((item) => ({ ...item, type: "expense" }));
   }
 }
 
 async function save() {
-  const payload = JSON.stringify({ transactions, settings: { goal } });
+  const payload = JSON.stringify({ transactions, settings: { expenseTypes, takers, locations } });
   localStorage.setItem("clareza-transactions", JSON.stringify(transactions));
-  localStorage.setItem("clareza-goal", String(goal));
+  localStorage.setItem("clareza-expense-types", JSON.stringify(expenseTypes));
+  localStorage.setItem("clareza-takers", JSON.stringify(takers));
+  localStorage.setItem("clareza-locations", JSON.stringify(locations));
   try {
     const response = await fetch(API_URL, { method: "PUT", headers: { "Content-Type": "application/json" }, body: payload });
     if (!response.ok) throw new Error("API indisponível.");
@@ -45,12 +66,17 @@ async function save() {
 }
 
 function setupFormOptions() {
-  $("#category").innerHTML = categories.map((category) => `<option>${category}</option>`).join("");
+  expenseTypes.sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
+  takers.sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
+  locations.sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
+  $("#expense-type").innerHTML = expenseTypes.map((type) => `<option>${escapeHtml(type)}</option>`).join("");
+  $("#taker").innerHTML = takers.map((taker) => `<option>${escapeHtml(taker)}</option>`).join("");
+  renderLocationOptions();
   const availableMonths = [...new Set([currentMonth(), ...transactions.map((item) => item.date.slice(0, 7))])].sort().reverse();
   $("#month-filter").innerHTML = availableMonths.map((month) => `<option value="${month}">${new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date(`${month}-15`))}</option>`).join("");
   $("#month-filter").value = currentMonth();
-  const categoryOptions = [...new Set(transactions.map((item) => item.category))].sort();
-  $("#category-filter").innerHTML = `<option value="all">Todas as categorias</option>${categoryOptions.map((category) => `<option>${category}</option>`).join("")}`;
+  $("#type-filter").innerHTML = `<option value="all">Todos os tipos</option>${expenseTypes.map((type) => `<option>${escapeHtml(type)}</option>`).join("")}`;
+  $("#taker-filter").innerHTML = `<option value="all">Todos os tomadores</option>${takers.map((taker) => `<option>${escapeHtml(taker)}</option>`).join("")}`;
 }
 
 function monthTransactions() {
@@ -59,16 +85,9 @@ function monthTransactions() {
 
 function renderSummary() {
   const monthItems = monthTransactions();
-  const income = monthItems.filter((item) => item.type === "income").reduce((sum, item) => sum + item.amount, 0);
-  const expense = monthItems.filter((item) => item.type === "expense").reduce((sum, item) => sum + item.amount, 0);
-  $("#balance-value").textContent = balanceVisible ? formatMoney(income - expense) : "••••••";
-  $("#income-value").textContent = balanceVisible ? formatMoney(income) : "••••••";
+  const expense = monthItems.reduce((sum, item) => sum + item.amount, 0);
   $("#expense-value").textContent = balanceVisible ? formatMoney(expense) : "••••••";
-  $("#balance-caption").textContent = `Saldo de ${new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(new Date(`${selectedMonth()}-15`))}`;
-  $("#goal-value").textContent = formatMoney(Math.min(income, goal));
-  const progress = income ? Math.min(100, (income / goal) * 100) : 0;
-  $("#goal-progress").style.width = `${progress}%`;
-  $("#goal-caption").textContent = income ? `${Math.round(progress)}% da meta alcançada neste mês.` : "Adicione uma entrada para acompanhar sua meta.";
+  $("#expense-caption").textContent = `${monthItems.length} ${monthItems.length === 1 ? "despesa registrada" : "despesas registradas"}`;
 }
 
 function renderChart() {
@@ -78,24 +97,23 @@ function renderChart() {
   const max = Math.max(...chartDays.map((day) => Math.max(...items.filter((item) => item.date.slice(8, 10) === day).map((item) => item.amount), 0)), 100);
   $("#chart").innerHTML = chartDays.map((day) => {
     const dayItems = items.filter((item) => item.date.slice(8, 10) === day);
-    const income = dayItems.filter((item) => item.type === "income").reduce((sum, item) => sum + item.amount, 0);
-    const expense = dayItems.filter((item) => item.type === "expense").reduce((sum, item) => sum + item.amount, 0);
-    return `<div class="chart-column"><div class="bars"><i class="bar income-bar" style="height:${Math.max(3, income / max * 100)}%" title="${formatMoney(income)}"></i><i class="bar expense-bar" style="height:${Math.max(3, expense / max * 100)}%" title="${formatMoney(expense)}"></i></div><small>${day}</small></div>`;
+    const expense = dayItems.reduce((sum, item) => sum + item.amount, 0);
+    return `<div class="chart-column"><div class="bars"><i class="bar expense-bar" style="height:${Math.max(3, expense / max * 100)}%" title="${formatMoney(expense)}"></i></div><small>${day}</small></div>`;
   }).join("");
 }
 
 function renderTransactions() {
   const query = $("#search-input").value.toLowerCase().trim();
   const type = $("#type-filter").value;
-  const category = $("#category-filter").value;
-  const filtered = transactions.filter((item) => {
-    const matchesSearch = `${item.description} ${item.category}`.toLowerCase().includes(query);
-    return matchesSearch && (type === "all" || item.type === type) && (category === "all" || item.category === category);
+  const taker = $("#taker-filter").value;
+  const filtered = monthTransactions().filter((item) => {
+    const matchesSearch = `${item.description} ${item.expenseType} ${item.taker} ${item.location}`.toLowerCase().includes(query);
+    return matchesSearch && (type === "all" || item.expenseType === type) && (taker === "all" || item.taker === taker);
   }).sort((a, b) => b.date.localeCompare(a.date));
   $("#transactions-list").innerHTML = filtered.map((item) => `<tr>
-    <td><div class="transaction-description"><span class="transaction-icon ${item.type}">${item.type === "income" ? "↗" : "↘"}</span>${escapeHtml(item.description)}</div></td>
-    <td><span class="tag">${escapeHtml(item.category)}</span></td><td>${dateFormat.format(new Date(`${item.date}T12:00:00`))}</td>
-    <td>${item.type === "income" ? "Entrada" : "Saída"}</td><td class="align-right ${item.type}-text">${item.type === "income" ? "+" : "-"} ${formatMoney(item.amount)}</td>
+    <td><div class="transaction-description"><span class="transaction-icon expense">↘</span>${escapeHtml(item.description)}</div></td>
+    <td><span class="tag">${escapeHtml(item.expenseType)}</span></td><td>${escapeHtml(item.taker)}</td><td>${escapeHtml(item.location)}</td><td>${dateFormat.format(new Date(`${item.date}T12:00:00`))}</td>
+    <td class="align-right expense-text">- ${formatMoney(item.amount)}</td>
     <td class="align-right"><button class="action-button" data-edit="${item.id}" aria-label="Editar ${escapeHtml(item.description)}">•••</button></td></tr>`).join("");
   $("#empty-state").hidden = filtered.length > 0;
 }
@@ -106,15 +124,43 @@ function escapeHtml(value) {
 
 function render() { renderSummary(); renderChart(); renderTransactions(); }
 
+function renderReports() {
+  const items = monthTransactions();
+  const total = items.reduce((sum, item) => sum + item.amount, 0);
+  const group = (key) => Object.entries(items.reduce((result, item) => {
+    const label = item[key] || "Sem cadastro";
+    result[label] = (result[label] || 0) + item.amount;
+    return result;
+  }, {})).sort((a, b) => b[1] - a[1]);
+  const rows = (entries) => entries.length ? entries.map(([label, value]) => `<div class="report-row"><span>${escapeHtml(label)}</span><strong>${formatMoney(value)}</strong><i><b style="width:${total ? value / total * 100 : 0}%"></b></i></div>`).join("") : `<p class="muted">Nenhuma despesa neste período.</p>`;
+  $("#daily-report").innerHTML = rows(Object.entries(items.reduce((result, item) => { result[item.date] = (result[item.date] || 0) + item.amount; return result; }, {})).sort((a, b) => b[0].localeCompare(a[0])).map(([date, value]) => [dateFormat.format(new Date(`${date}T12:00:00`)), value]));
+  $("#type-report").innerHTML = rows(group("expenseType"));
+  $("#taker-report").innerHTML = rows(group("taker"));
+  $("#report-total").textContent = formatMoney(total);
+}
+
+function renderRegistries() {
+  const renderList = (items, kind) => items.length ? items.map((item, index) => {
+    const property = { type: "expenseType", taker: "taker", location: "location" }[kind];
+    const count = transactions.filter((transaction) => transaction[property] === item).length;
+    return `<li><span>${escapeHtml(item)} <small>${count} ${count === 1 ? "despesa" : "despesas"}</small></span><span class="registry-actions"><button type="button" class="registry-action" data-edit-registry="${kind}" data-registry-index="${index}" aria-label="Editar ${escapeHtml(item)}">✎</button><button type="button" class="registry-action danger" data-delete-registry="${kind}" data-registry-index="${index}" aria-label="Excluir ${escapeHtml(item)}">×</button></span></li>`;
+  }).join("") : `<li class="registry-empty">Nenhum cadastro criado.</li>`;
+  $("#type-registry-list").innerHTML = renderList(expenseTypes, "type");
+  $("#taker-registry-list").innerHTML = renderList(takers, "taker");
+  $("#location-registry-list").innerHTML = renderList(locations, "location");
+}
+
 function openDialog(item) {
-  $("#dialog-title").textContent = item ? "Editar transação" : "Nova transação";
+  $("#dialog-title").textContent = item ? "Editar despesa" : "Nova despesa";
   $("#transaction-id").value = item?.id || "";
   $("#description").value = item?.description || "";
-  $("#amount").value = item?.amount || "";
-  $("#transaction-type").value = item?.type || "expense";
-  $("#category").value = item?.category || "Outros";
-  $("#date").value = item?.date || new Date().toISOString().slice(0, 10);
+  $("#amount").value = item ? formatInputAmount(item.amount) : "";
+  $("#expense-type").value = item?.expenseType || expenseTypes[0];
+  $("#taker").value = item?.taker || takers[0];
+  setLocation(item?.location || "Casa");
+  $("#date").value = item?.date || localDate();
   $("#transaction-dialog").showModal();
+  requestAnimationFrame(() => $("#description").focus());
 }
 
 function showFeedback(message) {
@@ -126,18 +172,79 @@ function showFeedback(message) {
 $("#transaction-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const id = $("#transaction-id").value;
-  const item = { id: id || crypto.randomUUID(), description: $("#description").value.trim(), amount: Number($("#amount").value), type: $("#transaction-type").value, category: $("#category").value, date: $("#date").value };
+  const amount = parseInputAmount($("#amount").value);
+  if (!amount) return showFeedback("Informe um valor maior que zero.");
+  const item = { id: id || crypto.randomUUID(), description: $("#description").value.trim(), amount, type: "expense", expenseType: $("#expense-type").value, taker: $("#taker").value, location: $("#location-options").dataset.value || "Casa", date: $("#date").value };
   transactions = id ? transactions.map((entry) => entry.id === id ? item : entry) : [item, ...transactions];
-  save().then(() => { setupFormOptions(); render(); $("#transaction-dialog").close(); showFeedback(id ? "Transação atualizada." : "Transação adicionada."); }).catch(() => showFeedback("Não foi possível salvar a transação."));
+  save().then(() => { setupFormOptions(); render(); renderReports(); renderRegistries(); $("#transaction-dialog").close(); showFeedback(id ? "Despesa atualizada." : "Despesa adicionada."); }).catch(() => showFeedback("Não foi possível salvar a despesa."));
+});
+function renderLocationOptions() {
+  const selected = $("#location-options").dataset.value || "Casa";
+  $("#location-options").innerHTML = locations.map((location) => `<button type="button" class="location-option${location === selected ? " selected" : ""}" role="radio" aria-checked="${location === selected}" data-location="${escapeHtml(location)}"><span class="location-radio" aria-hidden="true"></span>${escapeHtml(location)}</button>`).join("");
+}
+function setLocation(location) {
+  $("#location-options").dataset.value = location;
+  $("#location-options").querySelectorAll("[data-location]").forEach((option) => {
+    const selected = option.dataset.location === location;
+    option.classList.toggle("selected", selected);
+    option.setAttribute("aria-checked", String(selected));
+  });
+}
+$("#location-options").addEventListener("click", (event) => {
+  const option = event.target.closest("[data-location]");
+  if (!option) return;
+  setLocation(option.dataset.location);
 });
 $("#transactions-list").addEventListener("click", (event) => { const button = event.target.closest("[data-edit]"); if (button) openDialog(transactions.find((item) => item.id === button.dataset.edit)); });
 $("#new-transaction").addEventListener("click", () => openDialog());
+$("#quick-new-transaction").addEventListener("click", () => openDialog());
 $("#close-dialog").addEventListener("click", () => $("#transaction-dialog").close());
 $("#cancel-dialog").addEventListener("click", () => $("#transaction-dialog").close());
+$("#amount").addEventListener("input", (event) => {
+  const amount = parseInputAmount(event.target.value);
+  event.target.value = amount ? formatInputAmount(amount) : "";
+});
 $("#toggle-balance").addEventListener("click", () => { balanceVisible = !balanceVisible; $("#toggle-balance").textContent = balanceVisible ? "◉" : "◎"; renderSummary(); });
 $("#month-filter").addEventListener("change", render);
-["search-input", "type-filter", "category-filter"].forEach((id) => $(`#${id}`).addEventListener("input", renderTransactions));
-$("#goal-button").addEventListener("click", () => { const value = prompt("Qual é sua nova meta mensal?", goal); if (value && Number(value) > 0) { const previous = goal; goal = Number(value); save().then(() => { renderSummary(); showFeedback("Meta atualizada."); }).catch(() => { goal = previous; showFeedback("Não foi possível salvar a meta."); }); } });
+["search-input", "type-filter", "taker-filter"].forEach((id) => $(`#${id}`).addEventListener("input", renderTransactions));
+$("#month-filter").addEventListener("change", () => { render(); renderReports(); });
+$("#add-type").addEventListener("click", () => addCatalogItem("type"));
+$("#add-taker").addEventListener("click", () => addCatalogItem("taker"));
+$("#add-location").addEventListener("click", () => addCatalogItem("location"));
+function addCatalogItem(kind) {
+  const label = { type: "tipo de despesa", taker: "tomador", location: "local" }[kind];
+  const value = prompt(`Nome do ${label}:`)?.trim();
+  if (!value) return;
+  const list = { type: expenseTypes, taker: takers, location: locations }[kind];
+  if (list.some((item) => item.toLowerCase() === value.toLowerCase())) return showFeedback(`${label[0].toUpperCase() + label.slice(1)} já cadastrado.`);
+  list.push(value);
+  save().then(() => { setupFormOptions(); renderRegistries(); showFeedback(`${label[0].toUpperCase() + label.slice(1)} cadastrado.`); }).catch(() => showFeedback("Não foi possível salvar o cadastro."));
+}
+$("#registry-lists").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-edit-registry], [data-delete-registry]");
+  if (!button) return;
+  const kind = button.dataset.editRegistry || button.dataset.deleteRegistry;
+  const list = { type: expenseTypes, taker: takers, location: locations }[kind];
+  const index = Number(button.dataset.registryIndex);
+  const current = list[index];
+  if (button.dataset.editRegistry) {
+    const registryLabel = { type: "tipo de despesa", taker: "tomador", location: "local" }[kind];
+    const value = prompt(`Editar ${registryLabel}:`, current)?.trim();
+    if (!value || value === current) return;
+    if (list.some((item, itemIndex) => itemIndex !== index && item.toLowerCase() === value.toLowerCase())) return showFeedback("Já existe um cadastro com esse nome.");
+    const property = { type: "expenseType", taker: "taker", location: "location" }[kind];
+    transactions = transactions.map((item) => item[property] === current ? { ...item, [property]: value } : item);
+    list[index] = value;
+    save().then(() => { setupFormOptions(); render(); renderReports(); renderRegistries(); showFeedback("Cadastro atualizado."); }).catch(() => showFeedback("Não foi possível atualizar o cadastro."));
+    return;
+  }
+  const property = { type: "expenseType", taker: "taker", location: "location" }[kind];
+  if (transactions.some((item) => item[property] === current)) return showFeedback("Este cadastro está vinculado a despesas e não pode ser excluído.");
+  if (list.length === 1) return showFeedback("Mantenha pelo menos um cadastro disponível.");
+  if (!confirm(`Excluir "${current}"?`)) return;
+  list.splice(index, 1);
+  save().then(() => { setupFormOptions(); renderRegistries(); showFeedback("Cadastro excluído."); }).catch(() => showFeedback("Não foi possível excluir o cadastro."));
+});
 $("#export-button").addEventListener("click", () => { const blob = new Blob([JSON.stringify(transactions, null, 2)], { type: "application/json" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "clareza-transacoes.json"; link.click(); URL.revokeObjectURL(link.href); showFeedback("Dados exportados."); });
 
-loadData().then(() => { setupFormOptions(); render(); }).catch(() => { showFeedback("Não foi possível carregar os dados iniciais."); });
+loadData().then(() => { transactions = transactions.map((item) => ({ ...item, expenseType: item.expenseType || item.category || "Outros", taker: item.taker || "Pessoal", location: item.location || "Casa" })); $("#today-label").textContent = todayLabel(); setupFormOptions(); render(); renderReports(); renderRegistries(); }).catch(() => { showFeedback("Não foi possível carregar os dados iniciais."); });
