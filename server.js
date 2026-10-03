@@ -32,7 +32,7 @@ function send(response, status, payload, contentType = "application/json") {
 
 const server = createServer(async (request, response) => {
   try {
-    if (isDataApi(request.url) && request.method === "GET") return send(response, 200, { transactions: await readJson(dataFile, []), settings: await readJson(settingsFile, {}) });
+    if (isDataApi(request.url) && request.method === "GET") return send(response, 200, { transactions: await readJson(dataFile, []), settings: await readJson(settingsFile, { expenseTypes: [], takers: [] }) });
     if (isDataApi(request.url) && request.method === "PUT") {
       const payload = await body(request);
       if (!Array.isArray(payload.transactions) || typeof payload.settings !== "object" || payload.settings === null) return send(response, 400, { error: "Dados inválidos." });

@@ -1,5 +1,6 @@
 const defaultExpenseTypes = ["Moradia", "Alimentação", "Contas", "Transporte", "Lazer", "Saúde", "Educação", "Outros"];
 const defaultTakers = ["Pessoal"];
+const defaultLocations = ["Casa", "Zanzibar"];
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const dateFormat = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" });
 const API_URL = new URL("api/data", document.baseURI).pathname;
@@ -7,12 +8,24 @@ let transactions = [];
 let balanceVisible = true;
 let expenseTypes = [...defaultExpenseTypes];
 let takers = [...defaultTakers];
+let locations = [...defaultLocations];
 
 const $ = (selector) => document.querySelector(selector);
 const formatMoney = (value) => money.format(value).replace(/\u00a0/g, " ");
-const currentMonth = () => new Date().toISOString().slice(0, 7);
+const currentMonth = () => localDate().slice(0, 7);
 const selectedMonth = () => $("#month-filter").value || currentMonth();
 const todayLabel = () => new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "2-digit", month: "long" }).format(new Date());
+const localDate = () => {
+  const now = new Date();
+  const utcMinusThree = -180;
+  const offset = utcMinusThree - now.getTimezoneOffset();
+  return new Date(now.getTime() + offset * 60000).toISOString().slice(0, 10);
+};
+const formatInputAmount = (value) => formatMoney(Number(value) || 0);
+const parseInputAmount = (value) => {
+  const digits = String(value).replace(/\D/g, "");
+  return Number(digits) / 100;
+};
 
 async function loadData() {
   try {
@@ -22,6 +35,7 @@ async function loadData() {
     transactions = data.transactions.map((item) => ({ ...item, type: "expense" }));
     expenseTypes = data.settings.expenseTypes?.length ? data.settings.expenseTypes : [...defaultExpenseTypes];
     takers = data.settings.takers?.length ? data.settings.takers : [...defaultTakers];
+    locations = data.settings.locations?.length ? data.settings.locations : [...defaultLocations];
     return;
   } catch {
     const savedTransactions = localStorage.getItem("clareza-transactions");
@@ -29,6 +43,7 @@ async function loadData() {
       transactions = JSON.parse(savedTransactions).map((item) => ({ ...item, type: "expense" }));
       expenseTypes = JSON.parse(localStorage.getItem("clareza-expense-types") || "null") || [...defaultExpenseTypes];
       takers = JSON.parse(localStorage.getItem("clareza-takers") || "null") || [...defaultTakers];
+      locations = JSON.parse(localStorage.getItem("clareza-locations") || "null") || [...defaultLocations];
       return;
     }
     const response = await fetch("./data.json");
@@ -37,10 +52,11 @@ async function loadData() {
 }
 
 async function save() {
-  const payload = JSON.stringify({ transactions, settings: { expenseTypes, takers } });
+  const payload = JSON.stringify({ transactions, settings: { expenseTypes, takers, locations } });
   localStorage.setItem("clareza-transactions", JSON.stringify(transactions));
   localStorage.setItem("clareza-expense-types", JSON.stringify(expenseTypes));
   localStorage.setItem("clareza-takers", JSON.stringify(takers));
+  localStorage.setItem("clareza-locations", JSON.stringify(locations));
   try {
     const response = await fetch(API_URL, { method: "PUT", headers: { "Content-Type": "application/json" }, body: payload });
     if (!response.ok) throw new Error("API indisponível.");
@@ -50,8 +66,12 @@ async function save() {
 }
 
 function setupFormOptions() {
+  expenseTypes.sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
+  takers.sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
+  locations.sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
   $("#expense-type").innerHTML = expenseTypes.map((type) => `<option>${escapeHtml(type)}</option>`).join("");
   $("#taker").innerHTML = takers.map((taker) => `<option>${escapeHtml(taker)}</option>`).join("");
+  renderLocationOptions();
   const availableMonths = [...new Set([currentMonth(), ...transactions.map((item) => item.date.slice(0, 7))])].sort().reverse();
   $("#month-filter").innerHTML = availableMonths.map((month) => `<option value="${month}">${new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date(`${month}-15`))}</option>`).join("");
   $("#month-filter").value = currentMonth();
@@ -87,12 +107,12 @@ function renderTransactions() {
   const type = $("#type-filter").value;
   const taker = $("#taker-filter").value;
   const filtered = monthTransactions().filter((item) => {
-    const matchesSearch = `${item.description} ${item.expenseType} ${item.taker}`.toLowerCase().includes(query);
+    const matchesSearch = `${item.description} ${item.expenseType} ${item.taker} ${item.location}`.toLowerCase().includes(query);
     return matchesSearch && (type === "all" || item.expenseType === type) && (taker === "all" || item.taker === taker);
   }).sort((a, b) => b.date.localeCompare(a.date));
   $("#transactions-list").innerHTML = filtered.map((item) => `<tr>
     <td><div class="transaction-description"><span class="transaction-icon expense">↘</span>${escapeHtml(item.description)}</div></td>
-    <td><span class="tag">${escapeHtml(item.expenseType)}</span></td><td>${escapeHtml(item.taker)}</td><td>${dateFormat.format(new Date(`${item.date}T12:00:00`))}</td>
+    <td><span class="tag">${escapeHtml(item.expenseType)}</span></td><td>${escapeHtml(item.taker)}</td><td>${escapeHtml(item.location)}</td><td>${dateFormat.format(new Date(`${item.date}T12:00:00`))}</td>
     <td class="align-right expense-text">- ${formatMoney(item.amount)}</td>
     <td class="align-right"><button class="action-button" data-edit="${item.id}" aria-label="Editar ${escapeHtml(item.description)}">•••</button></td></tr>`).join("");
   $("#empty-state").hidden = filtered.length > 0;
@@ -121,22 +141,26 @@ function renderReports() {
 
 function renderRegistries() {
   const renderList = (items, kind) => items.length ? items.map((item, index) => {
-    const count = transactions.filter((transaction) => transaction[kind === "type" ? "expenseType" : "taker"] === item).length;
+    const property = { type: "expenseType", taker: "taker", location: "location" }[kind];
+    const count = transactions.filter((transaction) => transaction[property] === item).length;
     return `<li><span>${escapeHtml(item)} <small>${count} ${count === 1 ? "despesa" : "despesas"}</small></span><span class="registry-actions"><button type="button" class="registry-action" data-edit-registry="${kind}" data-registry-index="${index}" aria-label="Editar ${escapeHtml(item)}">✎</button><button type="button" class="registry-action danger" data-delete-registry="${kind}" data-registry-index="${index}" aria-label="Excluir ${escapeHtml(item)}">×</button></span></li>`;
   }).join("") : `<li class="registry-empty">Nenhum cadastro criado.</li>`;
   $("#type-registry-list").innerHTML = renderList(expenseTypes, "type");
   $("#taker-registry-list").innerHTML = renderList(takers, "taker");
+  $("#location-registry-list").innerHTML = renderList(locations, "location");
 }
 
 function openDialog(item) {
   $("#dialog-title").textContent = item ? "Editar despesa" : "Nova despesa";
   $("#transaction-id").value = item?.id || "";
   $("#description").value = item?.description || "";
-  $("#amount").value = item?.amount || "";
+  $("#amount").value = item ? formatInputAmount(item.amount) : "";
   $("#expense-type").value = item?.expenseType || expenseTypes[0];
   $("#taker").value = item?.taker || takers[0];
-  $("#date").value = item?.date || new Date().toISOString().slice(0, 10);
+  setLocation(item?.location || "Casa");
+  $("#date").value = item?.date || localDate();
   $("#transaction-dialog").showModal();
+  requestAnimationFrame(() => $("#description").focus());
 }
 
 function showFeedback(message) {
@@ -148,26 +172,50 @@ function showFeedback(message) {
 $("#transaction-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const id = $("#transaction-id").value;
-  const item = { id: id || crypto.randomUUID(), description: $("#description").value.trim(), amount: Number($("#amount").value), type: "expense", expenseType: $("#expense-type").value, taker: $("#taker").value, date: $("#date").value };
+  const amount = parseInputAmount($("#amount").value);
+  if (!amount) return showFeedback("Informe um valor maior que zero.");
+  const item = { id: id || crypto.randomUUID(), description: $("#description").value.trim(), amount, type: "expense", expenseType: $("#expense-type").value, taker: $("#taker").value, location: $("#location-options").dataset.value || "Casa", date: $("#date").value };
   transactions = id ? transactions.map((entry) => entry.id === id ? item : entry) : [item, ...transactions];
   save().then(() => { setupFormOptions(); render(); renderReports(); renderRegistries(); $("#transaction-dialog").close(); showFeedback(id ? "Despesa atualizada." : "Despesa adicionada."); }).catch(() => showFeedback("Não foi possível salvar a despesa."));
+});
+function renderLocationOptions() {
+  const selected = $("#location-options").dataset.value || "Casa";
+  $("#location-options").innerHTML = locations.map((location) => `<button type="button" class="location-option${location === selected ? " selected" : ""}" role="radio" aria-checked="${location === selected}" data-location="${escapeHtml(location)}"><span class="location-radio" aria-hidden="true"></span>${escapeHtml(location)}</button>`).join("");
+}
+function setLocation(location) {
+  $("#location-options").dataset.value = location;
+  $("#location-options").querySelectorAll("[data-location]").forEach((option) => {
+    const selected = option.dataset.location === location;
+    option.classList.toggle("selected", selected);
+    option.setAttribute("aria-checked", String(selected));
+  });
+}
+$("#location-options").addEventListener("click", (event) => {
+  const option = event.target.closest("[data-location]");
+  if (!option) return;
+  setLocation(option.dataset.location);
 });
 $("#transactions-list").addEventListener("click", (event) => { const button = event.target.closest("[data-edit]"); if (button) openDialog(transactions.find((item) => item.id === button.dataset.edit)); });
 $("#new-transaction").addEventListener("click", () => openDialog());
 $("#quick-new-transaction").addEventListener("click", () => openDialog());
 $("#close-dialog").addEventListener("click", () => $("#transaction-dialog").close());
 $("#cancel-dialog").addEventListener("click", () => $("#transaction-dialog").close());
+$("#amount").addEventListener("input", (event) => {
+  const amount = parseInputAmount(event.target.value);
+  event.target.value = amount ? formatInputAmount(amount) : "";
+});
 $("#toggle-balance").addEventListener("click", () => { balanceVisible = !balanceVisible; $("#toggle-balance").textContent = balanceVisible ? "◉" : "◎"; renderSummary(); });
 $("#month-filter").addEventListener("change", render);
 ["search-input", "type-filter", "taker-filter"].forEach((id) => $(`#${id}`).addEventListener("input", renderTransactions));
 $("#month-filter").addEventListener("change", () => { render(); renderReports(); });
 $("#add-type").addEventListener("click", () => addCatalogItem("type"));
 $("#add-taker").addEventListener("click", () => addCatalogItem("taker"));
+$("#add-location").addEventListener("click", () => addCatalogItem("location"));
 function addCatalogItem(kind) {
-  const label = kind === "type" ? "tipo de despesa" : "tomador";
+  const label = { type: "tipo de despesa", taker: "tomador", location: "local" }[kind];
   const value = prompt(`Nome do ${label}:`)?.trim();
   if (!value) return;
-  const list = kind === "type" ? expenseTypes : takers;
+  const list = { type: expenseTypes, taker: takers, location: locations }[kind];
   if (list.some((item) => item.toLowerCase() === value.toLowerCase())) return showFeedback(`${label[0].toUpperCase() + label.slice(1)} já cadastrado.`);
   list.push(value);
   save().then(() => { setupFormOptions(); renderRegistries(); showFeedback(`${label[0].toUpperCase() + label.slice(1)} cadastrado.`); }).catch(() => showFeedback("Não foi possível salvar o cadastro."));
@@ -176,20 +224,22 @@ $("#registry-lists").addEventListener("click", (event) => {
   const button = event.target.closest("[data-edit-registry], [data-delete-registry]");
   if (!button) return;
   const kind = button.dataset.editRegistry || button.dataset.deleteRegistry;
-  const list = kind === "type" ? expenseTypes : takers;
+  const list = { type: expenseTypes, taker: takers, location: locations }[kind];
   const index = Number(button.dataset.registryIndex);
   const current = list[index];
   if (button.dataset.editRegistry) {
-    const value = prompt(`Editar ${kind === "type" ? "tipo de despesa" : "tomador"}:`, current)?.trim();
+    const registryLabel = { type: "tipo de despesa", taker: "tomador", location: "local" }[kind];
+    const value = prompt(`Editar ${registryLabel}:`, current)?.trim();
     if (!value || value === current) return;
     if (list.some((item, itemIndex) => itemIndex !== index && item.toLowerCase() === value.toLowerCase())) return showFeedback("Já existe um cadastro com esse nome.");
-    const property = kind === "type" ? "expenseType" : "taker";
+    const property = { type: "expenseType", taker: "taker", location: "location" }[kind];
     transactions = transactions.map((item) => item[property] === current ? { ...item, [property]: value } : item);
     list[index] = value;
     save().then(() => { setupFormOptions(); render(); renderReports(); renderRegistries(); showFeedback("Cadastro atualizado."); }).catch(() => showFeedback("Não foi possível atualizar o cadastro."));
     return;
   }
-  if (transactions.some((item) => item[kind === "type" ? "expenseType" : "taker"] === current)) return showFeedback("Este cadastro está vinculado a despesas e não pode ser excluído.");
+  const property = { type: "expenseType", taker: "taker", location: "location" }[kind];
+  if (transactions.some((item) => item[property] === current)) return showFeedback("Este cadastro está vinculado a despesas e não pode ser excluído.");
   if (list.length === 1) return showFeedback("Mantenha pelo menos um cadastro disponível.");
   if (!confirm(`Excluir "${current}"?`)) return;
   list.splice(index, 1);
@@ -197,4 +247,4 @@ $("#registry-lists").addEventListener("click", (event) => {
 });
 $("#export-button").addEventListener("click", () => { const blob = new Blob([JSON.stringify(transactions, null, 2)], { type: "application/json" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "clareza-transacoes.json"; link.click(); URL.revokeObjectURL(link.href); showFeedback("Dados exportados."); });
 
-loadData().then(() => { transactions = transactions.map((item) => ({ ...item, expenseType: item.expenseType || item.category || "Outros", taker: item.taker || "Pessoal" })); $("#today-label").textContent = todayLabel(); setupFormOptions(); render(); renderReports(); renderRegistries(); }).catch(() => { showFeedback("Não foi possível carregar os dados iniciais."); });
+loadData().then(() => { transactions = transactions.map((item) => ({ ...item, expenseType: item.expenseType || item.category || "Outros", taker: item.taker || "Pessoal", location: item.location || "Casa" })); $("#today-label").textContent = todayLabel(); setupFormOptions(); render(); renderReports(); renderRegistries(); }).catch(() => { showFeedback("Não foi possível carregar os dados iniciais."); });

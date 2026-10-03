@@ -69,7 +69,7 @@
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Descrição</th><th>Tipo</th><th>Tomador</th><th>Data</th><th class="align-right">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead>
+              <thead><tr><th>Descrição</th><th>Tipo</th><th>Tomador</th><th>Local</th><th>Data</th><th class="align-right">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead>
               <tbody id="transactions-list"></tbody>
             </table>
             <div id="empty-state" class="empty-state" hidden>Nenhuma transação encontrada.</div>
@@ -107,6 +107,7 @@
           <div id="registry-lists" class="registry-grid">
             <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">Classificação</p><h3>Tipos de despesa</h3></div><button id="add-type" class="small-button" type="button">＋ Novo tipo</button></div><ul id="type-registry-list" class="registry-list"></ul></article>
             <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">Pessoas ou áreas</p><h3>Tomadores da despesa</h3></div><button id="add-taker" class="small-button" type="button">＋ Novo tomador</button></div><ul id="taker-registry-list" class="registry-list"></ul></article>
+            <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">Onde aconteceu</p><h3>Locais da despesa</h3></div><button id="add-location" class="small-button" type="button">＋ Novo local</button></div><ul id="location-registry-list" class="registry-list"></ul></article>
           </div>
         </section>
       </section>
@@ -116,8 +117,12 @@
       <form id="transaction-form" method="dialog">
         <div class="dialog-heading"><div><p class="eyebrow">Nova movimentação</p><h2 id="dialog-title">Nova despesa</h2></div><button class="close-button" id="close-dialog" type="button" aria-label="Fechar">×</button></div>
         <input id="transaction-id" type="hidden" />
+        <div class="location-picker">
+          <span class="field-label">Local da despesa</span>
+          <div id="location-options" class="location-options" role="radiogroup" aria-label="Local da despesa"></div>
+        </div>
         <label>Descrição<input id="description" name="description" required maxlength="60" placeholder="Ex.: Mercado do mês" /></label>
-        <label>Valor<input id="amount" name="amount" type="number" min="0.01" step="0.01" required placeholder="0,00" /></label>
+        <label>Valor<input id="amount" name="amount" type="text" inputmode="decimal" dir="rtl" autocomplete="off" required placeholder="R$ 0,00" /></label>
         <div class="form-row"><label>Tipo de despesa<select id="expense-type" name="expenseType"></select></label><label>Tomador<select id="taker" name="taker"></select></label></div>
         <label>Data<input id="date" name="date" type="date" required /></label>
         <div class="dialog-actions"><button class="secondary-button" id="cancel-dialog" type="button">Cancelar</button><button class="primary-button" type="submit">Salvar despesa</button></div>
