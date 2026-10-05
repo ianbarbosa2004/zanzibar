@@ -40,7 +40,7 @@ bye
   $page = Invoke-WebRequest -Uri "https://itsites.com.br/clareza/" -UseBasicParsing
   $api = Invoke-WebRequest -Uri "https://itsites.com.br/clareza/api/data" -UseBasicParsing
   if ($page.StatusCode -ne 200 -or $api.StatusCode -ne 200) { throw "Validação online retornou status inesperado." }
-  Write-Output "Publicação concluída e endpoints online validados."
+  Write-Output "CLAREZA_DEPLOY_COMPLETED: Publicação concluída e endpoints online validados. A tarefa pode ser encerrada."
 }
 finally {
   Remove-Item -LiteralPath $tempBatch, $restartPath -Force -ErrorAction SilentlyContinue
