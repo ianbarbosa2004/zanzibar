@@ -100,7 +100,7 @@ a { color: inherit; text-decoration: none; }
 .section-actions select { padding: 10px 11px; border: 1px solid var(--line); border-radius: 8px; color: #718078; background: #fff; font-size: 11px; }
 .primary-button { padding: 11px 15px; border-radius: var(--radius-2); color: #fff; background: var(--accent); font-size: 12px; font-weight: 750; box-shadow: var(--shadow-2); }
 .primary-button:hover { background: var(--accent-dark); }
-.toolbar { justify-content: flex-start; gap: 9px; margin-bottom: 13px; }
+.toolbar { display: flex; align-items: center; justify-content: flex-start; gap: 9px; margin-bottom: 13px; flex-wrap: nowrap; }
 .toolbar-hint { margin-left: auto; color: #a0aaa5; font-size: 10px; }
 .search-box { display: flex; align-items: center; gap: 5px; width: 260px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; color: #9da8a3; background: #fff; }
 .search-box input { width: 100%; padding: 9px 0; border: 0; outline: 0; color: var(--ink); background: transparent; font-size: 11px; }
@@ -117,7 +117,8 @@ td:first-child { color: var(--ink); font-weight: 650; }
 .income-text { color: #428c69; font-weight: 700; }.expense-text { color: #96751f; font-weight: 700; }
 .action-button { padding: 2px 5px; color: #a5afab; background: transparent; font-size: 16px; }
 .empty-state { padding: 30px; color: var(--muted); font-size: 12px; text-align: center; }
-.pagination { display: flex; align-items: center; justify-content: center; gap: 16px; padding-top: 18px; color: var(--muted); font-size: 10px; }
+.pagination { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 18px; color: var(--muted); font-size: 10px; }
+.pagination-controls { display: inline-flex; align-items: center; gap: 16px; margin: 0 auto; }
 .pagination-button { padding: 8px 12px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: #fff; font-size: 10px; }
 .pagination-button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 .pagination-button:disabled { cursor: not-allowed; opacity: .45; }
@@ -128,8 +129,7 @@ td:first-child { color: var(--ink); font-weight: 650; }
 .location-panel-heading span, .page-size { color: var(--muted); font-size: 10px; }
 .page-size { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
 .page-size select { padding: 8px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: #fff; font-size: 10px; }
-.location-panel .toolbar { flex-wrap: wrap; }
-.location-panel .search-box { width: 100%; }
+.location-panel .search-box { flex: 1 1 260px; width: auto; }
 .location-panel .table-wrap { overflow-x: auto; }
 .transactions-section { margin-bottom: 28px; padding: 26px; border: 1px solid var(--line); border-radius: 18px; background: #fff; box-shadow: var(--shadow-card); }
 .transactions-section .table-wrap { box-shadow: 0 8px 22px #1e4a3910; }
@@ -242,9 +242,9 @@ label input, label select { display: block; width: 100%; margin-top: 6px; paddin
   table tr { position: relative; padding: 13px 4px; border-top: 1px solid #f0f2ef; }
   table tr:first-child { border-top: 0; }
   table td { display: block; padding: 3px 42px 3px 0; border: 0; font-size: 10px; }
-  table td:nth-child(2), table td:nth-child(3), table td:nth-child(4), table td:nth-child(5) { display: inline-block; width: auto; margin-right: 9px; padding-right: 0; color: var(--muted); }
-  table td:nth-child(6) { display: none; }
-  table td:nth-child(7) { position: absolute; top: 20px; right: 3px; padding: 0; }
+  table td:nth-child(1) { padding-bottom: 2px; color: var(--muted); font-size: 9px; }
+  table td:nth-child(3), table td:nth-child(4), table td:nth-child(5) { display: inline-block; width: auto; margin-right: 9px; padding-right: 0; color: var(--muted); }
+  table td:nth-child(6) { position: absolute; top: 20px; right: 3px; padding: 0; }
   table td:last-child { position: absolute; top: 10px; right: 0; padding: 0; }
   .transaction-description { gap: 8px; }
   .transaction-icon { width: 28px; height: 28px; }
