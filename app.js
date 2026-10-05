@@ -4,6 +4,7 @@ import { currentMonth, localDate, todayLabel } from "./src/shared/dates.js";
 import { formatDate, formatInputAmount, formatMoney, formatTransactionDate, parseInputAmount } from "./src/shared/formatters.js";
 import { canDeleteRegistry, hasRegistryName, registryDefinition, renameRegistry } from "./src/shared/registries.js";
 import { dataPayload, defaultAppState } from "./src/client/state-persistence.js";
+import { createExpenseEntry, createIncomeEntry, upsertEntry } from "./src/shared/entry-factories.js";
 import { fetchData, saveData } from "./src/client/data-api.js";
 import { readLocalState, writeLocalState } from "./src/client/local-store.js";
 
@@ -253,8 +254,16 @@ $("#transaction-form").addEventListener("submit", (event) => {
   const id = $("#transaction-id").value;
   const amount = parseInputAmount($("#amount").value);
   if (!amount) return showFeedback("Informe um valor maior que zero.");
-  const item = { id: id || crypto.randomUUID(), description: $("#description").value.trim(), amount, type: "expense", expenseType: $("#expense-type").value, taker: $("#taker").value, location: $("#location-options").dataset.value || "Casa", creditor: $("#creditor").value, date: $("#date").value };
-  transactions = id ? transactions.map((entry) => entry.id === id ? item : entry) : [item, ...transactions];
+  const item = createExpenseEntry({
+    description: $("#description").value,
+    amount,
+    expenseType: $("#expense-type").value,
+    taker: $("#taker").value,
+    location: $("#location-options").dataset.value || "Casa",
+    creditor: $("#creditor").value,
+    date: $("#date").value,
+  }, id);
+  transactions = upsertEntry(transactions, item);
   save().then(() => { setupFormOptions(); render(); renderReports(); renderRegistries(); $("#transaction-dialog").close(); showFeedback(id ? "Despesa atualizada." : "Despesa adicionada."); }).catch(() => showFeedback("Não foi possível salvar a despesa."));
 });
 $("#income-form").addEventListener("submit", (event) => {
@@ -262,8 +271,13 @@ $("#income-form").addEventListener("submit", (event) => {
   const id = $("#income-id").value;
   const amount = parseInputAmount($("#income-amount").value);
   if (!amount) return showFeedback("Informe um valor maior que zero.");
-  const item = { id: id || crypto.randomUUID(), description: $("#income-description").value.trim(), amount, source: $("#income-source").value, date: $("#income-date").value };
-  incomes = id ? incomes.map((entry) => entry.id === id ? item : entry) : [item, ...incomes];
+  const item = createIncomeEntry({
+    description: $("#income-description").value,
+    amount,
+    source: $("#income-source").value,
+    date: $("#income-date").value,
+  }, id);
+  incomes = upsertEntry(incomes, item);
   save().then(() => { setupFormOptions(); render(); renderReports(); renderRegistries(); $("#income-dialog").close(); showFeedback(id ? "Receita atualizada." : "Receita adicionada."); }).catch((error) => { console.error(error); showFeedback("Não foi possível salvar a receita."); });
 });
 function renderLocationOptions() {
