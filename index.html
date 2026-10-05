@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Controle simples das suas finanças pessoais." />
+    <title>Clareza | Financeiro pessoal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="sidebar">
+        <a class="brand" href="/" aria-label="Clareza início">
+          <span class="brand-mark">C</span>
+          <span>clareza<small>finanças pessoais</small></span>
+        </a>
+        <nav class="main-nav" aria-label="Navegação principal">
+          <p class="nav-label">Menu</p>
+          <a class="nav-link active" href="#transacoes"><span>↔</span> Lançamentos</a>
+          <a class="nav-link" href="#visao-geral"><span>⌂</span> Resumo</a>
+          <a class="nav-link" href="#relatorios"><span>▥</span> Relatórios</a>
+          <a class="nav-link" href="#cadastros"><span>⚙</span> Cadastros</a>
+        </nav>
+        <div class="sidebar-bottom">
+          <button class="sidebar-footer" id="export-button" type="button"><span>↓</span> Exportar dados</button>
+        </div>
+      </aside>
+
+      <section class="content">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow" id="today-label">Seu espaço financeiro</p>
+            <h1>Olá, Paulo <span aria-hidden="true">✳</span></h1>
+          </div>
+          <div class="topbar-actions"><button class="notification-button" type="button" aria-label="Notificações">♢<i></i></button><button class="avatar" type="button" aria-label="Perfil de Paulo">P</button></div>
+        </header>
+
+        <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
+        <section id="visao-geral" class="overview">
+          <div class="balance-card">
+            <div class="card-heading">
+              <span class="card-label">Despesas do mês <small>● atualizado agora</small></span>
+              <button class="icon-button" id="toggle-balance" type="button" aria-label="Ocultar despesas">◉</button>
+            </div>
+            <strong id="expense-value" class="balance-value">R$ 0,00</strong>
+            <p id="expense-caption" class="balance-caption">0 despesas registradas</p>
+            <div class="balance-decoration" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+          </div>
+        </section>
+
+        <section id="transacoes" class="transactions-section">
+          <div class="section-heading">
+            <div><p class="eyebrow">Lançamentos</p><h2>Despesas registradas</h2></div>
+            <div class="section-actions"><select id="month-filter" aria-label="Selecionar mês"></select><button class="primary-button" id="new-transaction" type="button"><span>＋</span> Nova despesa</button></div>
+          </div>
+          <div class="location-panels">
+            <div class="location-panel" data-location-panel="Casa">
+              <div class="location-panel-heading"><h3>Casa</h3></div>
+              <div class="toolbar">
+                <label class="search-box"><span>⌕</span><input data-search type="search" placeholder="Buscar em Casa..." /></label>
+                <select data-type-filter aria-label="Filtrar despesas de Casa por tipo"><option value="all">Todos os tipos</option></select>
+                <select data-taker-filter aria-label="Filtrar despesas de Casa por tomador"><option value="all">Todos os tomadores</option></select>
+              </div>
+              <div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Tomador</th><th>Credor</th><th class="align-right">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody data-transactions-list></tbody></table><div data-empty-state class="empty-state" hidden>Nenhuma transação encontrada.</div></div>
+              <nav data-pagination class="pagination" aria-label="Paginação das despesas de Casa" hidden><span class="pagination-controls"><button data-pagination-prev class="pagination-button" type="button">← Anterior</button><span data-pagination-status aria-live="polite"></span><button data-pagination-next class="pagination-button" type="button">Próxima →</button></span><label class="page-size">Por página <select data-page-size aria-label="Registros por página em Casa"><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label></nav>
+            </div>
+            <div class="location-panel" data-location-panel="Zanzibar">
+              <div class="location-panel-heading"><h3>Zanzibar</h3></div>
+              <div class="toolbar">
+                <label class="search-box"><span>⌕</span><input data-search type="search" placeholder="Buscar em Zanzibar..." /></label>
+                <select data-type-filter aria-label="Filtrar despesas de Zanzibar por tipo"><option value="all">Todos os tipos</option></select>
+                <select data-taker-filter aria-label="Filtrar despesas de Zanzibar por tomador"><option value="all">Todos os tomadores</option></select>
+              </div>
+              <div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Tomador</th><th>Credor</th><th class="align-right">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody data-transactions-list></tbody></table><div data-empty-state class="empty-state" hidden>Nenhuma transação encontrada.</div></div>
+              <nav data-pagination class="pagination" aria-label="Paginação das despesas de Zanzibar" hidden><span class="pagination-controls"><button data-pagination-prev class="pagination-button" type="button">← Anterior</button><span data-pagination-status aria-live="polite"></span><button data-pagination-next class="pagination-button" type="button">Próxima →</button></span><label class="page-size">Por página <select data-page-size aria-label="Registros por página em Zanzibar"><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label></nav>
+            </div>
+          </div>
+        </section>
+
+        <section class="dashboard-grid">
+          <article id="planejamento" class="panel spending-panel">
+            <div class="panel-header">
+              <div><p class="eyebrow">Comportamento</p><h2>Despesas por dia</h2></div>
+            </div>
+            <div id="chart" class="chart" aria-label="Gráfico de despesas por dia"></div>
+            <div class="chart-legend"><span><i class="dot expense-dot"></i> Despesas</span></div>
+          </article>
+          <article class="panel quick-panel">
+            <p class="eyebrow">Atalho</p>
+            <h2>Registre enquanto lembra</h2>
+            <button class="secondary-button quick-action" id="quick-new-transaction" type="button">Adicionar despesa <span>→</span></button>
+          </article>
+        </section>
+
+        <section id="relatorios" class="reports-section">
+          <div class="section-heading"><div><p class="eyebrow">Análise do período</p><h2>Relatórios de despesas</h2></div><strong id="report-total" class="report-total">R$ 0,00</strong></div>
+          <div class="reports-grid">
+            <article class="panel report-panel"><div class="panel-header"><div><p class="eyebrow">Linha do tempo</p><h3>Por dia</h3></div><span class="report-icon">◷</span></div><div id="daily-report" class="report-list"></div></article>
+            <article class="panel report-panel"><div class="panel-header"><div><p class="eyebrow">Classificação</p><h3>Por tipo de despesa</h3></div><span class="report-icon">◌</span></div><div id="type-report" class="report-list"></div></article>
+            <article class="panel report-panel"><div class="panel-header"><div><p class="eyebrow">Responsabilidade</p><h3>Por tomador</h3></div><span class="report-icon">◎</span></div><div id="taker-report" class="report-list"></div></article>
+          </div>
+        </section>
+
+        <section id="cadastros" class="registries-section">
+          <div class="section-heading"><div><p class="eyebrow">Configuração</p><h2>Cadastros auxiliares</h2></div></div>
+          <div id="registry-lists" class="registry-grid">
+            <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">Classificação</p><h3>Tipos de despesa</h3></div><button id="add-type" class="small-button" type="button">＋ Novo tipo</button></div><ul id="type-registry-list" class="registry-list"></ul></article>
+            <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">Pessoas ou áreas</p><h3>Tomadores da despesa</h3></div><button id="add-taker" class="small-button" type="button">＋ Novo tomador</button></div><ul id="taker-registry-list" class="registry-list"></ul></article>
+            <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">Onde aconteceu</p><h3>Locais da despesa</h3></div><button id="add-location" class="small-button" type="button">＋ Novo local</button></div><ul id="location-registry-list" class="registry-list"></ul></article>
+            <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">Para quem foi pago</p><h3>Credores</h3></div><button id="add-creditor" class="small-button" type="button">＋ Novo credor</button></div><ul id="creditor-registry-list" class="registry-list"></ul></article>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <dialog id="transaction-dialog">
+      <form id="transaction-form" method="dialog">
+        <div class="dialog-heading"><div><p class="eyebrow">Nova movimentação</p><h2 id="dialog-title">Nova despesa</h2></div><button class="close-button" id="close-dialog" type="button" aria-label="Fechar">×</button></div>
+        <input id="transaction-id" type="hidden" />
+        <div class="location-picker">
+          <span class="field-label">Local da despesa</span>
+          <div id="location-options" class="location-options" role="radiogroup" aria-label="Local da despesa"></div>
+        </div>
+        <label>Descrição<input id="description" name="description" required maxlength="60" placeholder="Ex.: Mercado do mês" /></label>
+        <label>Valor<input id="amount" name="amount" type="text" inputmode="decimal" dir="rtl" autocomplete="off" required placeholder="R$ 0,00" /></label>
+        <div class="form-row"><label>Tipo de despesa<select id="expense-type" name="expenseType"></select></label><label>Tomador<select id="taker" name="taker"></select></label></div>
+        <label>Credor<select id="creditor" name="creditor"></select></label>
+        <label>Data<input id="date" name="date" type="date" required /></label>
+        <div class="dialog-actions"><button class="secondary-button" id="cancel-dialog" type="button">Cancelar</button><button class="primary-button" type="submit">Salvar despesa</button></div>
+      </form>
+    </dialog>
+    <script type="module" src="./app.js?v=79105fe"></script>
+  </body>
+</html>
