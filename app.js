@@ -190,10 +190,13 @@ function openDialog(item) {
   $("#transaction-id").value = item?.id || "";
   $("#description").value = item?.description || "";
   $("#amount").value = item ? formatInputAmount(item.amount) : "";
-  $("#expense-type").value = item?.expenseType || expenseTypes[0];
-  $("#taker").value = item?.taker || takers[0];
-  $("#creditor").value = item?.creditor || (creditors.includes("Caixa") ? "Caixa" : creditors[0] || "Caixa");
   setLocation(item?.location || "Casa");
+  const expenseType = item?.expenseType || expenseTypes[0];
+  const taker = item?.taker || takers[0];
+  const creditor = item?.creditor || (creditors.includes("Caixa") ? "Caixa" : creditors[0] || "Caixa");
+  if (expenseTypes.includes(expenseType)) $("#expense-type").value = expenseType;
+  if (Array.from($("#taker").options).some((option) => option.value === taker)) $("#taker").value = taker;
+  if (Array.from($("#creditor").options).some((option) => option.value === creditor)) $("#creditor").value = creditor;
   $("#date").value = item?.date || localDate();
   $("#transaction-dialog").showModal();
   requestAnimationFrame(() => $("#description").focus());
