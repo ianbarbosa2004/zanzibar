@@ -32,7 +32,6 @@ put -r dist $remoteRoot
 put server.js $remoteRoot/server.js
 put package.json $remoteRoot/package.json
 put package-lock.json $remoteRoot/package-lock.json
-put .htaccess $remoteRoot/.htaccess
 put $restartPath $remoteRoot/tmp/restart.txt
 bye
 "@ | Set-Content -LiteralPath $tempBatch -Encoding ascii
