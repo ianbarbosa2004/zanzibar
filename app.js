@@ -1,13 +1,11 @@
-import { createAppState } from "./src/client/app-state.js";
 import { inMonth, groupTotals, summarize } from "./src/shared/finance.js";
 import { currentMonth, localDate, todayLabel } from "./src/shared/dates.js";
 import { formatDate, formatInputAmount, formatMoney, formatTransactionDate, parseInputAmount } from "./src/shared/formatters.js";
 import { canDeleteRegistry, hasRegistryName, registryDefinition, renameRegistry } from "./src/shared/registries.js";
-import { dataPayload, defaultAppState } from "./src/client/state-persistence.js";
+import { defaultAppState } from "./src/client/state-persistence.js";
 import { createExpenseEntry, createIncomeEntry, upsertEntry } from "./src/shared/entry-factories.js";
 import { filterEntries, paginate, sortByDateDescending } from "./src/shared/collections.js";
-import { fetchData, saveData } from "./src/client/data-api.js";
-import { readLocalState, writeLocalState } from "./src/client/local-store.js";
+import { loadAppState, persistAppState } from "./src/client/state-service.js";
 
 const defaultExpenseTypes = ["Moradia", "Alimentação", "Contas", "Transporte", "Lazer", "Saúde", "Educação", "Outros"];
 const defaultTakers = ["Pessoal", "Zanzibar"];
@@ -40,47 +38,12 @@ const $ = (selector) => document.querySelector(selector);
 const selectedMonth = () => $("#month-filter").value || currentMonth();
 
 async function loadData() {
-  try {
-    const data = await fetchData(API_URL);
-    ({ transactions, incomes, expenseTypes, takers, locations, creditors, incomeSources } = createAppState(data, {
-      expenseTypes: defaultExpenseTypes,
-      takers: defaultTakers,
-      locations: defaultLocations,
-      creditors: defaultCreditors,
-      incomeSources: defaultIncomeSources,
-    }));
-    return;
-  } catch {
-    const localState = readLocalState(initialState);
-    if (localState.transactions.length) {
-      transactions = localState.transactions.map((item) => ({ ...item, type: "expense" }));
-      incomes = localState.incomes;
-      expenseTypes = localState.expenseTypes;
-      takers = localState.takers;
-      locations = localState.locations;
-      creditors = localState.creditors;
-      incomeSources = localState.incomeSources;
-      return;
-    }
-    const data = await fetchData("./data.json");
-    ({ transactions, incomes } = createAppState({ transactions: data, incomes: [], settings: {} }, {
-      expenseTypes: defaultExpenseTypes,
-      takers: defaultTakers,
-      locations: defaultLocations,
-      creditors: defaultCreditors,
-      incomeSources: defaultIncomeSources,
-    }));
-  }
+  ({ transactions, incomes, expenseTypes, takers, locations, creditors, incomeSources } = await loadAppState(API_URL, "./data.json", initialState));
 }
 
 async function save() {
   const state = { transactions, incomes, expenseTypes, takers, locations, creditors, incomeSources };
-  writeLocalState(state);
-  try {
-    await saveData(API_URL, dataPayload(state));
-  } catch {
-    // GitHub Pages não possui uma API de escrita; neste caso, os dados ficam no navegador.
-  }
+  await persistAppState(API_URL, state);
 }
 
 function setupFormOptions() {
