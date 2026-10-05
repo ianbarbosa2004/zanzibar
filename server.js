@@ -1,26 +1,20 @@
 import { createServer } from "node:http";
 import { existsSync, promises as fs } from "node:fs";
 import { extname, join, normalize } from "node:path";
-import { fileURLToPath } from "node:url";
 import mysql from "mysql2/promise";
 import { mergeTransactions } from "./src/shared/transactions.js";
+import {
+  basePath, contentTypes, databaseConfigured, databaseHost, databaseName, databaseUser,
+  dataFile, defaultSettings, incomesFile, port, root, settingsFile,
+} from "./src/server/config.js";
+import { readJson, writeJson } from "./src/server/json-store.js";
 
-const root = fileURLToPath(new URL(".", import.meta.url));
-const dataFile = join(root, "data.json");
-const settingsFile = join(root, "settings.json");
-const port = Number(process.env.PORT) || 4173;
-const contentTypes = { ".css": "text/css", ".js": "text/javascript", ".json": "application/json", ".html": "text/html" };
-const basePath = process.env.CLAREZA_BASE_PATH || "/clareza";
-const databaseHost = process.env.CLAREZA_DB_HOST?.trim() || "localhost";
-const databaseName = process.env.CLAREZA_DB_NAME?.trim();
-const databaseUser = process.env.CLAREZA_DB_USER?.trim();
 const requestPath = (url) => {
   const pathname = new URL(url || "/", "http://localhost").pathname;
   if (basePath !== "/" && pathname.startsWith(`${basePath}/`)) return pathname.slice(basePath.length) || "/";
   return pathname;
 };
 const isDataApi = (url) => /\/api\/data\/?$/.test(requestPath(url));
-const databaseConfigured = Boolean(process.env.CLAREZA_DB_PASSWORD);
 const dbPool = databaseConfigured ? mysql.createPool({
   host: databaseHost,
   port: Number(process.env.CLAREZA_DB_PORT) || 3306,
@@ -31,15 +25,6 @@ const dbPool = databaseConfigured ? mysql.createPool({
   connectionLimit: 5,
   charset: "utf8mb4",
 }) : null;
-
-async function readJson(file, fallback) {
-  try { return JSON.parse(await fs.readFile(file, "utf8")); }
-  catch (error) {
-    if (error.code !== "ENOENT") throw error;
-    await fs.writeFile(file, JSON.stringify(fallback, null, 2) + "\n");
-    return fallback;
-  }
-}
 
 async function body(request) {
   let raw = "";
@@ -102,8 +87,8 @@ async function initializeDatabase() {
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
   ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
   const transactions = await readJson(dataFile, []);
-  const appSettings = await readJson(settingsFile, { expenseTypes: [], takers: [], locations: [], creditors: [], incomeSources: [] });
-  const incomes = await readJson(join(root, "incomes.json"), []);
+  const appSettings = await readJson(settingsFile, defaultSettings);
+  const incomes = await readJson(incomesFile, []);
   for (const name of [...new Set(["Salário", ...appSettings.incomeSources || [], ...incomes.map((item) => item.source).filter(Boolean)])]) {
     await dbPool.execute("INSERT IGNORE INTO income_sources (name) VALUES (?)", [name]);
   }
@@ -308,7 +293,7 @@ const server = createServer(async (request, response) => {
       return response.end();
     }
     if (isDataApi(request.url) && request.method === "GET") {
-      return send(response, 200, dbPool ? await readDatabase() : { transactions: await readJson(dataFile, []), incomes: await readJson(join(root, "incomes.json"), []), settings: await readJson(settingsFile, { expenseTypes: [], takers: [], locations: [], creditors: [], incomeSources: [] }) });
+      return send(response, 200, dbPool ? await readDatabase() : { transactions: await readJson(dataFile, []), incomes: await readJson(incomesFile, []), settings: await readJson(settingsFile, defaultSettings) });
     }
     if (isDataApi(request.url) && request.method === "PUT") {
       const payload = await body(request);
@@ -316,9 +301,9 @@ const server = createServer(async (request, response) => {
       if (dbPool) {
         await writeDatabase(payload);
       } else {
-        await fs.writeFile(dataFile, JSON.stringify(payload.transactions, null, 2) + "\n");
-        await fs.writeFile(join(root, "incomes.json"), JSON.stringify(payload.incomes || payload.transactions.filter((item) => item.type === "income"), null, 2) + "\n");
-        await fs.writeFile(settingsFile, JSON.stringify(payload.settings, null, 2) + "\n");
+        await writeJson(dataFile, payload.transactions);
+        await writeJson(incomesFile, payload.incomes || payload.transactions.filter((item) => item.type === "income"));
+        await writeJson(settingsFile, payload.settings);
       }
       return send(response, 200, { ok: true });
     }
