@@ -95,8 +95,27 @@ async function initializeDatabase() {
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
   }
+  await dbPool.query(`CREATE TABLE IF NOT EXISTS income_sources (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(120) NOT NULL UNIQUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+  await dbPool.query(`CREATE TABLE IF NOT EXISTS incomes (
+    id VARCHAR(36) PRIMARY KEY,
+    description VARCHAR(60) NOT NULL,
+    amount DECIMAL(12, 2) NOT NULL,
+    source_id INT UNSIGNED NOT NULL,
+    income_date DATE NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_incomes_source FOREIGN KEY (source_id) REFERENCES income_sources(id)
+  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
   const transactions = await readJson(dataFile, []);
-  const appSettings = await readJson(settingsFile, { expenseTypes: [], takers: [], locations: [], creditors: [] });
+  const appSettings = await readJson(settingsFile, { expenseTypes: [], takers: [], locations: [], creditors: [], incomeSources: [] });
+  const incomes = await readJson(join(root, "incomes.json"), []);
+  for (const name of [...new Set(["Salário", ...appSettings.incomeSources || [], ...incomes.map((item) => item.source).filter(Boolean)])]) {
+    await dbPool.execute("INSERT IGNORE INTO income_sources (name) VALUES (?)", [name]);
+  }
   const [existingTransactions] = await dbPool.query("SELECT expense_type, taker, location, creditor FROM transactions");
   const catalogs = {
     expense_types: [...new Set([...appSettings.expenseTypes || [], ...transactions.map((item) => item.expenseType || item.category || "Outros"), ...existingTransactions.map((item) => item.expense_type)])],
@@ -180,8 +199,14 @@ async function readDatabase() {
   const [takers] = await dbPool.query("SELECT name FROM takers ORDER BY name");
   const [locations] = await dbPool.query("SELECT name FROM locations ORDER BY name");
   const [creditors] = await dbPool.query("SELECT name FROM creditors ORDER BY name");
+  const [incomeRows] = await dbPool.query(`SELECT i.id, i.description, i.amount, s.name AS source,
+    DATE_FORMAT(i.income_date, '%Y-%m-%d') AS date
+    FROM incomes i JOIN income_sources s ON s.id = i.source_id
+    ORDER BY i.income_date DESC, i.updated_at DESC`);
+  const [incomeSources] = await dbPool.query("SELECT name FROM income_sources ORDER BY name");
   return {
     transactions: rows.map((item) => ({ ...item, amount: Number(item.amount) })),
+    incomes: incomeRows.map((item) => ({ ...item, amount: Number(item.amount) })),
     settings: {
       currency: settings?.currency || "BRL",
       schemaVersion: settings?.schemaVersion || 3,
@@ -189,6 +214,7 @@ async function readDatabase() {
       takers: takers.map((item) => item.name),
       locations: locations.map((item) => item.name),
       creditors: creditors.map((item) => item.name),
+      incomeSources: incomeSources.map((item) => item.name),
     },
   };
 }
@@ -212,6 +238,13 @@ async function writeDatabase(payload) {
       const [rows] = await connection.query(`SELECT id, name FROM ${table}`);
       rows.forEach((item) => ids[property].set(item.name, item.id));
     }
+    const incomeSourceNames = [...new Set([
+      ...(payload.incomes || []).map((item) => item.source),
+      ...(payload.settings?.incomeSources || []),
+    ].filter(Boolean))];
+    for (const name of incomeSourceNames) await connection.execute("INSERT IGNORE INTO income_sources (name) VALUES (?)", [name]);
+    const [incomeSourceRows] = await connection.query("SELECT id, name FROM income_sources");
+    const incomeSourceIds = new Map(incomeSourceRows.map((item) => [item.name, item.id]));
     await connection.query("DELETE FROM transactions");
     for (const item of payload.transactions) {
       await connection.execute(
@@ -220,6 +253,13 @@ async function writeDatabase(payload) {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [item.id, item.description, item.amount, item.type || "expense", item.expenseType || "Outros", item.taker || "Pessoal", item.location || "Casa", item.creditor || "Caixa",
           ids.expenseType.get(item.expenseType || "Outros"), ids.taker.get(item.taker || "Pessoal"), ids.location.get(item.location || "Casa"), ids.creditor.get(item.creditor || "Caixa"), item.date],
+      );
+    }
+    await connection.query("DELETE FROM incomes");
+    for (const item of payload.incomes || []) {
+      await connection.execute(
+        `INSERT INTO incomes (id, description, amount, source_id, income_date) VALUES (?, ?, ?, ?, ?)`,
+        [item.id, item.description, item.amount, incomeSourceIds.get(item.source), item.date],
       );
     }
     await connection.execute(
@@ -248,15 +288,16 @@ const server = createServer(async (request, response) => {
       return response.end();
     }
     if (isDataApi(request.url) && request.method === "GET") {
-      return send(response, 200, dbPool ? await readDatabase() : { transactions: await readJson(dataFile, []), settings: await readJson(settingsFile, { expenseTypes: [], takers: [], locations: [], creditors: [] }) });
+      return send(response, 200, dbPool ? await readDatabase() : { transactions: await readJson(dataFile, []), incomes: await readJson(join(root, "incomes.json"), []), settings: await readJson(settingsFile, { expenseTypes: [], takers: [], locations: [], creditors: [], incomeSources: [] }) });
     }
     if (isDataApi(request.url) && request.method === "PUT") {
       const payload = await body(request);
-      if (!Array.isArray(payload.transactions) || typeof payload.settings !== "object" || payload.settings === null) return send(response, 400, { error: "Dados inválidos." });
+      if (!Array.isArray(payload.transactions) || !Array.isArray(payload.incomes) || typeof payload.settings !== "object" || payload.settings === null) return send(response, 400, { error: "Dados inválidos." });
       if (dbPool) {
         await writeDatabase(payload);
       } else {
         await fs.writeFile(dataFile, JSON.stringify(payload.transactions, null, 2) + "\n");
+        await fs.writeFile(join(root, "incomes.json"), JSON.stringify(payload.incomes, null, 2) + "\n");
         await fs.writeFile(settingsFile, JSON.stringify(payload.settings, null, 2) + "\n");
       }
       return send(response, 200, { ok: true });

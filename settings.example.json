@@ -19,5 +19,8 @@
   ],
   "creditors": [
     "Caixa"
+  ],
+  "incomeSources": [
+    "Salário"
   ]
 }
