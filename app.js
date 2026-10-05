@@ -1,4 +1,5 @@
 import { splitTransactions } from "./src/shared/transactions.js";
+import { inMonth, groupTotals, summarize } from "./src/shared/finance.js";
 import { fetchData, saveData } from "./src/client/data-api.js";
 
 const defaultExpenseTypes = ["Moradia", "Alimentação", "Contas", "Transporte", "Lazer", "Saúde", "Educação", "Outros"];
@@ -116,21 +117,21 @@ function setupFormOptions() {
 }
 
 function monthTransactions() {
-  return transactions.filter((item) => item.date.startsWith(selectedMonth()));
+  return inMonth(transactions, selectedMonth());
 }
 function monthIncomes() {
-  return incomes.filter((item) => item.date.startsWith(selectedMonth()));
+  return inMonth(incomes, selectedMonth());
 }
 
 function renderSummary() {
-  const monthItems = monthTransactions();
-  const expense = monthItems.reduce((sum, item) => sum + item.amount, 0);
-  const income = monthIncomes().reduce((sum, item) => sum + item.amount, 0);
-  $("#expense-value").textContent = balanceVisible ? formatMoney(expense) : "••••••";
-  $("#expense-caption").textContent = `${monthItems.length} ${monthItems.length === 1 ? "despesa registrada" : "despesas registradas"}`;
-  $("#income-value").textContent = balanceVisible ? formatMoney(income) : "••••••";
-  $("#balance-value").textContent = balanceVisible ? formatMoney(income - expense) : "••••••";
-  $("#income-caption").textContent = `${monthIncomes().length} ${monthIncomes().length === 1 ? "entrada registrada" : "entradas registradas"}`;
+  const summary = summarize([...transactions, ...incomes], selectedMonth());
+  const expenseCount = summary.items.filter((item) => item.type !== "income").length;
+  const incomeCount = summary.items.filter((item) => item.type === "income").length;
+  $("#expense-value").textContent = balanceVisible ? formatMoney(summary.expense) : "••••••";
+  $("#expense-caption").textContent = `${expenseCount} ${expenseCount === 1 ? "despesa registrada" : "despesas registradas"}`;
+  $("#income-value").textContent = balanceVisible ? formatMoney(summary.income) : "••••••";
+  $("#balance-value").textContent = balanceVisible ? formatMoney(summary.balance) : "••••••";
+  $("#income-caption").textContent = `${incomeCount} ${incomeCount === 1 ? "entrada registrada" : "entradas registradas"}`;
 }
 
 function renderChart() {
@@ -201,11 +202,7 @@ function render() { renderSummary(); renderChart(); renderTransactions(); }
 function renderReports() {
   const items = monthTransactions();
   const total = items.reduce((sum, item) => sum + item.amount, 0);
-  const group = (key) => Object.entries(items.reduce((result, item) => {
-    const label = item[key] || "Sem cadastro";
-    result[label] = (result[label] || 0) + item.amount;
-    return result;
-  }, {})).sort((a, b) => b[1] - a[1]);
+  const group = (key) => groupTotals(items, key);
   const rows = (entries) => entries.length ? entries.map(([label, value]) => `<div class="report-row"><span>${escapeHtml(label)}</span><strong>${formatMoney(value)}</strong><i><b style="width:${total ? value / total * 100 : 0}%"></b></i></div>`).join("") : `<p class="muted">Nenhuma despesa neste período.</p>`;
   $("#daily-report").innerHTML = rows(Object.entries(items.reduce((result, item) => { result[item.date] = (result[item.date] || 0) + item.amount; return result; }, {})).sort((a, b) => b[0].localeCompare(a[0])).map(([date, value]) => [dateFormat.format(new Date(`${date}T12:00:00`)), value]));
   $("#type-report").innerHTML = rows(group("expenseType"));
