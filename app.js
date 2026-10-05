@@ -11,6 +11,7 @@ const defaultExpenseTypes = ["Moradia", "Alimentação", "Contas", "Transporte",
 const defaultTakers = ["Pessoal", "Zanzibar"];
 const defaultLocations = ["Casa", "Zanzibar"];
 const defaultCreditors = ["Caixa"];
+const defaultPaymentMethods = ["Dinheiro", "Pix", "Cartão de débito", "Cartão de crédito", "Boleto", "Transferência bancária"];
 const defaultIncomeSources = ["Salário"];
 const API_URL = new URL("api/data", document.baseURI).pathname;
 let transactions = [];
@@ -18,6 +19,7 @@ let expenseTypes = [...defaultExpenseTypes];
 let takers = [...defaultTakers];
 let locations = [...defaultLocations];
 let creditors = [...defaultCreditors];
+let paymentMethods = [...defaultPaymentMethods];
 let incomes = [];
 let incomeSources = [...defaultIncomeSources];
 const initialState = defaultAppState({
@@ -25,6 +27,7 @@ const initialState = defaultAppState({
   takers: defaultTakers,
   locations: defaultLocations,
   creditors: defaultCreditors,
+  paymentMethods: defaultPaymentMethods,
   incomeSources: defaultIncomeSources,
 });
 const paginationState = {
@@ -37,11 +40,11 @@ const $ = (selector) => document.querySelector(selector);
 const selectedMonth = () => $("#month-filter").value || currentMonth();
 
 async function loadData() {
-  ({ transactions, incomes, expenseTypes, takers, locations, creditors, incomeSources } = await loadAppState(API_URL, "./data.json", initialState));
+  ({ transactions, incomes, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources } = await loadAppState(API_URL, "./data.json", initialState));
 }
 
 async function save() {
-  const state = { transactions, incomes, expenseTypes, takers, locations, creditors, incomeSources };
+  const state = { transactions, incomes, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources };
   await persistAppState(API_URL, state);
 }
 
@@ -51,10 +54,12 @@ function setupFormOptions() {
   takers.sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
   locations.sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
   creditors.sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
+  paymentMethods.sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
   incomeSources.sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
   $("#expense-type").innerHTML = expenseTypes.map((type) => `<option>${escapeHtml(type)}</option>`).join("");
   $("#taker").innerHTML = takers.map((taker) => `<option>${escapeHtml(taker)}</option>`).join("");
   $("#creditor").innerHTML = creditors.map((creditor) => `<option>${escapeHtml(creditor)}</option>`).join("");
+  $("#payment-method").innerHTML = paymentMethods.map((method) => `<option>${escapeHtml(method)}</option>`).join("");
   $("#income-source").innerHTML = incomeSources.map((source) => `<option>${escapeHtml(source)}</option>`).join("");
   renderLocationOptions();
   const availableMonths = [...new Set([currentMonth(), ...transactions.map((item) => item.date), ...incomes.map((item) => item.date)].map((date) => date.slice(0, 7)))].sort().reverse();
@@ -189,7 +194,7 @@ function renderReports() {
 
 function renderRegistries() {
   const renderList = (items, kind) => items.length ? items.map((item, index) => {
-    const property = { type: "expenseType", taker: "taker", location: "location", creditor: "creditor" }[kind];
+    const property = { type: "expenseType", taker: "taker", location: "location", creditor: "creditor", paymentMethod: "paymentMethod" }[kind];
     const count = kind === "incomeSource" ? incomes.filter((income) => income.source === item).length : transactions.filter((transaction) => transaction[property] === item).length;
     const label = kind === "incomeSource" ? "entrada" : "despesa";
     return `<li><span>${escapeHtml(item)} <small>${count} ${count === 1 ? label : `${label}s`}</small></span><span class="registry-actions"><button type="button" class="registry-action" data-edit-registry="${kind}" data-registry-index="${index}" aria-label="Editar ${escapeHtml(item)}">✎</button><button type="button" class="registry-action danger" data-delete-registry="${kind}" data-registry-index="${index}" aria-label="Excluir ${escapeHtml(item)}">×</button></span></li>`;
@@ -198,6 +203,7 @@ function renderRegistries() {
   $("#taker-registry-list").innerHTML = renderList(takers, "taker");
   $("#location-registry-list").innerHTML = renderList(locations, "location");
   $("#creditor-registry-list").innerHTML = renderList(creditors, "creditor");
+  $("#payment-method-registry-list").innerHTML = renderList(paymentMethods, "paymentMethod");
   $("#income-source-registry-list").innerHTML = renderList(incomeSources, "incomeSource");
 }
 
@@ -210,9 +216,11 @@ function openDialog(item) {
   const expenseType = item?.expenseType || expenseTypes[0];
   const taker = item?.taker || takers[0];
   const creditor = item?.creditor || (creditors.includes("Caixa") ? "Caixa" : creditors[0] || "Caixa");
+  const paymentMethod = item?.paymentMethod || paymentMethods[0];
   if (expenseTypes.includes(expenseType)) $("#expense-type").value = expenseType;
   if (Array.from($("#taker").options).some((option) => option.value === taker)) $("#taker").value = taker;
   if (Array.from($("#creditor").options).some((option) => option.value === creditor)) $("#creditor").value = creditor;
+  if (Array.from($("#payment-method").options).some((option) => option.value === paymentMethod)) $("#payment-method").value = paymentMethod;
   $("#date").value = item?.date || localDate();
   $("#transaction-dialog").showModal();
   requestAnimationFrame(() => $("#description").focus());
@@ -247,6 +255,7 @@ $("#transaction-form").addEventListener("submit", (event) => {
     taker: $("#taker").value,
     location: $("#location-options").dataset.value || "Casa",
     creditor: $("#creditor").value,
+    paymentMethod: $("#payment-method").value,
     date: $("#date").value,
   }, id);
   transactions = upsertEntry(transactions, item);
@@ -373,12 +382,13 @@ $("#add-taker").addEventListener("click", () => addCatalogItem("taker"));
 $("#add-location").addEventListener("click", () => addCatalogItem("location"));
 $("#add-creditor").addEventListener("click", () => addCatalogItem("creditor"));
 $("#add-income-source").addEventListener("click", () => addCatalogItem("incomeSource"));
+$("#add-payment-method").addEventListener("click", () => addCatalogItem("paymentMethod"));
 function addCatalogItem(kind) {
   const definition = registryDefinition(kind);
   const label = definition.label;
   const value = prompt(`Nome do ${label}:`)?.trim();
   if (!value) return;
-  const list = { type: expenseTypes, taker: takers, location: locations, creditor: creditors, incomeSource: incomeSources }[kind];
+  const list = { type: expenseTypes, taker: takers, location: locations, creditor: creditors, paymentMethod: paymentMethods, incomeSource: incomeSources }[kind];
   if (hasRegistryName(list, value)) return showFeedback(`${label[0].toUpperCase() + label.slice(1)} já cadastrado.`);
   list.push(value);
   save().then(() => { setupFormOptions(); renderRegistries(); showFeedback(`${label[0].toUpperCase() + label.slice(1)} cadastrado.`); }).catch(() => showFeedback("Não foi possível salvar o cadastro."));
@@ -387,7 +397,7 @@ $("#registry-lists").addEventListener("click", (event) => {
   const button = event.target.closest("[data-edit-registry], [data-delete-registry]");
   if (!button) return;
   const kind = button.dataset.editRegistry || button.dataset.deleteRegistry;
-  const list = { type: expenseTypes, taker: takers, location: locations, creditor: creditors, incomeSource: incomeSources }[kind];
+  const list = { type: expenseTypes, taker: takers, location: locations, creditor: creditors, paymentMethod: paymentMethods, incomeSource: incomeSources }[kind];
   const definition = registryDefinition(kind);
   const index = Number(button.dataset.registryIndex);
   const current = list[index];
@@ -396,7 +406,7 @@ $("#registry-lists").addEventListener("click", (event) => {
     if (!value || value === current) return;
     if (hasRegistryName(list, value, index)) return showFeedback("Já existe um cadastro com esse nome.");
     const updated = renameRegistry(kind, current, value, { transactions, incomes, expenseTypes, takers, locations, creditors, incomeSources });
-    ({ transactions, incomes, expenseTypes, takers, locations, creditors, incomeSources } = updated);
+    ({ transactions, incomes, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources } = updated);
     save().then(() => { setupFormOptions(); render(); renderReports(); renderRegistries(); showFeedback("Cadastro atualizado."); }).catch(() => showFeedback("Não foi possível atualizar o cadastro."));
     return;
   }
@@ -418,4 +428,4 @@ function renderPage() {
 window.addEventListener("hashchange", renderPage);
 
 renderPage();
-loadData().then(() => { transactions = transactions.map((item) => ({ ...item, expenseType: item.expenseType || item.category || "Outros", taker: item.taker || "Pessoal", location: item.location || "Casa", creditor: item.creditor || "Caixa" })); $("#today-label").textContent = todayLabel(); setupFormOptions(); render(); renderReports(); renderRegistries(); renderPage(); }).catch(() => { showFeedback("Não foi possível carregar os dados iniciais."); });
+loadData().then(() => { transactions = transactions.map((item) => ({ ...item, expenseType: item.expenseType || item.category || "Outros", taker: item.taker || "Pessoal", location: item.location || "Casa", creditor: item.creditor || "Caixa", paymentMethod: item.paymentMethod || "Pix" })); $("#today-label").textContent = todayLabel(); setupFormOptions(); render(); renderReports(); renderRegistries(); renderPage(); }).catch(() => { showFeedback("Não foi possível carregar os dados iniciais."); });

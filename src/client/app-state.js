@@ -11,12 +11,14 @@ export function createAppState(data, defaults) {
       taker: item.taker || "Pessoal",
       location: item.location || "Casa",
       creditor: item.creditor || "Caixa",
+      paymentMethod: item.paymentMethod || "Pix",
     })),
     incomes,
     expenseTypes: settings.expenseTypes?.length ? settings.expenseTypes : [...defaults.expenseTypes],
     takers: settings.takers?.length ? settings.takers : [...defaults.takers],
     locations: settings.locations?.length ? settings.locations : [...defaults.locations],
     creditors: settings.creditors?.length ? settings.creditors : [...defaults.creditors],
+    paymentMethods: settings.paymentMethods?.length ? settings.paymentMethods : [...(defaults.paymentMethods || [])],
     incomeSources: settings.incomeSources?.length ? settings.incomeSources : [...defaults.incomeSources],
   };
 }

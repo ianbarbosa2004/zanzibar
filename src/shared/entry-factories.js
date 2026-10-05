@@ -8,6 +8,7 @@ export function createExpenseEntry(form, id, cryptoApi = globalThis.crypto) {
     taker: form.taker,
     location: form.location,
     creditor: form.creditor,
+    ...(form.paymentMethod ? { paymentMethod: form.paymentMethod } : {}),
     date: form.date,
   };
 }

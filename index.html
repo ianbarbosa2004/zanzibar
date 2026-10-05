@@ -139,6 +139,7 @@
             <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">Pessoas ou áreas</p><h3>Tomadores da despesa</h3></div><button id="add-taker" class="small-button" type="button">＋ Novo tomador</button></div><ul id="taker-registry-list" class="registry-list"></ul></article>
             <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">Onde aconteceu</p><h3>Locais da despesa</h3></div><button id="add-location" class="small-button" type="button">＋ Novo local</button></div><ul id="location-registry-list" class="registry-list"></ul></article>
             <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">Para quem foi pago</p><h3>Credores</h3></div><button id="add-creditor" class="small-button" type="button">＋ Novo credor</button></div><ul id="creditor-registry-list" class="registry-list"></ul></article>
+            <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">Como foi pago</p><h3>Formas de pagamento</h3></div><button id="add-payment-method" class="small-button" type="button">＋ Nova forma</button></div><ul id="payment-method-registry-list" class="registry-list"></ul></article>
             <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">De onde veio</p><h3>Fontes de receita</h3></div><button id="add-income-source" class="small-button" type="button">＋ Nova fonte</button></div><ul id="income-source-registry-list" class="registry-list"></ul></article>
           </div>
         </section>
@@ -157,6 +158,7 @@
         <label>Valor<input id="amount" name="amount" type="text" inputmode="decimal" dir="rtl" autocomplete="off" required placeholder="R$ 0,00" /></label>
         <div class="form-row"><label>Tipo de despesa<select id="expense-type" name="expenseType"></select></label><label>Tomador<select id="taker" name="taker"></select></label></div>
         <label>Credor<select id="creditor" name="creditor"></select></label>
+        <label>Forma de pagamento<select id="payment-method" name="paymentMethod"></select></label>
         <label>Data<input id="date" name="date" type="date" required /></label>
         <div class="dialog-actions"><button class="secondary-button" id="cancel-dialog" type="button">Cancelar</button><button class="primary-button" type="submit">Salvar despesa</button></div>
       </form>

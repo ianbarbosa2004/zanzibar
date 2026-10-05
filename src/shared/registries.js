@@ -3,6 +3,7 @@ export const registryDefinitions = {
   taker: { property: "taker", label: "tomador", collection: "takers" },
   location: { property: "location", label: "local", collection: "locations" },
   creditor: { property: "creditor", label: "credor", collection: "creditors" },
+  paymentMethod: { property: "paymentMethod", label: "forma de pagamento", collection: "paymentMethods" },
   incomeSource: { property: "source", label: "fonte de receita", collection: "incomeSources" },
 };
 
