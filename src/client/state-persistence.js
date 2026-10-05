@@ -9,6 +9,7 @@ export function defaultAppState(defaults) {
     creditors: [...defaults.creditors],
     paymentMethods: [...(defaults.paymentMethods || [])],
     incomeSources: [...defaults.incomeSources],
+    catalogMetadata: defaults.catalogMetadata || {},
   };
   return payload;
 }
@@ -24,6 +25,7 @@ export function dataPayload(state) {
       locations: state.locations,
       creditors: state.creditors,
       incomeSources: state.incomeSources,
+      catalogMetadata: state.catalogMetadata || {},
     },
   };
   if (state.paymentMethods !== undefined) payload.settings.paymentMethods = state.paymentMethods;

@@ -180,9 +180,13 @@ td:first-child { color: var(--ink); font-weight: 650; }
 .registry-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; color: #566760; background: #fbfcfb; font-size: 10px; }
 .registry-list li small { margin-left: 6px; color: var(--muted); font-size: 9px; }
 .registry-actions { display: flex; gap: 3px; }
+.registry-order, .registry-status { display: inline-flex; align-items: center; gap: 4px; margin: 0; color: var(--muted); font-size: 9px; font-weight: 600; }
+.registry-order input { width: 48px; margin: 0; padding: 5px; font-size: 10px; }
+.registry-status input { width: auto; margin: 0; }
 .registry-action { width: 25px; height: 25px; padding: 0; border-radius: 6px; color: var(--accent-dark); background: #e5f3ea; font-size: 13px; }
 .registry-action:hover { background: #cfeadb; }
 .registry-action.danger { color: #96751f; background: #fbf3d9; }
+.registry-delete { width: auto; padding: 0 7px; font-size: 10px; }
 .registry-empty { justify-content: center !important; color: var(--muted) !important; }
 .feedback { height: 0; color: #438a68; font-size: 11px; opacity: 0; text-align: right; transition: opacity .2s; }
 .feedback.visible { height: auto; margin: -17px 0 13px; opacity: 1; }

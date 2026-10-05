@@ -22,6 +22,7 @@ let creditors = [...defaultCreditors];
 let paymentMethods = [...defaultPaymentMethods];
 let incomes = [];
 let incomeSources = [...defaultIncomeSources];
+let catalogMetadata = {};
 let cashClosings = [];
 const initialState = defaultAppState({
   expenseTypes: defaultExpenseTypes,
@@ -41,37 +42,35 @@ const $ = (selector) => document.querySelector(selector);
 const selectedMonth = () => $("#month-filter").value || currentMonth();
 
 async function loadData() {
-  ({ transactions, incomes, cashClosings, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources } = await loadAppState(API_URL, "./data.json", initialState));
+  ({ transactions, incomes, cashClosings, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources, catalogMetadata } = await loadAppState(API_URL, "./data.json", initialState));
+  const catalogs = { type: ["expense_types", expenseTypes], taker: ["takers", takers], location: ["locations", locations], creditor: ["creditors", creditors], paymentMethod: ["payment_methods", paymentMethods], incomeSource: ["income_sources", incomeSources] };
+  Object.values(catalogs).forEach(([key, values]) => { catalogMetadata[key] ||= values.map((name, displayOrder) => ({ name, displayOrder, isActive: true })); });
 }
 
 async function save() {
-  const state = { transactions, incomes, cashClosings, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources };
+  const state = { transactions, incomes, cashClosings, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources, catalogMetadata };
   await persistAppState(API_URL, state);
 }
 
 function setupFormOptions() {
+  const active = (kind, values) => values.filter((name) => catalogMetadata[kind]?.find((item) => item.name === name)?.isActive !== false).sort((a, b) => (catalogMetadata[kind]?.find((item) => item.name === a)?.displayOrder || 0) - (catalogMetadata[kind]?.find((item) => item.name === b)?.displayOrder || 0) || a.localeCompare(b, "pt-BR"));
   if (!takers.some((taker) => taker.toLowerCase() === "zanzibar")) takers.push("Zanzibar");
-  expenseTypes.sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
-  takers.sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
-  locations.sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
-  creditors.sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
-  paymentMethods.sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
-  incomeSources.sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
-  $("#expense-type").innerHTML = expenseTypes.map((type) => `<option>${escapeHtml(type)}</option>`).join("");
-  $("#taker").innerHTML = takers.map((taker) => `<option>${escapeHtml(taker)}</option>`).join("");
-  $("#creditor").innerHTML = creditors.map((creditor) => `<option>${escapeHtml(creditor)}</option>`).join("");
-  $("#income-source").innerHTML = incomeSources.map((source) => `<option>${escapeHtml(source)}</option>`).join("");
+  const available = { expenseTypes: active("expense_types", expenseTypes), takers: active("takers", takers), locations: active("locations", locations), creditors: active("creditors", creditors), paymentMethods: active("payment_methods", paymentMethods), incomeSources: active("income_sources", incomeSources) };
+  $("#expense-type").innerHTML = available.expenseTypes.map((type) => `<option>${escapeHtml(type)}</option>`).join("");
+  $("#taker").innerHTML = available.takers.map((taker) => `<option>${escapeHtml(taker)}</option>`).join("");
+  $("#creditor").innerHTML = available.creditors.map((creditor) => `<option>${escapeHtml(creditor)}</option>`).join("");
+  $("#income-source").innerHTML = available.incomeSources.map((source) => `<option>${escapeHtml(source)}</option>`).join("");
   renderLocationOptions();
   const availableMonths = [...new Set([currentMonth(), ...transactions.map((item) => item.date), ...incomes.map((item) => item.date)].map((date) => date.slice(0, 7)))].sort().reverse();
   const monthOptions = availableMonths.map((month) => `<option value="${month}">${new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date(`${month}-15`))}</option>`).join("");
   document.querySelectorAll("[data-month-select], #month-filter").forEach((select) => { select.innerHTML = monthOptions; select.value = currentMonth(); });
   document.querySelectorAll("[data-type-filter]").forEach((filter) => {
-    filter.innerHTML = `<option value="all">Todos os tipos</option>${expenseTypes.map((type) => `<option>${escapeHtml(type)}</option>`).join("")}`;
+    filter.innerHTML = `<option value="all">Todos os tipos</option>${available.expenseTypes.map((type) => `<option>${escapeHtml(type)}</option>`).join("")}`;
   });
   document.querySelectorAll("[data-taker-filter]").forEach((filter) => {
-    filter.innerHTML = `<option value="all">Todos os tomadores</option>${takers.map((taker) => `<option>${escapeHtml(taker)}</option>`).join("")}`;
+    filter.innerHTML = `<option value="all">Todos os tomadores</option>${available.takers.map((taker) => `<option>${escapeHtml(taker)}</option>`).join("")}`;
   });
-  $("[data-income-source-filter]").innerHTML = `<option value="all">Todas as fontes</option>${incomeSources.map((source) => `<option>${escapeHtml(source)}</option>`).join("")}`;
+  $("[data-income-source-filter]").innerHTML = `<option value="all">Todas as fontes</option>${available.incomeSources.map((source) => `<option>${escapeHtml(source)}</option>`).join("")}`;
   applyLocationRules($("#location-options").dataset.value || "Casa");
 }
 
@@ -195,9 +194,12 @@ function renderReports() {
 function renderRegistries() {
   const renderList = (items, kind) => items.length ? items.map((item, index) => {
     const property = { type: "expenseType", taker: "taker", location: "location", creditor: "creditor" }[kind];
-    const count = kind === "incomeSource" ? incomes.filter((income) => income.source === item).length : transactions.filter((transaction) => transaction[property] === item).length;
+    const count = kind === "incomeSource" ? incomes.filter((income) => income.source === item).length : kind === "paymentMethod" ? cashClosings.filter((closing) => closing.paymentMethod === item).length : transactions.filter((transaction) => transaction[property] === item).length;
     const label = kind === "incomeSource" ? "entrada" : "despesa";
-    return `<li><span>${escapeHtml(item)} <small>${count} ${count === 1 ? label : `${label}s`}</small></span><span class="registry-actions"><button type="button" class="registry-action" data-edit-registry="${kind}" data-registry-index="${index}" aria-label="Editar ${escapeHtml(item)}">✎</button><button type="button" class="registry-action danger" data-delete-registry="${kind}" data-registry-index="${index}" aria-label="Excluir ${escapeHtml(item)}">×</button></span></li>`;
+    const table = { type: "expense_types", taker: "takers", location: "locations", creditor: "creditors", paymentMethod: "payment_methods", incomeSource: "income_sources" }[kind];
+    const metadata = catalogMetadata[table]?.find((entry) => entry.name === item) || { displayOrder: 0, isActive: true };
+    const orderControl = ["taker", "creditor", "paymentMethod", "incomeSource"].includes(kind) ? `<label class="registry-order">Ordem<input data-catalog-order="${kind}" data-registry-index="${index}" type="number" min="0" value="${metadata.displayOrder}" aria-label="Ordem de ${escapeHtml(item)}" /></label>` : "";
+    return `<li><span>${escapeHtml(item)} <small>${count} ${count === 1 ? label : `${label}s`}</small></span><span class="registry-actions">${orderControl}<label class="registry-status"><input data-catalog-status="${kind}" data-registry-index="${index}" type="checkbox" ${metadata.isActive ? "checked" : ""} aria-label="Status de ${escapeHtml(item)}" /> Ativo</label><button type="button" class="registry-action" data-edit-registry="${kind}" data-registry-index="${index}" aria-label="Editar ${escapeHtml(item)}">✎</button><button type="button" class="registry-action danger registry-delete" data-delete-registry="${kind}" data-registry-index="${index}" aria-label="Excluir ${escapeHtml(item)}">Excluir</button></span></li>`;
   }).join("") : `<li class="registry-empty">Nenhum cadastro criado.</li>`;
   $("#type-registry-list").innerHTML = renderList(expenseTypes, "type");
   $("#taker-registry-list").innerHTML = renderList(takers, "taker");
@@ -212,6 +214,11 @@ function renderCashClosings() {
   $("#cash-closing-total").textContent = `(${formatMoney(total)})`;
   $("#cash-closings-list").innerHTML = cashClosings.map((item) => `<tr><td>${escapeHtml(formatTransactionDate(item.date))}</td><td>${escapeHtml(item.paymentMethod)}</td><td>${item.saleCount}</td><td class="align-right income-text">+ ${formatMoney(item.totalAmount)}</td><td class="align-right"><button class="action-button" data-edit-cash-closing="${item.id}" aria-label="Editar fechamento">•••</button></td></tr>`).join("");
   $("#cash-closings-empty").hidden = cashClosings.length > 0;
+}
+
+function activeCatalog(table, values) {
+  return values.filter((name) => catalogMetadata[table]?.find((item) => item.name === name)?.isActive !== false)
+    .sort((a, b) => (catalogMetadata[table]?.find((item) => item.name === a)?.displayOrder || 0) - (catalogMetadata[table]?.find((item) => item.name === b)?.displayOrder || 0) || a.localeCompare(b, "pt-BR"));
 }
 
 function openDialog(item) {
@@ -281,7 +288,8 @@ $("#income-form").addEventListener("submit", (event) => {
 });
 function renderLocationOptions() {
   const selected = $("#location-options").dataset.value || "Casa";
-  $("#location-options").innerHTML = locations.map((location) => `<button type="button" class="location-option${location === selected ? " selected" : ""}" role="radio" aria-checked="${location === selected}" data-location="${escapeHtml(location)}"><span class="location-radio" aria-hidden="true"></span>${escapeHtml(location)}</button>`).join("");
+  const activeLocations = locations.filter((name) => catalogMetadata.locations?.find((item) => item.name === name)?.isActive !== false);
+  $("#location-options").innerHTML = activeLocations.map((location) => `<button type="button" class="location-option${location === selected ? " selected" : ""}" role="radio" aria-checked="${location === selected}" data-location="${escapeHtml(location)}"><span class="location-radio" aria-hidden="true"></span>${escapeHtml(location)}</button>`).join("");
 }
 function setLocation(location) {
   $("#location-options").dataset.value = location;
@@ -341,7 +349,7 @@ function openCashClosingDialog(item) {
   $("#cash-closing-id").value = item?.id || "";
   $("#cash-closing-date").value = item?.date || localDate();
   const rows = item?.items || cashClosings.filter((entry) => entry.date === item?.date);
-  $("#cash-closing-methods").innerHTML = paymentMethods.map((method) => {
+  $("#cash-closing-methods").innerHTML = activeCatalog("payment_methods", paymentMethods).map((method) => {
     const entry = rows.find((row) => row.paymentMethod === method);
     return `<label class="cash-closing-method"><span>${escapeHtml(method)}</span><input data-closing-sales type="number" min="0" step="1" value="${entry?.saleCount || 0}" aria-label="Vendas com ${escapeHtml(method)}" /><input data-closing-amount type="text" inputmode="decimal" dir="rtl" value="${entry ? formatInputAmount(entry.totalAmount) : ""}" placeholder="R$ 0,00" aria-label="Valor recebido em ${escapeHtml(method)}" /></label>`;
   }).join("");
@@ -376,7 +384,7 @@ $("#cash-closing-form").addEventListener("submit", (event) => {
   const rows = [...document.querySelectorAll(".cash-closing-method")].map((row, index) => ({
     id: id && index === 0 ? id : crypto.randomUUID(),
     date,
-    paymentMethod: paymentMethods[index],
+    paymentMethod: activeCatalog("payment_methods", paymentMethods)[index],
     saleCount: Number(row.querySelector("[data-closing-sales]").value || 0),
     totalAmount: parseInputAmount(row.querySelector("[data-closing-amount]").value),
   })).filter((entry) => entry.saleCount || entry.totalAmount);
@@ -449,6 +457,9 @@ function addCatalogItem(kind) {
   const list = { type: expenseTypes, taker: takers, location: locations, creditor: creditors, paymentMethod: paymentMethods, incomeSource: incomeSources }[kind];
   if (hasRegistryName(list, value)) return showFeedback(`${label[0].toUpperCase() + label.slice(1)} já cadastrado.`);
   list.push(value);
+  const table = { type: "expense_types", taker: "takers", location: "locations", creditor: "creditors", paymentMethod: "payment_methods", incomeSource: "income_sources" }[kind];
+  catalogMetadata[table] ||= [];
+  catalogMetadata[table].push({ name: value, displayOrder: catalogMetadata[table].length, isActive: true });
   save().then(() => { setupFormOptions(); renderRegistries(); showFeedback(`${label[0].toUpperCase() + label.slice(1)} cadastrado.`); }).catch(() => showFeedback("Não foi possível salvar o cadastro."));
 }
 $("#registry-lists").addEventListener("click", (event) => {
@@ -463,16 +474,33 @@ $("#registry-lists").addEventListener("click", (event) => {
     const value = prompt(`Editar ${definition.label}:`, current)?.trim();
     if (!value || value === current) return;
     if (hasRegistryName(list, value, index)) return showFeedback("Já existe um cadastro com esse nome.");
-    const updated = renameRegistry(kind, current, value, { transactions, incomes, expenseTypes, takers, locations, creditors, incomeSources });
-    ({ transactions, incomes, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources } = updated);
+    const updated = renameRegistry(kind, current, value, { transactions, incomes, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources, catalogMetadata });
+    ({ transactions, incomes, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources, catalogMetadata } = updated);
+    const renameTable = { type: "expense_types", taker: "takers", location: "locations", creditor: "creditors", paymentMethod: "payment_methods", incomeSource: "income_sources" }[kind];
+    if (catalogMetadata[renameTable]) catalogMetadata[renameTable].find((entry) => entry.name === current).name = value;
     save().then(() => { setupFormOptions(); render(); renderReports(); renderRegistries(); showFeedback("Cadastro atualizado."); }).catch(() => showFeedback("Não foi possível atualizar o cadastro."));
     return;
   }
-  if (!canDeleteRegistry(kind, current, { transactions, incomes })) return showFeedback("Este cadastro está vinculado a lançamentos e não pode ser excluído.");
+  if (!canDeleteRegistry(kind, current, { transactions, incomes }) || (kind === "paymentMethod" && cashClosings.some((item) => item.paymentMethod === current))) return showFeedback("Este cadastro está vinculado a lançamentos ou fechamentos e não pode ser excluído.");
   if (list.length === 1) return showFeedback("Mantenha pelo menos um cadastro disponível.");
   if (!confirm(`Excluir "${current}"?`)) return;
   list.splice(index, 1);
+  const table = { type: "expense_types", taker: "takers", location: "locations", creditor: "creditors", paymentMethod: "payment_methods", incomeSource: "income_sources" }[kind];
+  catalogMetadata[table] = catalogMetadata[table].filter((entry) => entry.name !== current);
   save().then(() => { setupFormOptions(); renderRegistries(); showFeedback("Cadastro excluído."); }).catch(() => showFeedback("Não foi possível excluir o cadastro."));
+});
+$("#registry-lists").addEventListener("change", (event) => {
+  const orderInput = event.target.closest("[data-catalog-order]");
+  const statusInput = event.target.closest("[data-catalog-status]");
+  if (!orderInput && !statusInput) return;
+  const kind = (orderInput || statusInput).dataset.catalogOrder || (orderInput || statusInput).dataset.catalogStatus;
+  const list = { type: expenseTypes, taker: takers, location: locations, creditor: creditors, paymentMethod: paymentMethods, incomeSource: incomeSources }[kind];
+  const table = { type: "expense_types", taker: "takers", location: "locations", creditor: "creditors", paymentMethod: "payment_methods", incomeSource: "income_sources" }[kind];
+  const name = list[Number((orderInput || statusInput).dataset.registryIndex)];
+  const entry = catalogMetadata[table].find((item) => item.name === name);
+  if (orderInput) entry.displayOrder = Math.max(0, Number(orderInput.value) || 0);
+  if (statusInput) entry.isActive = statusInput.checked;
+  save().then(() => { setupFormOptions(); renderRegistries(); showFeedback("Cadastro atualizado."); }).catch(() => showFeedback("Não foi possível atualizar o cadastro."));
 });
 $("#export-button").addEventListener("click", () => { const blob = new Blob([JSON.stringify([...transactions, ...incomes], null, 2)], { type: "application/json" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "clareza-transacoes.json"; link.click(); URL.revokeObjectURL(link.href); showFeedback("Dados exportados."); });
 
