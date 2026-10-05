@@ -25,11 +25,6 @@
           <a class="nav-link" href="#cadastros"><span>⚙</span> Cadastros</a>
         </nav>
         <div class="sidebar-bottom">
-          <div class="sidebar-tip">
-            <span class="tip-icon">✦</span>
-            <strong>Pequenos passos.</strong>
-            <p>Registrar seus gastos hoje deixa o amanhã mais leve.</p>
-          </div>
           <button class="sidebar-footer" id="export-button" type="button"><span>↓</span> Exportar dados</button>
         </div>
       </aside>
@@ -58,21 +53,30 @@
 
         <section id="transacoes" class="transactions-section">
           <div class="section-heading">
-            <div><p class="eyebrow">Lançamentos</p><h2>Despesas registradas</h2><p class="section-description">Tudo que foi lançado no mês selecionado, em um só lugar.</p></div>
+            <div><p class="eyebrow">Lançamentos</p><h2>Despesas registradas</h2></div>
             <div class="section-actions"><select id="month-filter" aria-label="Selecionar mês"></select><button class="primary-button" id="new-transaction" type="button"><span>＋</span> Nova despesa</button></div>
           </div>
-          <div class="toolbar">
-            <label class="search-box"><span>⌕</span><input id="search-input" type="search" placeholder="Buscar despesa..." /></label>
-            <select id="type-filter" aria-label="Filtrar por tipo"><option value="all">Todos os tipos</option></select>
-            <select id="taker-filter" aria-label="Filtrar por tomador"><option value="all">Todos os tomadores</option></select>
-            <span class="toolbar-hint">Use os filtros para encontrar um lançamento</span>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Descrição</th><th>Tipo</th><th>Tomador</th><th>Local</th><th>Data</th><th class="align-right">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead>
-              <tbody id="transactions-list"></tbody>
-            </table>
-            <div id="empty-state" class="empty-state" hidden>Nenhuma transação encontrada.</div>
+          <div class="location-panels">
+            <div class="location-panel" data-location-panel="Casa">
+              <div class="location-panel-heading"><h3>Casa</h3></div>
+              <div class="toolbar">
+                <label class="search-box"><span>⌕</span><input data-search type="search" placeholder="Buscar em Casa..." /></label>
+                <select data-type-filter aria-label="Filtrar despesas de Casa por tipo"><option value="all">Todos os tipos</option></select>
+                <select data-taker-filter aria-label="Filtrar despesas de Casa por tomador"><option value="all">Todos os tomadores</option></select>
+              </div>
+              <div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Tomador</th><th>Credor</th><th class="align-right">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody data-transactions-list></tbody></table><div data-empty-state class="empty-state" hidden>Nenhuma transação encontrada.</div></div>
+              <nav data-pagination class="pagination" aria-label="Paginação das despesas de Casa" hidden><span class="pagination-controls"><button data-pagination-prev class="pagination-button" type="button">← Anterior</button><span data-pagination-status aria-live="polite"></span><button data-pagination-next class="pagination-button" type="button">Próxima →</button></span><label class="page-size">Por página <select data-page-size aria-label="Registros por página em Casa"><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label></nav>
+            </div>
+            <div class="location-panel" data-location-panel="Zanzibar">
+              <div class="location-panel-heading"><h3>Zanzibar</h3></div>
+              <div class="toolbar">
+                <label class="search-box"><span>⌕</span><input data-search type="search" placeholder="Buscar em Zanzibar..." /></label>
+                <select data-type-filter aria-label="Filtrar despesas de Zanzibar por tipo"><option value="all">Todos os tipos</option></select>
+                <select data-taker-filter aria-label="Filtrar despesas de Zanzibar por tomador"><option value="all">Todos os tomadores</option></select>
+              </div>
+              <div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Tomador</th><th>Credor</th><th class="align-right">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody data-transactions-list></tbody></table><div data-empty-state class="empty-state" hidden>Nenhuma transação encontrada.</div></div>
+              <nav data-pagination class="pagination" aria-label="Paginação das despesas de Zanzibar" hidden><span class="pagination-controls"><button data-pagination-prev class="pagination-button" type="button">← Anterior</button><span data-pagination-status aria-live="polite"></span><button data-pagination-next class="pagination-button" type="button">Próxima →</button></span><label class="page-size">Por página <select data-page-size aria-label="Registros por página em Zanzibar"><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label></nav>
+            </div>
           </div>
         </section>
 
@@ -80,7 +84,6 @@
           <article id="planejamento" class="panel spending-panel">
             <div class="panel-header">
               <div><p class="eyebrow">Comportamento</p><h2>Despesas por dia</h2></div>
-              <span class="panel-note">últimos lançamentos</span>
             </div>
             <div id="chart" class="chart" aria-label="Gráfico de despesas por dia"></div>
             <div class="chart-legend"><span><i class="dot expense-dot"></i> Despesas</span></div>
@@ -88,7 +91,6 @@
           <article class="panel quick-panel">
             <p class="eyebrow">Atalho</p>
             <h2>Registre enquanto lembra</h2>
-            <p class="muted">Um lançamento detalhado facilita seus relatórios e deixa os gastos mais fáceis de entender.</p>
             <button class="secondary-button quick-action" id="quick-new-transaction" type="button">Adicionar despesa <span>→</span></button>
           </article>
         </section>
@@ -108,6 +110,7 @@
             <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">Classificação</p><h3>Tipos de despesa</h3></div><button id="add-type" class="small-button" type="button">＋ Novo tipo</button></div><ul id="type-registry-list" class="registry-list"></ul></article>
             <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">Pessoas ou áreas</p><h3>Tomadores da despesa</h3></div><button id="add-taker" class="small-button" type="button">＋ Novo tomador</button></div><ul id="taker-registry-list" class="registry-list"></ul></article>
             <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">Onde aconteceu</p><h3>Locais da despesa</h3></div><button id="add-location" class="small-button" type="button">＋ Novo local</button></div><ul id="location-registry-list" class="registry-list"></ul></article>
+            <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">Para quem foi pago</p><h3>Credores</h3></div><button id="add-creditor" class="small-button" type="button">＋ Novo credor</button></div><ul id="creditor-registry-list" class="registry-list"></ul></article>
           </div>
         </section>
       </section>
@@ -124,10 +127,11 @@
         <label>Descrição<input id="description" name="description" required maxlength="60" placeholder="Ex.: Mercado do mês" /></label>
         <label>Valor<input id="amount" name="amount" type="text" inputmode="decimal" dir="rtl" autocomplete="off" required placeholder="R$ 0,00" /></label>
         <div class="form-row"><label>Tipo de despesa<select id="expense-type" name="expenseType"></select></label><label>Tomador<select id="taker" name="taker"></select></label></div>
+        <label>Credor<select id="creditor" name="creditor"></select></label>
         <label>Data<input id="date" name="date" type="date" required /></label>
         <div class="dialog-actions"><button class="secondary-button" id="cancel-dialog" type="button">Cancelar</button><button class="primary-button" type="submit">Salvar despesa</button></div>
       </form>
     </dialog>
-    <script type="module" src="./app.js"></script>
+    <script type="module" src="./app.js?v=79105fe"></script>
   </body>
 </html>

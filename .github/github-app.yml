@@ -1,0 +1,17 @@
+instructions: |
+  The Clareza project uses Node.js, Vite, CloudLinux Passenger, SFTP, and MySQL.
+  Never upload data.json, settings.json, node_modules, private keys, or credentials.
+  Never upload .htaccess because cPanel owns its Passenger and environment-variable configuration.
+  Production data is stored in MySQL and must be preserved during deployments.
+
+scripts:
+  - name: Atualizar online
+    command: powershell -NoProfile -ExecutionPolicy Bypass -File .github/scripts/deploy.ps1
+  - name: Instalar dependências
+    command: npm ci
+    triggers:
+      - session.create
+
+automation:
+  auto_issue_session: true
+  remote_control: false

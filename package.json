@@ -16,6 +16,9 @@
     "esbuild@0.28.2": true
   },
   "dependencies": {
+    "chart.js": "^4.5.1",
+    "lucide": "^1.52.0",
+    "mysql2": "^3.24.5",
     "open-props": "^1.7.23"
   }
 }
