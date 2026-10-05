@@ -3,6 +3,7 @@ import { inMonth, groupTotals, summarize } from "./src/shared/finance.js";
 import { currentMonth, localDate, todayLabel } from "./src/shared/dates.js";
 import { formatDate, formatInputAmount, formatMoney, formatTransactionDate, parseInputAmount } from "./src/shared/formatters.js";
 import { fetchData, saveData } from "./src/client/data-api.js";
+import { readLocalState, writeLocalState } from "./src/client/local-store.js";
 
 const defaultExpenseTypes = ["Moradia", "Alimentação", "Contas", "Transporte", "Lazer", "Saúde", "Educação", "Outros"];
 const defaultTakers = ["Pessoal", "Zanzibar"];
@@ -41,15 +42,23 @@ async function loadData() {
     incomeSources = data.settings.incomeSources?.length ? data.settings.incomeSources : [...defaultIncomeSources];
     return;
   } catch {
-    const savedTransactions = localStorage.getItem("clareza-transactions");
-    if (savedTransactions) {
-      transactions = JSON.parse(savedTransactions).map((item) => ({ ...item, type: "expense" }));
-      incomes = JSON.parse(localStorage.getItem("clareza-incomes") || "[]");
-      expenseTypes = JSON.parse(localStorage.getItem("clareza-expense-types") || "null") || [...defaultExpenseTypes];
-      takers = JSON.parse(localStorage.getItem("clareza-takers") || "null") || [...defaultTakers];
-      locations = JSON.parse(localStorage.getItem("clareza-locations") || "null") || [...defaultLocations];
-      creditors = JSON.parse(localStorage.getItem("clareza-creditors") || "null") || [...defaultCreditors];
-      incomeSources = JSON.parse(localStorage.getItem("clareza-income-sources") || "null") || [...defaultIncomeSources];
+    const localState = readLocalState({
+      transactions: [],
+      incomes: [],
+      expenseTypes: [...defaultExpenseTypes],
+      takers: [...defaultTakers],
+      locations: [...defaultLocations],
+      creditors: [...defaultCreditors],
+      incomeSources: [...defaultIncomeSources],
+    });
+    if (localState.transactions.length) {
+      transactions = localState.transactions.map((item) => ({ ...item, type: "expense" }));
+      incomes = localState.incomes;
+      expenseTypes = localState.expenseTypes;
+      takers = localState.takers;
+      locations = localState.locations;
+      creditors = localState.creditors;
+      incomeSources = localState.incomeSources;
       return;
     }
     const data = await fetchData("./data.json");
@@ -59,13 +68,7 @@ async function loadData() {
 }
 
 async function save() {
-  localStorage.setItem("clareza-transactions", JSON.stringify(transactions));
-  localStorage.setItem("clareza-incomes", JSON.stringify(incomes));
-  localStorage.setItem("clareza-expense-types", JSON.stringify(expenseTypes));
-  localStorage.setItem("clareza-takers", JSON.stringify(takers));
-  localStorage.setItem("clareza-locations", JSON.stringify(locations));
-  localStorage.setItem("clareza-creditors", JSON.stringify(creditors));
-  localStorage.setItem("clareza-income-sources", JSON.stringify(incomeSources));
+  writeLocalState({ transactions, incomes, expenseTypes, takers, locations, creditors, incomeSources });
   try {
     await saveData(API_URL, { transactions, incomes, settings: { expenseTypes, takers, locations, creditors, incomeSources } });
   } catch {
