@@ -134,6 +134,11 @@ function send(response, status, payload, contentType = "application/json") {
 
 const server = createServer(async (request, response) => {
   try {
+    const pathname = new URL(request.url || "/", "http://localhost").pathname;
+    if (request.method === "GET" && basePath !== "/" && pathname === basePath) {
+      response.writeHead(308, { Location: `${basePath}/` });
+      return response.end();
+    }
     if (isDataApi(request.url) && request.method === "GET") {
       return send(response, 200, dbPool ? await readDatabase() : { transactions: await readJson(dataFile, []), settings: await readJson(settingsFile, { expenseTypes: [], takers: [], locations: [], creditors: [] }) });
     }
