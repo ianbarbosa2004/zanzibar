@@ -3,6 +3,7 @@ import { existsSync, promises as fs } from "node:fs";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import mysql from "mysql2/promise";
+import { mergeTransactions } from "./src/shared/transactions.js";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 const dataFile = join(root, "data.json");
@@ -256,10 +257,7 @@ async function writeDatabase(payload) {
       const [rows] = await connection.query(`SELECT id, name FROM ${table}`);
       rows.forEach((item) => ids[property].set(item.name, item.id));
     }
-    const entries = [
-      ...payload.transactions,
-      ...(payload.incomes || []).map((item) => ({ ...item, type: "income" })),
-    ].filter((item, index, all) => all.findIndex((entry) => entry.id === item.id) === index);
+    const entries = mergeTransactions(payload.transactions, payload.incomes || []);
     const incomeSourceNames = [...new Set([
       ...entries.filter((item) => item.type === "income").map((item) => item.source),
       ...(payload.settings?.incomeSources || []),

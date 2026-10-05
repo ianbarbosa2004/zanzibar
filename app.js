@@ -1,3 +1,5 @@
+import { splitTransactions } from "./src/shared/transactions.js";
+
 const defaultExpenseTypes = ["Moradia", "Alimentação", "Contas", "Transporte", "Lazer", "Saúde", "Educação", "Outros"];
 const defaultTakers = ["Pessoal", "Zanzibar"];
 const defaultLocations = ["Casa", "Zanzibar"];
@@ -46,8 +48,10 @@ async function loadData() {
     const response = await fetch(API_URL);
     if (!response.ok) throw new Error("API indisponível.");
     const data = await response.json();
-    transactions = data.transactions.filter((item) => item.type !== "income").map((item) => ({ ...item, type: "expense" }));
-    incomes = data.incomes || data.transactions.filter((item) => item.type === "income");
+    ({ transactions, incomes } = splitTransactions(data.transactions || data.incomes || []));
+    if (data.incomes?.length && !data.transactions?.some((item) => item.type === "income")) {
+      ({ transactions, incomes } = splitTransactions([...(data.transactions || []), ...data.incomes]));
+    }
     expenseTypes = data.settings.expenseTypes?.length ? data.settings.expenseTypes : [...defaultExpenseTypes];
     takers = data.settings.takers?.length ? data.settings.takers : [...defaultTakers];
     locations = data.settings.locations?.length ? data.settings.locations : [...defaultLocations];
