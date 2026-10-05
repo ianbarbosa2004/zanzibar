@@ -117,6 +117,10 @@ td:first-child { color: var(--ink); font-weight: 650; }
 .income-text { color: #428c69; font-weight: 700; }.expense-text { color: #96751f; font-weight: 700; }
 .action-button { padding: 2px 5px; color: #a5afab; background: transparent; font-size: 16px; }
 .empty-state { padding: 30px; color: var(--muted); font-size: 12px; text-align: center; }
+.pagination { display: flex; align-items: center; justify-content: center; gap: 16px; padding-top: 18px; color: var(--muted); font-size: 10px; }
+.pagination-button { padding: 8px 12px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: #fff; font-size: 10px; }
+.pagination-button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.pagination-button:disabled { cursor: not-allowed; opacity: .45; }
 .transactions-section { margin-bottom: 28px; padding: 26px; border: 1px solid var(--line); border-radius: 18px; background: #fff; box-shadow: var(--shadow-card); }
 .transactions-section .table-wrap { box-shadow: 0 8px 22px #1e4a3910; }
 .panel-note { color: var(--muted); font-size: 9px; }

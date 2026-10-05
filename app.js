@@ -11,6 +11,8 @@ let expenseTypes = [...defaultExpenseTypes];
 let takers = [...defaultTakers];
 let locations = [...defaultLocations];
 let creditors = [...defaultCreditors];
+let transactionPage = 1;
+const transactionsPerPage = 10;
 
 const $ = (selector) => document.querySelector(selector);
 const formatMoney = (value) => money.format(value).replace(/\u00a0/g, " ");
@@ -119,12 +121,19 @@ function renderTransactions() {
     const matchesSearch = `${item.description} ${item.expenseType} ${item.taker} ${item.location} ${item.creditor}`.toLowerCase().includes(query);
     return matchesSearch && (type === "all" || item.expenseType === type) && (taker === "all" || item.taker === taker);
   }).sort((a, b) => b.date.localeCompare(a.date));
-  $("#transactions-list").innerHTML = filtered.map((item) => `<tr>
+  const totalPages = Math.max(1, Math.ceil(filtered.length / transactionsPerPage));
+  transactionPage = Math.min(transactionPage, totalPages);
+  const pageItems = filtered.slice((transactionPage - 1) * transactionsPerPage, transactionPage * transactionsPerPage);
+  $("#transactions-list").innerHTML = pageItems.map((item) => `<tr>
     <td><div class="transaction-description"><span class="transaction-icon expense">↘</span>${escapeHtml(item.description)}</div></td>
     <td><span class="tag">${escapeHtml(item.expenseType)}</span></td><td>${escapeHtml(item.taker)}</td><td>${escapeHtml(item.location)}</td><td>${escapeHtml(item.creditor)}</td><td>${dateFormat.format(new Date(`${item.date}T12:00:00`))}</td>
     <td class="align-right expense-text">- ${formatMoney(item.amount)}</td>
     <td class="align-right"><button class="action-button" data-edit="${item.id}" aria-label="Editar ${escapeHtml(item.description)}">•••</button></td></tr>`).join("");
   $("#empty-state").hidden = filtered.length > 0;
+  $("#pagination").hidden = filtered.length <= transactionsPerPage;
+  $("#pagination-status").textContent = `Página ${transactionPage} de ${totalPages}`;
+  $("#pagination-prev").disabled = transactionPage === 1;
+  $("#pagination-next").disabled = transactionPage === totalPages;
 }
 
 function escapeHtml(value) {
@@ -250,8 +259,10 @@ $("#amount").addEventListener("input", (event) => {
 });
 $("#toggle-balance").addEventListener("click", () => { balanceVisible = !balanceVisible; $("#toggle-balance").textContent = balanceVisible ? "◉" : "◎"; renderSummary(); });
 $("#month-filter").addEventListener("change", render);
-["search-input", "type-filter", "taker-filter"].forEach((id) => $(`#${id}`).addEventListener("input", renderTransactions));
+["search-input", "type-filter", "taker-filter"].forEach((id) => $(`#${id}`).addEventListener("input", () => { transactionPage = 1; renderTransactions(); }));
 $("#month-filter").addEventListener("change", () => { render(); renderReports(); });
+$("#pagination-prev").addEventListener("click", () => { if (transactionPage > 1) { transactionPage -= 1; renderTransactions(); } });
+$("#pagination-next").addEventListener("click", () => { transactionPage += 1; renderTransactions(); });
 $("#add-type").addEventListener("click", () => addCatalogItem("type"));
 $("#add-taker").addEventListener("click", () => addCatalogItem("taker"));
 $("#add-location").addEventListener("click", () => addCatalogItem("location"));
