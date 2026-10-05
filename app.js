@@ -296,8 +296,6 @@ document.querySelectorAll("[data-location-panel]").forEach((panel) => {
   });
 });
 $("#month-filter").addEventListener("change", () => { render(); renderReports(); });
-$("#pagination-prev").addEventListener("click", () => { if (transactionPage > 1) { transactionPage -= 1; renderTransactions(); } });
-$("#pagination-next").addEventListener("click", () => { transactionPage += 1; renderTransactions(); });
 $("#add-type").addEventListener("click", () => addCatalogItem("type"));
 $("#add-taker").addEventListener("click", () => addCatalogItem("taker"));
 $("#add-location").addEventListener("click", () => addCatalogItem("location"));
