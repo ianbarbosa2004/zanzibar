@@ -53,15 +53,15 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
     takers: [...new Set([...(appSettings.takers || []), ...transactions.map((item) => item.taker || "Pessoal"), ...existingTransactions.map((item) => item.taker)])],
     locations: [...new Set([...(appSettings.locations || []), ...transactions.map((item) => item.location || "Casa"), ...existingTransactions.map((item) => item.location)])],
     creditors: [...new Set([...(appSettings.creditors || []), ...transactions.map((item) => item.creditor || "Caixa"), ...existingTransactions.map((item) => item.creditor)])],
-    payment_methods: [...new Set(["Dinheiro", "Pix", "Cartão de débito", "Cartão de crédito", "Boleto", "Transferência bancária", ...(appSettings.paymentMethods || []), ...transactions.map((item) => item.paymentMethod || "Pix")])],
+    payment_methods: [...new Set(["Dinheiro", "Pix", "Cartão de débito", "Cartão de crédito", "Boleto", "Transferência bancária", ...(appSettings.paymentMethods || [])])],
   };
   for (const [table, names] of Object.entries(catalogs)) for (const name of names.filter(Boolean)) await dbPool.execute(`INSERT IGNORE INTO ${table} (name) VALUES (?)`, [name]);
   await dbPool.execute("INSERT IGNORE INTO takers (name) VALUES ('Zanzibar')");
-  for (const [column, definition] of Object.entries({ expense_type_id: "INT UNSIGNED NULL", taker_id: "INT UNSIGNED NULL", location_id: "INT UNSIGNED NULL", creditor_id: "INT UNSIGNED NULL", payment_method_id: "INT UNSIGNED NULL", income_source_id: "INT UNSIGNED NULL" })) {
+  for (const [column, definition] of Object.entries({ expense_type_id: "INT UNSIGNED NULL", taker_id: "INT UNSIGNED NULL", location_id: "INT UNSIGNED NULL", creditor_id: "INT UNSIGNED NULL", income_source_id: "INT UNSIGNED NULL" })) {
     const [[found]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'transactions' AND column_name = ?", [column]);
     if (!found.total) await dbPool.query(`ALTER TABLE transactions ADD COLUMN ${column} ${definition}`);
   }
-  for (const column of ["expense_type", "taker", "location", "creditor", "payment_method"]) {
+  for (const column of ["expense_type", "taker", "location", "creditor"]) {
     const [[found]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'transactions' AND column_name = ?", [column]);
     if (!found.total) await dbPool.query(`ALTER TABLE transactions ADD COLUMN ${column} VARCHAR(120) NULL`);
     else await dbPool.query(`ALTER TABLE transactions MODIFY COLUMN ${column} VARCHAR(120) NULL`);
@@ -70,8 +70,7 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
   await dbPool.query("UPDATE transactions t JOIN takers c ON c.name = t.taker SET t.taker_id = c.id WHERE t.taker_id IS NULL");
   await dbPool.query("UPDATE transactions t JOIN locations c ON c.name = t.location SET t.location_id = c.id WHERE t.location_id IS NULL");
   await dbPool.query("UPDATE transactions t JOIN creditors c ON c.name = t.creditor SET t.creditor_id = c.id WHERE t.creditor_id IS NULL");
-  await dbPool.query("UPDATE transactions t JOIN payment_methods p ON p.name = COALESCE(t.payment_method, 'Pix') SET t.payment_method_id = p.id WHERE t.payment_method_id IS NULL");
-  for (const [constraint, column, table] of [["fk_transactions_expense_type", "expense_type_id", "expense_types"], ["fk_transactions_taker", "taker_id", "takers"], ["fk_transactions_location", "location_id", "locations"], ["fk_transactions_creditor", "creditor_id", "creditors"], ["fk_transactions_payment_method", "payment_method_id", "payment_methods"], ["fk_transactions_income_source", "income_source_id", "income_sources"]]) {
+  for (const [constraint, column, table] of [["fk_transactions_expense_type", "expense_type_id", "expense_types"], ["fk_transactions_taker", "taker_id", "takers"], ["fk_transactions_location", "location_id", "locations"], ["fk_transactions_creditor", "creditor_id", "creditors"], ["fk_transactions_income_source", "income_source_id", "income_sources"]]) {
     const [[found]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.referential_constraints WHERE constraint_schema = DATABASE() AND constraint_name = ?", [constraint]);
     if (!found.total) await dbPool.query(`ALTER TABLE transactions ADD CONSTRAINT ${constraint} FOREIGN KEY (${column}) REFERENCES ${table}(id)`);
   }
@@ -93,29 +92,32 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
       const taker = item.taker || "Pessoal";
       const location = item.location || "Casa";
       const creditor = item.creditor || "Caixa";
-      const paymentMethod = item.paymentMethod || "Pix";
-      const [paymentMethods] = await dbPool.query("SELECT id, name FROM payment_methods");
-      const paymentMethodId = idFor(paymentMethods, paymentMethod);
-      await dbPool.execute("INSERT INTO transactions (client_id, description, amount, type, expense_type, taker, location, creditor, payment_method, expense_type_id, taker_id, location_id, creditor_id, payment_method_id, transaction_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [item.id, item.description, item.amount, item.type || "expense", expenseType, taker, location, creditor, paymentMethod, idFor(rows, expenseType), idFor(takers, taker), idFor(locations, location), idFor(creditors, creditor), paymentMethodId, item.date]);
+      await dbPool.execute("INSERT INTO transactions (client_id, description, amount, type, expense_type, taker, location, creditor, expense_type_id, taker_id, location_id, creditor_id, transaction_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [item.id, item.description, item.amount, item.type || "expense", expenseType, taker, location, creditor, idFor(rows, expenseType), idFor(takers, taker), idFor(locations, location), idFor(creditors, creditor), item.date]);
     }
   }
-  await dbPool.query("INSERT INTO app_settings (id, currency, schema_version) VALUES (1, 'BRL', 6) ON DUPLICATE KEY UPDATE schema_version = 6");
+  const [[paymentConstraint]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.referential_constraints WHERE constraint_schema = DATABASE() AND constraint_name = 'fk_transactions_payment_method'");
+  if (paymentConstraint.total) await dbPool.query("ALTER TABLE transactions DROP FOREIGN KEY fk_transactions_payment_method");
+  const [[paymentColumn]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'transactions' AND column_name = 'payment_method_id'");
+  if (paymentColumn.total) await dbPool.query("ALTER TABLE transactions DROP COLUMN payment_method_id");
+  const [[paymentTextColumn]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'transactions' AND column_name = 'payment_method'");
+  if (paymentTextColumn.total) await dbPool.query("ALTER TABLE transactions DROP COLUMN payment_method");
+  await dbPool.query("INSERT INTO app_settings (id, currency, schema_version) VALUES (1, 'BRL', 7) ON DUPLICATE KEY UPDATE schema_version = 7");
 }
 
 export async function readDatabase() {
-  const [rows] = await dbPool.query("SELECT t.id, t.client_id AS clientId, t.description, t.amount, t.type, et.name AS expenseType, tk.name AS taker, l.name AS location, c.name AS creditor, p.name AS paymentMethod, s.name AS source, DATE_FORMAT(t.transaction_date, '%Y-%m-%d') AS date, t.created_at AS createdAt, t.updated_at AS updatedAt FROM transactions t LEFT JOIN expense_types et ON et.id = t.expense_type_id LEFT JOIN takers tk ON tk.id = t.taker_id LEFT JOIN locations l ON l.id = t.location_id LEFT JOIN creditors c ON c.id = t.creditor_id LEFT JOIN payment_methods p ON p.id = t.payment_method_id LEFT JOIN income_sources s ON s.id = t.income_source_id ORDER BY t.transaction_date DESC, t.updated_at DESC");
+  const [rows] = await dbPool.query("SELECT t.id, t.client_id AS clientId, t.description, t.amount, t.type, et.name AS expenseType, tk.name AS taker, l.name AS location, c.name AS creditor, s.name AS source, DATE_FORMAT(t.transaction_date, '%Y-%m-%d') AS date, t.created_at AS createdAt, t.updated_at AS updatedAt FROM transactions t LEFT JOIN expense_types et ON et.id = t.expense_type_id LEFT JOIN takers tk ON tk.id = t.taker_id LEFT JOIN locations l ON l.id = t.location_id LEFT JOIN creditors c ON c.id = t.creditor_id LEFT JOIN income_sources s ON s.id = t.income_source_id ORDER BY t.transaction_date DESC, t.updated_at DESC");
   const [[settings]] = await dbPool.query("SELECT currency, schema_version AS schemaVersion FROM app_settings WHERE id = 1");
   const [[expenseTypes], [takers], [locations], [creditors], [paymentMethods], [incomeSources]] = await Promise.all(["expense_types", "takers", "locations", "creditors", "payment_methods", "income_sources"].map((table) => dbPool.query(`SELECT name FROM ${table} ORDER BY name`)));
   const normalizedRows = rows.map((item) => ({ ...item, amount: Number(item.amount) }));
-  return { transactions: normalizedRows, incomes: normalizedRows.filter((item) => item.type === "income"), settings: { currency: settings?.currency || "BRL", schemaVersion: settings?.schemaVersion || 6, expenseTypes: expenseTypes.map((item) => item.name), takers: takers.map((item) => item.name), locations: locations.map((item) => item.name), creditors: creditors.map((item) => item.name), paymentMethods: paymentMethods.map((item) => item.name), incomeSources: incomeSources.map((item) => item.name) } };
+  return { transactions: normalizedRows, incomes: normalizedRows.filter((item) => item.type === "income"), settings: { currency: settings?.currency || "BRL", schemaVersion: settings?.schemaVersion || 7, expenseTypes: expenseTypes.map((item) => item.name), takers: takers.map((item) => item.name), locations: locations.map((item) => item.name), creditors: creditors.map((item) => item.name), paymentMethods: paymentMethods.map((item) => item.name), incomeSources: incomeSources.map((item) => item.name) } };
 }
 
 export async function writeDatabase(payload) {
   const connection = await dbPool.getConnection();
   try {
     await connection.beginTransaction();
-    const catalogTables = { expenseType: "expense_types", taker: "takers", location: "locations", creditor: "creditors", paymentMethod: "payment_methods" };
-    const catalogSettings = { expenseType: "expenseTypes", taker: "takers", location: "locations", creditor: "creditors", paymentMethod: "paymentMethods" };
+    const catalogTables = { expenseType: "expense_types", taker: "takers", location: "locations", creditor: "creditors" };
+    const catalogSettings = { expenseType: "expenseTypes", taker: "takers", location: "locations", creditor: "creditors" };
     const ids = {};
     for (const [property, table] of Object.entries(catalogTables)) {
       ids[property] = new Map();
@@ -137,18 +139,18 @@ export async function writeDatabase(payload) {
       const existingRow = numericId
         ? existing.find((row) => row.id === numericId)
         : existing.find((row) => row.clientId === String(item.id));
-      const values = [item.description, item.amount, income ? "income" : "expense", income ? null : item.expenseType || "Outros", income ? null : item.taker || "Pessoal", income ? null : item.location || "Casa", income ? null : item.creditor || "Caixa", income ? null : item.paymentMethod || "Pix", income ? null : ids.expenseType.get(item.expenseType || "Outros"), income ? null : ids.taker.get(item.taker || "Pessoal"), income ? null : ids.location.get(item.location || "Casa"), income ? null : ids.creditor.get(item.creditor || "Caixa"), income ? null : ids.paymentMethod.get(item.paymentMethod || "Pix"), income ? sourceIds.get(item.source || "Salário") : null, item.date];
+      const values = [item.description, item.amount, income ? "income" : "expense", income ? null : item.expenseType || "Outros", income ? null : item.taker || "Pessoal", income ? null : item.location || "Casa", income ? null : item.creditor || "Caixa", income ? null : ids.expenseType.get(item.expenseType || "Outros"), income ? null : ids.taker.get(item.taker || "Pessoal"), income ? null : ids.location.get(item.location || "Casa"), income ? null : ids.creditor.get(item.creditor || "Caixa"), income ? sourceIds.get(item.source || "Salário") : null, item.date];
       if (existingRow) {
-        await connection.execute("UPDATE transactions SET description = ?, amount = ?, type = ?, expense_type = ?, taker = ?, location = ?, creditor = ?, payment_method = ?, expense_type_id = ?, taker_id = ?, location_id = ?, creditor_id = ?, payment_method_id = ?, income_source_id = ?, transaction_date = ? WHERE id = ?", [...values, existingRow.id]);
+        await connection.execute("UPDATE transactions SET description = ?, amount = ?, type = ?, expense_type = ?, taker = ?, location = ?, creditor = ?, expense_type_id = ?, taker_id = ?, location_id = ?, creditor_id = ?, income_source_id = ?, transaction_date = ? WHERE id = ?", [...values, existingRow.id]);
         retainedIds.add(existingRow.id);
       } else {
-        const [result] = await connection.execute("INSERT INTO transactions (client_id, description, amount, type, expense_type, taker, location, creditor, payment_method, expense_type_id, taker_id, location_id, creditor_id, payment_method_id, income_source_id, transaction_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [numericId ? null : String(item.id), ...values]);
+        const [result] = await connection.execute("INSERT INTO transactions (client_id, description, amount, type, expense_type, taker, location, creditor, expense_type_id, taker_id, location_id, creditor_id, income_source_id, transaction_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [numericId ? null : String(item.id), ...values]);
         retainedIds.add(result.insertId);
       }
     }
     if (retainedIds.size) await connection.query("DELETE FROM transactions WHERE id NOT IN (?)", [[...retainedIds]]);
     else await connection.query("DELETE FROM transactions");
-    await connection.execute("INSERT INTO app_settings (id, currency, schema_version) VALUES (1, 'BRL', 6) ON DUPLICATE KEY UPDATE schema_version = 6");
+    await connection.execute("INSERT INTO app_settings (id, currency, schema_version) VALUES (1, 'BRL', 7) ON DUPLICATE KEY UPDATE schema_version = 7");
     await connection.commit();
   } catch (error) {
     await connection.rollback();

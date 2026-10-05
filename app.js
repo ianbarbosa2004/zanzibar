@@ -59,7 +59,6 @@ function setupFormOptions() {
   $("#expense-type").innerHTML = expenseTypes.map((type) => `<option>${escapeHtml(type)}</option>`).join("");
   $("#taker").innerHTML = takers.map((taker) => `<option>${escapeHtml(taker)}</option>`).join("");
   $("#creditor").innerHTML = creditors.map((creditor) => `<option>${escapeHtml(creditor)}</option>`).join("");
-  $("#payment-method").innerHTML = paymentMethods.map((method) => `<option>${escapeHtml(method)}</option>`).join("");
   $("#income-source").innerHTML = incomeSources.map((source) => `<option>${escapeHtml(source)}</option>`).join("");
   renderLocationOptions();
   const availableMonths = [...new Set([currentMonth(), ...transactions.map((item) => item.date), ...incomes.map((item) => item.date)].map((date) => date.slice(0, 7)))].sort().reverse();
@@ -194,7 +193,7 @@ function renderReports() {
 
 function renderRegistries() {
   const renderList = (items, kind) => items.length ? items.map((item, index) => {
-    const property = { type: "expenseType", taker: "taker", location: "location", creditor: "creditor", paymentMethod: "paymentMethod" }[kind];
+    const property = { type: "expenseType", taker: "taker", location: "location", creditor: "creditor" }[kind];
     const count = kind === "incomeSource" ? incomes.filter((income) => income.source === item).length : transactions.filter((transaction) => transaction[property] === item).length;
     const label = kind === "incomeSource" ? "entrada" : "despesa";
     return `<li><span>${escapeHtml(item)} <small>${count} ${count === 1 ? label : `${label}s`}</small></span><span class="registry-actions"><button type="button" class="registry-action" data-edit-registry="${kind}" data-registry-index="${index}" aria-label="Editar ${escapeHtml(item)}">✎</button><button type="button" class="registry-action danger" data-delete-registry="${kind}" data-registry-index="${index}" aria-label="Excluir ${escapeHtml(item)}">×</button></span></li>`;
@@ -216,11 +215,9 @@ function openDialog(item) {
   const expenseType = item?.expenseType || expenseTypes[0];
   const taker = item?.taker || takers[0];
   const creditor = item?.creditor || (creditors.includes("Caixa") ? "Caixa" : creditors[0] || "Caixa");
-  const paymentMethod = item?.paymentMethod || paymentMethods[0];
   if (expenseTypes.includes(expenseType)) $("#expense-type").value = expenseType;
   if (Array.from($("#taker").options).some((option) => option.value === taker)) $("#taker").value = taker;
   if (Array.from($("#creditor").options).some((option) => option.value === creditor)) $("#creditor").value = creditor;
-  if (Array.from($("#payment-method").options).some((option) => option.value === paymentMethod)) $("#payment-method").value = paymentMethod;
   $("#date").value = item?.date || localDate();
   $("#transaction-dialog").showModal();
   requestAnimationFrame(() => $("#description").focus());
@@ -255,7 +252,6 @@ $("#transaction-form").addEventListener("submit", (event) => {
     taker: $("#taker").value,
     location: $("#location-options").dataset.value || "Casa",
     creditor: $("#creditor").value,
-    paymentMethod: $("#payment-method").value,
     date: $("#date").value,
   }, id);
   transactions = upsertEntry(transactions, item);
@@ -428,4 +424,4 @@ function renderPage() {
 window.addEventListener("hashchange", renderPage);
 
 renderPage();
-loadData().then(() => { transactions = transactions.map((item) => ({ ...item, expenseType: item.expenseType || item.category || "Outros", taker: item.taker || "Pessoal", location: item.location || "Casa", creditor: item.creditor || "Caixa", paymentMethod: item.paymentMethod || "Pix" })); $("#today-label").textContent = todayLabel(); setupFormOptions(); render(); renderReports(); renderRegistries(); renderPage(); }).catch(() => { showFeedback("Não foi possível carregar os dados iniciais."); });
+loadData().then(() => { transactions = transactions.map((item) => ({ ...item, expenseType: item.expenseType || item.category || "Outros", taker: item.taker || "Pessoal", location: item.location || "Casa", creditor: item.creditor || "Caixa" })); $("#today-label").textContent = todayLabel(); setupFormOptions(); render(); renderReports(); renderRegistries(); renderPage(); }).catch(() => { showFeedback("Não foi possível carregar os dados iniciais."); });
