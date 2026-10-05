@@ -23,6 +23,7 @@ let paymentMethods = [...defaultPaymentMethods];
 let incomes = [];
 let incomeSources = [...defaultIncomeSources];
 let catalogMetadata = {};
+const pendingRegistryOrderSaves = new Set();
 let cashClosings = [];
 const initialState = defaultAppState({
   expenseTypes: defaultExpenseTypes,
@@ -193,17 +194,14 @@ function renderReports() {
 
 function renderRegistries() {
   const renderList = (items, kind) => items.length ? items.map((item, index) => {
-    const property = { type: "expenseType", taker: "taker", location: "location", creditor: "creditor" }[kind];
-    const count = kind === "incomeSource" ? incomes.filter((income) => income.source === item).length : kind === "paymentMethod" ? cashClosings.filter((closing) => closing.paymentMethod === item).length : transactions.filter((transaction) => transaction[property] === item).length;
-    const label = kind === "incomeSource" ? "entrada" : "despesa";
     const table = { type: "expense_types", taker: "takers", location: "locations", creditor: "creditors", paymentMethod: "payment_methods", incomeSource: "income_sources" }[kind];
     const metadata = catalogMetadata[table]?.find((entry) => entry.name === item) || { displayOrder: 0, isActive: true };
-    const orderControl = ["taker", "creditor", "paymentMethod", "incomeSource"].includes(kind) ? `<label class="registry-order">Ordem<input data-catalog-order="${kind}" data-registry-index="${index}" type="number" min="0" value="${metadata.displayOrder}" aria-label="Ordem de ${escapeHtml(item)}" /></label>` : "";
-    return `<li><span>${escapeHtml(item)} <small>${count} ${count === 1 ? label : `${label}s`}</small></span><span class="registry-actions">${orderControl}<label class="registry-status"><input data-catalog-status="${kind}" data-registry-index="${index}" type="checkbox" ${metadata.isActive ? "checked" : ""} aria-label="Status de ${escapeHtml(item)}" /> Ativo</label><button type="button" class="registry-action" data-edit-registry="${kind}" data-registry-index="${index}" aria-label="Editar ${escapeHtml(item)}">✎</button><button type="button" class="registry-action danger registry-delete" data-delete-registry="${kind}" data-registry-index="${index}" aria-label="Excluir ${escapeHtml(item)}">Excluir</button></span></li>`;
-  }).join("") : `<li class="registry-empty">Nenhum cadastro criado.</li>`;
+    const sortable = ["taker", "creditor", "paymentMethod", "incomeSource"].includes(kind);
+    const orderControl = sortable ? `<input class="registry-order" data-catalog-order="${kind}" data-registry-index="${index}" type="text" inputmode="numeric" pattern="[0-9]*" value="${metadata.displayOrder}" aria-label="Ordem de ${escapeHtml(item)}" />` : "";
+    return `<li class="${sortable ? "registry-sortable" : ""}" ${sortable ? `draggable="true" data-registry-drag-kind="${kind}" data-registry-drag-index="${index}"` : ""}>${sortable ? `<span class="registry-drag-hint" aria-hidden="true">⠿</span>` : ""}<span class="registry-name">${orderControl}${escapeHtml(item)}</span><span class="registry-actions"><label class="switch" title="${metadata.isActive ? "Ativo" : "Inativo"}"><input data-catalog-status="${kind}" data-registry-index="${index}" type="checkbox" ${metadata.isActive ? "checked" : ""} aria-label="${metadata.isActive ? "Desativar" : "Ativar"} ${escapeHtml(item)}" /><span class="switch-track" aria-hidden="true"></span></label><button type="button" class="registry-action" data-edit-registry="${kind}" data-registry-index="${index}" aria-label="Editar ${escapeHtml(item)}">✎</button><button type="button" class="registry-action danger registry-delete" data-delete-registry="${kind}" data-registry-index="${index}" aria-label="Excluir ${escapeHtml(item)}">×</button></span></li>`;
+  }).join("") + (pendingRegistryOrderSaves.has(kind) ? `<li class="registry-order-save-row"><button type="button" class="small-button registry-order-save" data-save-registry-order="${kind}">Salvar Ordem</button></li>` : "") : `<li class="registry-empty">Nenhum cadastro criado.</li>`;
   $("#type-registry-list").innerHTML = renderList(expenseTypes, "type");
   $("#taker-registry-list").innerHTML = renderList(takers, "taker");
-  $("#location-registry-list").innerHTML = renderList(locations, "location");
   $("#creditor-registry-list").innerHTML = renderList(creditors, "creditor");
   $("#payment-method-registry-list").innerHTML = renderList(paymentMethods, "paymentMethod");
   $("#income-source-registry-list").innerHTML = renderList(incomeSources, "incomeSource");
@@ -249,10 +247,15 @@ function openIncomeDialog(item) {
   requestAnimationFrame(() => $("#income-description").focus());
 }
 
-function showFeedback(message) {
+let feedbackTimer;
+function showFeedback(message, persistent = false) {
   $("#feedback").textContent = message;
   $("#feedback").classList.add("visible");
-  setTimeout(() => $("#feedback").classList.remove("visible"), 2400);
+  clearTimeout(feedbackTimer);
+  if (!persistent) feedbackTimer = setTimeout(() => $("#feedback").classList.remove("visible"), 4000);
+}
+function showRegistryDeleteError() {
+  $("#registry-error-dialog").showModal();
 }
 
 $("#transaction-form").addEventListener("submit", (event) => {
@@ -445,7 +448,6 @@ document.querySelectorAll("[data-month-select], #month-filter").forEach((select)
 }));
 $("#add-type").addEventListener("click", () => addCatalogItem("type"));
 $("#add-taker").addEventListener("click", () => addCatalogItem("taker"));
-$("#add-location").addEventListener("click", () => addCatalogItem("location"));
 $("#add-creditor").addEventListener("click", () => addCatalogItem("creditor"));
 $("#add-income-source").addEventListener("click", () => addCatalogItem("incomeSource"));
 $("#add-payment-method").addEventListener("click", () => addCatalogItem("paymentMethod"));
@@ -462,7 +464,37 @@ function addCatalogItem(kind) {
   catalogMetadata[table].push({ name: value, displayOrder: catalogMetadata[table].length, isActive: true });
   save().then(() => { setupFormOptions(); renderRegistries(); showFeedback(`${label[0].toUpperCase() + label.slice(1)} cadastrado.`); }).catch(() => showFeedback("Não foi possível salvar o cadastro."));
 }
+function openRegistryEditDialog(kind, index) {
+  const list = { type: expenseTypes, taker: takers, location: locations, creditor: creditors, paymentMethod: paymentMethods, incomeSource: incomeSources }[kind];
+  const table = { type: "expense_types", taker: "takers", location: "locations", creditor: "creditors", paymentMethod: "payment_methods", incomeSource: "income_sources" }[kind];
+  const item = list[index];
+  const metadata = catalogMetadata[table]?.find((entry) => entry.name === item) || { displayOrder: 0, isActive: true };
+  $("#registry-kind").value = kind;
+  $("#registry-index").value = index;
+  $("#registry-name").value = item;
+  $("#registry-order").value = metadata.displayOrder;
+  $("#registry-order-field").hidden = !["taker", "creditor", "paymentMethod", "incomeSource"].includes(kind);
+  $("#registry-status").checked = metadata.isActive;
+  $("#registry-dialog-title").textContent = `Editar ${registryDefinition(kind).label}`;
+  $("#registry-dialog").showModal();
+  requestAnimationFrame(() => $("#registry-name").focus());
+}
 $("#registry-lists").addEventListener("click", (event) => {
+  event.preventDefault();
+  const saveOrderButton = event.target.closest("[data-save-registry-order]");
+  if (saveOrderButton) {
+    const kind = saveOrderButton.dataset.saveRegistryOrder;
+    saveOrderButton.disabled = true;
+    save().then(() => {
+      pendingRegistryOrderSaves.delete(kind);
+      renderRegistries();
+      showFeedback("Ordem dos cadastros salva.");
+    }).catch(() => {
+      saveOrderButton.disabled = false;
+      showFeedback("Não foi possível salvar a ordem.");
+    });
+    return;
+  }
   const button = event.target.closest("[data-edit-registry], [data-delete-registry]");
   if (!button) return;
   const kind = button.dataset.editRegistry || button.dataset.deleteRegistry;
@@ -471,23 +503,92 @@ $("#registry-lists").addEventListener("click", (event) => {
   const index = Number(button.dataset.registryIndex);
   const current = list[index];
   if (button.dataset.editRegistry) {
-    const value = prompt(`Editar ${definition.label}:`, current)?.trim();
-    if (!value || value === current) return;
-    if (hasRegistryName(list, value, index)) return showFeedback("Já existe um cadastro com esse nome.");
-    const updated = renameRegistry(kind, current, value, { transactions, incomes, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources, catalogMetadata });
-    ({ transactions, incomes, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources, catalogMetadata } = updated);
-    const renameTable = { type: "expense_types", taker: "takers", location: "locations", creditor: "creditors", paymentMethod: "payment_methods", incomeSource: "income_sources" }[kind];
-    if (catalogMetadata[renameTable]) catalogMetadata[renameTable].find((entry) => entry.name === current).name = value;
-    save().then(() => { setupFormOptions(); render(); renderReports(); renderRegistries(); showFeedback("Cadastro atualizado."); }).catch(() => showFeedback("Não foi possível atualizar o cadastro."));
+    openRegistryEditDialog(kind, index);
     return;
   }
-  if (!canDeleteRegistry(kind, current, { transactions, incomes }) || (kind === "paymentMethod" && cashClosings.some((item) => item.paymentMethod === current))) return showFeedback("Este cadastro está vinculado a lançamentos ou fechamentos e não pode ser excluído.");
+  const hasTransactionReference = !canDeleteRegistry(kind, current, { transactions, incomes });
+  const hasCashClosingReference = kind === "paymentMethod" && cashClosings.some((item) => item.paymentMethod === current);
+  if (hasTransactionReference || hasCashClosingReference) {
+    showRegistryDeleteError();
+    return;
+  }
   if (list.length === 1) return showFeedback("Mantenha pelo menos um cadastro disponível.");
   if (!confirm(`Excluir "${current}"?`)) return;
   list.splice(index, 1);
   const table = { type: "expense_types", taker: "takers", location: "locations", creditor: "creditors", paymentMethod: "payment_methods", incomeSource: "income_sources" }[kind];
   catalogMetadata[table] = catalogMetadata[table].filter((entry) => entry.name !== current);
+  pendingRegistryOrderSaves.delete(kind);
   save().then(() => { setupFormOptions(); renderRegistries(); showFeedback("Cadastro excluído."); }).catch(() => showFeedback("Não foi possível excluir o cadastro."));
+});
+$("#registry-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const kind = $("#registry-kind").value;
+  const index = Number($("#registry-index").value);
+  const list = { type: expenseTypes, taker: takers, location: locations, creditor: creditors, paymentMethod: paymentMethods, incomeSource: incomeSources }[kind];
+  const current = list[index];
+  const value = $("#registry-name").value.trim();
+  if (!value) return;
+  if (hasRegistryName(list, value, index)) return showFeedback("Já existe um cadastro com esse nome.");
+  const updated = renameRegistry(kind, current, value, { transactions, incomes, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources, catalogMetadata });
+  ({ transactions, incomes, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources, catalogMetadata } = updated);
+  const table = { type: "expense_types", taker: "takers", location: "locations", creditor: "creditors", paymentMethod: "payment_methods", incomeSource: "income_sources" }[kind];
+  const metadata = catalogMetadata[table].find((entry) => entry.name === current);
+  if (metadata) {
+    metadata.name = value;
+    metadata.displayOrder = Math.max(0, Number($("#registry-order").value) || 0);
+    metadata.isActive = $("#registry-status").checked;
+  }
+  save().then(() => { setupFormOptions(); render(); renderReports(); renderRegistries(); $("#registry-dialog").close(); showFeedback("Cadastro atualizado."); }).catch(() => showFeedback("Não foi possível atualizar o cadastro."));
+});
+document.querySelectorAll("#close-registry-dialog, #cancel-registry-dialog").forEach((button) => button.addEventListener("click", () => $("#registry-dialog").close()));
+let draggedRegistryRow = null;
+let draggedRegistryKind = "";
+let draggedRegistryIndex = -1;
+$("#registry-lists").addEventListener("dragstart", (event) => {
+  const row = event.target.closest("[data-registry-drag-kind]");
+  if (!row || event.target.closest("input, button, label")) return;
+  draggedRegistryRow = row;
+  draggedRegistryKind = row.dataset.registryDragKind;
+  draggedRegistryIndex = Number(row.dataset.registryDragIndex);
+  row.classList.add("registry-dragging");
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData("text/plain", `${draggedRegistryKind}:${draggedRegistryIndex}`);
+});
+$("#registry-lists").addEventListener("dragover", (event) => {
+  const row = event.target.closest("[data-registry-drag-kind]");
+  if (!row) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = "move";
+  document.querySelectorAll(".registry-drag-over").forEach((item) => item.classList.remove("registry-drag-over"));
+  row.classList.add("registry-drag-over");
+});
+$("#registry-lists").addEventListener("drop", (event) => {
+  const target = event.target.closest("[data-registry-drag-kind]");
+  if (!target) return;
+  event.preventDefault();
+  const [kind, sourceIndexText] = (event.dataTransfer.getData("text/plain") || `${draggedRegistryKind}:${draggedRegistryIndex}`).split(":");
+  if (kind !== target.dataset.registryDragKind) return;
+  const sourceIndex = Number(sourceIndexText);
+  const list = { taker: takers, creditor: creditors, paymentMethod: paymentMethods, incomeSource: incomeSources }[kind];
+  const targetIndex = Number(target.dataset.registryDragIndex);
+  if (!Number.isInteger(sourceIndex) || !Number.isInteger(targetIndex) || sourceIndex === targetIndex) return;
+  const [moved] = list.splice(sourceIndex, 1);
+  const insertionIndex = event.clientY > target.getBoundingClientRect().top + target.getBoundingClientRect().height / 2 ? targetIndex + 1 : targetIndex;
+  list.splice(sourceIndex < insertionIndex ? insertionIndex - 1 : insertionIndex, 0, moved);
+  const table = { taker: "takers", creditor: "creditors", paymentMethod: "payment_methods", incomeSource: "income_sources" }[kind];
+  const entries = catalogMetadata[table] || [];
+  list.forEach((name, index) => {
+    const entry = entries.find((item) => item.name === name);
+    if (entry) entry.displayOrder = index;
+  });
+  pendingRegistryOrderSaves.add(kind);
+  renderRegistries();
+});
+$("#registry-lists").addEventListener("dragend", () => {
+  draggedRegistryRow = null;
+  draggedRegistryKind = "";
+  draggedRegistryIndex = -1;
+  document.querySelectorAll(".registry-dragging, .registry-drag-over").forEach((item) => item.classList.remove("registry-dragging", "registry-drag-over"));
 });
 $("#registry-lists").addEventListener("change", (event) => {
   const orderInput = event.target.closest("[data-catalog-order]");

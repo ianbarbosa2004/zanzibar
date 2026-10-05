@@ -143,7 +143,6 @@
           <div id="registry-lists" class="registry-grid">
             <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">Classificação</p><h3>Tipos de despesa</h3></div><button id="add-type" class="small-button" type="button">＋ Novo tipo</button></div><ul id="type-registry-list" class="registry-list"></ul></article>
             <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">Pessoas ou áreas</p><h3>Tomadores da despesa</h3></div><button id="add-taker" class="small-button" type="button">＋ Novo tomador</button></div><ul id="taker-registry-list" class="registry-list"></ul></article>
-            <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">Onde aconteceu</p><h3>Locais da despesa</h3></div><button id="add-location" class="small-button" type="button">＋ Novo local</button></div><ul id="location-registry-list" class="registry-list"></ul></article>
             <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">Para quem foi pago</p><h3>Credores</h3></div><button id="add-creditor" class="small-button" type="button">＋ Novo credor</button></div><ul id="creditor-registry-list" class="registry-list"></ul></article>
             <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">Como foi pago</p><h3>Formas de pagamento</h3></div><button id="add-payment-method" class="small-button" type="button">＋ Nova forma</button></div><ul id="payment-method-registry-list" class="registry-list"></ul></article>
             <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">De onde veio</p><h3>Fontes de receita</h3></div><button id="add-income-source" class="small-button" type="button">＋ Nova fonte</button></div><ul id="income-source-registry-list" class="registry-list"></ul></article>
@@ -189,6 +188,26 @@
         <div class="dialog-actions"><button class="secondary-button" id="cancel-cash-closing-dialog" type="button">Cancelar</button><button class="primary-button" type="submit">Salvar fechamento</button></div>
       </form>
     </dialog>
-    <script type="module" src="./app.js?v=79105fe"></script>
+    <dialog id="registry-dialog">
+      <form id="registry-form" method="dialog">
+        <div class="dialog-heading"><div><p class="eyebrow">Cadastro auxiliar</p><h2 id="registry-dialog-title">Editar cadastro</h2></div><button class="close-button" id="close-registry-dialog" type="button" aria-label="Fechar">×</button></div>
+        <input id="registry-kind" type="hidden" />
+        <input id="registry-index" type="hidden" />
+        <label>Descrição<input id="registry-name" name="registryName" required maxlength="60" /></label>
+        <div class="registry-meta-row">
+          <label id="registry-order-field">Ordem<input id="registry-order" name="registryOrder" type="text" inputmode="numeric" pattern="[0-9]*" /></label>
+          <label class="registry-edit-status"><span>Status</span><span class="switch"><input id="registry-status" name="registryStatus" type="checkbox" /><span class="switch-track" aria-hidden="true"></span></span></label>
+        </div>
+        <div class="dialog-actions"><button class="secondary-button" id="cancel-registry-dialog" type="button">Cancelar</button><button class="primary-button" type="submit">Salvar cadastro</button></div>
+      </form>
+    </dialog>
+    <dialog id="registry-error-dialog" aria-labelledby="registry-error-title">
+      <form method="dialog" class="registry-error-form">
+        <div class="dialog-heading"><div><p class="eyebrow">Exclusão não realizada</p><h2 id="registry-error-title">Cadastro em uso</h2></div><button class="close-button" id="close-registry-error-dialog" type="submit" aria-label="Fechar">×</button></div>
+        <p id="registry-error-message" class="registry-error-message" role="alert">Este cadastro está vinculado a lançamentos ou fechamentos e não pode ser excluído.</p>
+        <div class="dialog-actions"><button class="primary-button" type="submit">Entendi</button></div>
+      </form>
+    </dialog>
+    <script type="module" src="./app.js?v=79107fe"></script>
   </body>
 </html>
