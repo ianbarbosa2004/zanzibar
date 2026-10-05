@@ -19,3 +19,7 @@ CLAREZA_DB_PASSWORD=(senha configurada somente no ambiente)
 ```
 
 Quando `CLAREZA_DB_PASSWORD` estiver presente, o servidor cria as tabelas necessárias e migra os dados dos arquivos JSON apenas se o banco estiver vazio. Sem essas variáveis, o desenvolvimento local continua usando JSON.
+
+O banco normalizado mantém `transactions` relacionado por ID às tabelas `expense_types`, `takers`, `locations` e `creditors`. A tabela `app_settings` armazena somente configurações gerais, como moeda e versão do schema; os cadastros são lidos das respectivas tabelas.
+
+As dependências de interface incluem `lucide` para iconografia e `chart.js` para gráficos no frontend JavaScript puro.
