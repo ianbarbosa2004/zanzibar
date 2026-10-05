@@ -28,6 +28,7 @@ try {
   @"
 put -r dist $remoteRoot
 put server.js $remoteRoot/server.js
+put -r src $remoteRoot
 put package.json $remoteRoot/package.json
 put package-lock.json $remoteRoot/package-lock.json
 put $restartPath $remoteRoot/tmp/restart.txt
