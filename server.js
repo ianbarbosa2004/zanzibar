@@ -1,9 +1,8 @@
 import { createServer } from "node:http";
 import { existsSync, promises as fs } from "node:fs";
 import { extname, join, normalize } from "node:path";
-import { basePath, contentTypes, dataFile, defaultSettings, incomesFile, port, root, settingsFile } from "./src/server/config.js";
-import { readJson, writeJson } from "./src/server/json-store.js";
-import { dbPool, initializeDatabase, readDatabase, writeDatabase } from "./src/server/database/repository.js";
+import { basePath, contentTypes, port, root } from "./src/server/config.js";
+import { dbPool, initializeDataStore, readData, writeData } from "./src/server/data-store.js";
 import { normalizeDataPayload } from "./src/shared/payload.js";
 
 const requestPath = (url) => {
@@ -32,10 +31,7 @@ const server = createServer(async (request, response) => {
       return response.end();
     }
     if (isDataApi(request.url) && request.method === "GET") {
-      const data = dbPool
-        ? await readDatabase()
-        : { transactions: await readJson(dataFile, []), incomes: await readJson(incomesFile, []), settings: await readJson(settingsFile, defaultSettings) };
-      return send(response, 200, data);
+      return send(response, 200, await readData());
     }
     if (isDataApi(request.url) && request.method === "PUT") {
       let payload;
@@ -44,13 +40,7 @@ const server = createServer(async (request, response) => {
       } catch {
         return send(response, 400, { error: "Dados inválidos." });
       }
-      if (dbPool) {
-        await writeDatabase(payload);
-      } else {
-        await writeJson(dataFile, payload.transactions);
-        await writeJson(incomesFile, payload.incomes || payload.transactions.filter((item) => item.type === "income"));
-        await writeJson(settingsFile, payload.settings);
-      }
+      await writeData(payload);
       return send(response, 200, { ok: true });
     }
     const normalizedPath = requestPath(request.url);
@@ -69,7 +59,7 @@ const server = createServer(async (request, response) => {
   }
 });
 
-initializeDatabase({ readJson, dataFile, settingsFile, incomesFile, defaultSettings }).then(() => {
+initializeDataStore().then(() => {
   server.listen(port, () => console.log(`Clareza disponível em http://localhost:${port}${dbPool ? " (MySQL)" : ""}`));
 }).catch((error) => {
   console.error("Não foi possível inicializar o banco de dados.", error);
