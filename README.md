@@ -72,6 +72,7 @@ Antes de publicar, execute:
 ```bash
 npm test
 npm run build
+node --check app.js
 node --check server.js
 git diff --check
 ```
@@ -131,7 +132,7 @@ As principais rotas são:
 | `PUT` | `/clareza/api/data` | Valida e persiste o estado completo |
 | `GET` | `/clareza/` | Entrega a aplicação compilada |
 
-O payload mantém compatibilidade com clientes antigos que enviam transações e receitas separadamente. Payloads inválidos retornam `400`; falhas internas retornam `500`.
+O caminho `/clareza` é o padrão e pode ser alterado por `CLAREZA_BASE_PATH`. O payload mantém compatibilidade com clientes antigos que enviam transações e receitas separadamente. Payloads inválidos retornam `400`; falhas internas retornam `500`.
 
 ## Publicação no cPanel
 
@@ -147,7 +148,7 @@ O script oficial de publicação é:
 .\.github\scripts\deploy.ps1
 ```
 
-Ele valida o código, executa o build, faz backup dos arquivos JSON, envia `dist/`, `server.js`, `src/` e os manifestos npm, reinicia o Passenger e valida:
+Ele valida `app.js` e `server.js`, executa o build, faz backup de `data.json` e `settings.json`, envia `dist/`, `server.js`, `src/` e os manifestos npm, remove os arquivos legados da raiz, reinicia o Passenger e valida:
 
 ```text
 https://itsites.com.br/clareza/
