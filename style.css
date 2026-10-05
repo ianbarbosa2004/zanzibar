@@ -121,6 +121,16 @@ td:first-child { color: var(--ink); font-weight: 650; }
 .pagination-button { padding: 8px 12px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: #fff; font-size: 10px; }
 .pagination-button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 .pagination-button:disabled { cursor: not-allowed; opacity: .45; }
+.location-panels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.location-panel { min-width: 0; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: #fbfcfb; }
+.location-panel-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.location-panel-heading h3 { margin: 0; font-size: 16px; }
+.location-panel-heading span, .page-size { color: var(--muted); font-size: 10px; }
+.page-size { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.page-size select { padding: 8px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: #fff; font-size: 10px; }
+.location-panel .toolbar { flex-wrap: wrap; }
+.location-panel .search-box { width: 100%; }
+.location-panel .table-wrap { overflow-x: auto; }
 .transactions-section { margin-bottom: 28px; padding: 26px; border: 1px solid var(--line); border-radius: 18px; background: #fff; box-shadow: var(--shadow-card); }
 .transactions-section .table-wrap { box-shadow: 0 8px 22px #1e4a3910; }
 .panel-note { color: var(--muted); font-size: 9px; }

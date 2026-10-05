@@ -11,8 +11,10 @@ let expenseTypes = [...defaultExpenseTypes];
 let takers = [...defaultTakers];
 let locations = [...defaultLocations];
 let creditors = [...defaultCreditors];
-let transactionPage = 1;
-const transactionsPerPage = 10;
+const paginationState = {
+  Casa: { page: 1, pageSize: 5 },
+  Zanzibar: { page: 1, pageSize: 5 },
+};
 
 const $ = (selector) => document.querySelector(selector);
 const formatMoney = (value) => money.format(value).replace(/\u00a0/g, " ");
@@ -85,8 +87,12 @@ function setupFormOptions() {
   const availableMonths = [...new Set([currentMonth(), ...transactions.map((item) => item.date.slice(0, 7))])].sort().reverse();
   $("#month-filter").innerHTML = availableMonths.map((month) => `<option value="${month}">${new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date(`${month}-15`))}</option>`).join("");
   $("#month-filter").value = currentMonth();
-  $("#type-filter").innerHTML = `<option value="all">Todos os tipos</option>${expenseTypes.map((type) => `<option>${escapeHtml(type)}</option>`).join("")}`;
-  $("#taker-filter").innerHTML = `<option value="all">Todos os tomadores</option>${takers.map((taker) => `<option>${escapeHtml(taker)}</option>`).join("")}`;
+  document.querySelectorAll("[data-type-filter]").forEach((filter) => {
+    filter.innerHTML = `<option value="all">Todos os tipos</option>${expenseTypes.map((type) => `<option>${escapeHtml(type)}</option>`).join("")}`;
+  });
+  document.querySelectorAll("[data-taker-filter]").forEach((filter) => {
+    filter.innerHTML = `<option value="all">Todos os tomadores</option>${takers.map((taker) => `<option>${escapeHtml(taker)}</option>`).join("")}`;
+  });
   applyLocationRules($("#location-options").dataset.value || "Casa");
 }
 
@@ -113,27 +119,33 @@ function renderChart() {
   }).join("");
 }
 
-function renderTransactions() {
-  const query = $("#search-input").value.toLowerCase().trim();
-  const type = $("#type-filter").value;
-  const taker = $("#taker-filter").value;
+function renderLocationTransactions(location) {
+  const panel = document.querySelector(`[data-location-panel="${location}"]`);
+  const state = paginationState[location];
+  const query = panel.querySelector("[data-search]").value.toLowerCase().trim();
+  const type = panel.querySelector("[data-type-filter]").value;
+  const taker = panel.querySelector("[data-taker-filter]").value;
   const filtered = monthTransactions().filter((item) => {
     const matchesSearch = `${item.description} ${item.expenseType} ${item.taker} ${item.location} ${item.creditor}`.toLowerCase().includes(query);
-    return matchesSearch && (type === "all" || item.expenseType === type) && (taker === "all" || item.taker === taker);
+    return item.location === location && matchesSearch && (type === "all" || item.expenseType === type) && (taker === "all" || item.taker === taker);
   }).sort((a, b) => b.date.localeCompare(a.date));
-  const totalPages = Math.max(1, Math.ceil(filtered.length / transactionsPerPage));
-  transactionPage = Math.min(transactionPage, totalPages);
-  const pageItems = filtered.slice((transactionPage - 1) * transactionsPerPage, transactionPage * transactionsPerPage);
-  $("#transactions-list").innerHTML = pageItems.map((item) => `<tr>
+  const totalPages = Math.max(1, Math.ceil(filtered.length / state.pageSize));
+  state.page = Math.min(state.page, totalPages);
+  const pageItems = filtered.slice((state.page - 1) * state.pageSize, state.page * state.pageSize);
+  panel.querySelector("[data-transactions-list]").innerHTML = pageItems.map((item) => `<tr>
     <td><div class="transaction-description"><span class="transaction-icon expense">↘</span>${escapeHtml(item.description)}</div></td>
     <td><span class="tag">${escapeHtml(item.expenseType)}</span></td><td>${escapeHtml(item.taker)}</td><td>${escapeHtml(item.location)}</td><td>${escapeHtml(item.creditor)}</td><td>${dateFormat.format(new Date(`${item.date}T12:00:00`))}</td>
     <td class="align-right expense-text">- ${formatMoney(item.amount)}</td>
     <td class="align-right"><button class="action-button" data-edit="${item.id}" aria-label="Editar ${escapeHtml(item.description)}">•••</button></td></tr>`).join("");
-  $("#empty-state").hidden = filtered.length > 0;
-  $("#pagination").hidden = filtered.length <= transactionsPerPage;
-  $("#pagination-status").textContent = `Página ${transactionPage} de ${totalPages}`;
-  $("#pagination-prev").disabled = transactionPage === 1;
-  $("#pagination-next").disabled = transactionPage === totalPages;
+  panel.querySelector("[data-empty-state]").hidden = filtered.length > 0;
+  panel.querySelector("[data-pagination]").hidden = filtered.length <= state.pageSize;
+  panel.querySelector("[data-pagination-status]").textContent = `Página ${state.page} de ${totalPages}`;
+  panel.querySelector("[data-pagination-prev]").disabled = state.page === 1;
+  panel.querySelector("[data-pagination-next]").disabled = state.page === totalPages;
+}
+
+function renderTransactions() {
+  Object.keys(paginationState).forEach(renderLocationTransactions);
 }
 
 function escapeHtml(value) {
@@ -248,7 +260,6 @@ $("#location-options").addEventListener("click", (event) => {
   if (!option) return;
   setLocation(option.dataset.location);
 });
-$("#transactions-list").addEventListener("click", (event) => { const button = event.target.closest("[data-edit]"); if (button) openDialog(transactions.find((item) => item.id === button.dataset.edit)); });
 $("#new-transaction").addEventListener("click", () => openDialog());
 $("#quick-new-transaction").addEventListener("click", () => openDialog());
 $("#close-dialog").addEventListener("click", () => $("#transaction-dialog").close());
@@ -259,7 +270,31 @@ $("#amount").addEventListener("input", (event) => {
 });
 $("#toggle-balance").addEventListener("click", () => { balanceVisible = !balanceVisible; $("#toggle-balance").textContent = balanceVisible ? "◉" : "◎"; renderSummary(); });
 $("#month-filter").addEventListener("change", render);
-["search-input", "type-filter", "taker-filter"].forEach((id) => $(`#${id}`).addEventListener("input", () => { transactionPage = 1; renderTransactions(); }));
+document.querySelectorAll("[data-location-panel]").forEach((panel) => {
+  panel.querySelectorAll("[data-search], [data-type-filter], [data-taker-filter]").forEach((control) => control.addEventListener("input", () => {
+    paginationState[panel.dataset.locationPanel].page = 1;
+    renderLocationTransactions(panel.dataset.locationPanel);
+  }));
+  panel.querySelector("[data-page-size]").addEventListener("change", (event) => {
+    const state = paginationState[panel.dataset.locationPanel];
+    state.pageSize = Number(event.target.value);
+    state.page = 1;
+    renderLocationTransactions(panel.dataset.locationPanel);
+  });
+  panel.querySelector("[data-pagination-prev]").addEventListener("click", () => {
+    const state = paginationState[panel.dataset.locationPanel];
+    if (state.page > 1) { state.page -= 1; renderLocationTransactions(panel.dataset.locationPanel); }
+  });
+  panel.querySelector("[data-pagination-next]").addEventListener("click", () => {
+    const state = paginationState[panel.dataset.locationPanel];
+    state.page += 1;
+    renderLocationTransactions(panel.dataset.locationPanel);
+  });
+  panel.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-edit]");
+    if (button) openDialog(transactions.find((item) => item.id === button.dataset.edit));
+  });
+});
 $("#month-filter").addEventListener("change", () => { render(); renderReports(); });
 $("#pagination-prev").addEventListener("click", () => { if (transactionPage > 1) { transactionPage -= 1; renderTransactions(); } });
 $("#pagination-next").addEventListener("click", () => { transactionPage += 1; renderTransactions(); });

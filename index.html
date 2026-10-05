@@ -61,24 +61,30 @@
             <div><p class="eyebrow">Lançamentos</p><h2>Despesas registradas</h2><p class="section-description">Tudo que foi lançado no mês selecionado, em um só lugar.</p></div>
             <div class="section-actions"><select id="month-filter" aria-label="Selecionar mês"></select><button class="primary-button" id="new-transaction" type="button"><span>＋</span> Nova despesa</button></div>
           </div>
-          <div class="toolbar">
-            <label class="search-box"><span>⌕</span><input id="search-input" type="search" placeholder="Buscar despesa..." /></label>
-            <select id="type-filter" aria-label="Filtrar por tipo"><option value="all">Todos os tipos</option></select>
-            <select id="taker-filter" aria-label="Filtrar por tomador"><option value="all">Todos os tomadores</option></select>
-            <span class="toolbar-hint">Use os filtros para encontrar um lançamento</span>
+          <div class="location-panels">
+            <div class="location-panel" data-location-panel="Casa">
+              <div class="location-panel-heading"><h3>Casa</h3><span>Despesas do local Casa</span></div>
+              <div class="toolbar">
+                <label class="search-box"><span>⌕</span><input data-search type="search" placeholder="Buscar em Casa..." /></label>
+                <select data-type-filter aria-label="Filtrar despesas de Casa por tipo"><option value="all">Todos os tipos</option></select>
+                <select data-taker-filter aria-label="Filtrar despesas de Casa por tomador"><option value="all">Todos os tomadores</option></select>
+                <label class="page-size">Por página <select data-page-size aria-label="Registros por página em Casa"><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label>
+              </div>
+              <div class="table-wrap"><table><thead><tr><th>Descrição</th><th>Tipo</th><th>Tomador</th><th>Local</th><th>Credor</th><th>Data</th><th class="align-right">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody data-transactions-list></tbody></table><div data-empty-state class="empty-state" hidden>Nenhuma transação encontrada.</div></div>
+              <nav data-pagination class="pagination" aria-label="Paginação das despesas de Casa" hidden><button data-pagination-prev class="pagination-button" type="button">← Anterior</button><span data-pagination-status aria-live="polite"></span><button data-pagination-next class="pagination-button" type="button">Próxima →</button></nav>
+            </div>
+            <div class="location-panel" data-location-panel="Zanzibar">
+              <div class="location-panel-heading"><h3>Zanzibar</h3><span>Despesas do local Zanzibar</span></div>
+              <div class="toolbar">
+                <label class="search-box"><span>⌕</span><input data-search type="search" placeholder="Buscar em Zanzibar..." /></label>
+                <select data-type-filter aria-label="Filtrar despesas de Zanzibar por tipo"><option value="all">Todos os tipos</option></select>
+                <select data-taker-filter aria-label="Filtrar despesas de Zanzibar por tomador"><option value="all">Todos os tomadores</option></select>
+                <label class="page-size">Por página <select data-page-size aria-label="Registros por página em Zanzibar"><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label>
+              </div>
+              <div class="table-wrap"><table><thead><tr><th>Descrição</th><th>Tipo</th><th>Tomador</th><th>Local</th><th>Credor</th><th>Data</th><th class="align-right">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody data-transactions-list></tbody></table><div data-empty-state class="empty-state" hidden>Nenhuma transação encontrada.</div></div>
+              <nav data-pagination class="pagination" aria-label="Paginação das despesas de Zanzibar" hidden><button data-pagination-prev class="pagination-button" type="button">← Anterior</button><span data-pagination-status aria-live="polite"></span><button data-pagination-next class="pagination-button" type="button">Próxima →</button></nav>
+            </div>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Descrição</th><th>Tipo</th><th>Tomador</th><th>Local</th><th>Credor</th><th>Data</th><th class="align-right">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead>
-              <tbody id="transactions-list"></tbody>
-            </table>
-            <div id="empty-state" class="empty-state" hidden>Nenhuma transação encontrada.</div>
-          </div>
-          <nav id="pagination" class="pagination" aria-label="Paginação das despesas" hidden>
-            <button id="pagination-prev" class="pagination-button" type="button">← Anterior</button>
-            <span id="pagination-status" aria-live="polite"></span>
-            <button id="pagination-next" class="pagination-button" type="button">Próxima →</button>
-          </nav>
         </section>
 
         <section class="dashboard-grid">
