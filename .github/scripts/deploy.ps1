@@ -11,7 +11,7 @@ $backupStamp = Get-Date -Format "yyyyMMdd-HHmmss"
 function Invoke-Checked {
   param([string]$Command, [string[]]$Arguments)
   & $Command @Arguments
-  if ($LASTEXITCODE -ne 0) { throw "Comando falhou: $Command" }
+  if ($LASTEXITCODE -ne 0) { throw "Comando falhou: $Command (exit code $LASTEXITCODE)" }
 }
 
 try {
@@ -23,7 +23,7 @@ try {
   node --check server.js
   npm run build
 
-  Invoke-Checked "ssh" @("-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new", $remoteTarget, "mkdir -p $remoteRoot/backups $remoteRoot/tmp; cp $remoteRoot/data.json $remoteRoot/backups/data-$backupStamp.json 2>/dev/null || true; cp $remoteRoot/settings.json $remoteRoot/backups/settings-$backupStamp.json 2>/dev/null || true")
+  Invoke-Checked "ssh" @("-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new", $remoteTarget, "mkdir -p $remoteRoot/backups $remoteRoot/tmp $remoteRoot/src; cp $remoteRoot/data.json $remoteRoot/backups/data-$backupStamp.json 2>/dev/null || true; cp $remoteRoot/settings.json $remoteRoot/backups/settings-$backupStamp.json 2>/dev/null || true")
   New-Item -ItemType File -Path $restartPath -Force | Out-Null
   @"
 cd $remoteRoot
