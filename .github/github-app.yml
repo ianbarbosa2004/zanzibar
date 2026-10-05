@@ -6,7 +6,7 @@ instructions: |
 
 scripts:
   - name: Atualizar online
-    command: powershell -NoProfile -ExecutionPolicy Bypass -Command "& .github\scripts\deploy.ps1; exit $LASTEXITCODE"
+    command: powershell -NoProfile -ExecutionPolicy Bypass -File .github\scripts\deploy.ps1; $code = $LASTEXITCODE; exit $code
   - name: Instalar dependências
     command: npm ci
     triggers:
