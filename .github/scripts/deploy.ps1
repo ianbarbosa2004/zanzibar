@@ -23,15 +23,16 @@ try {
   node --check server.js
   npm run build
 
-  Invoke-Checked "ssh" @("-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new", $remoteTarget, "mkdir -p $remoteRoot/backups; cp $remoteRoot/data.json $remoteRoot/backups/data-$backupStamp.json 2>/dev/null || true; cp $remoteRoot/settings.json $remoteRoot/backups/settings-$backupStamp.json 2>/dev/null || true")
+  Invoke-Checked "ssh" @("-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new", $remoteTarget, "mkdir -p $remoteRoot/backups $remoteRoot/tmp; cp $remoteRoot/data.json $remoteRoot/backups/data-$backupStamp.json 2>/dev/null || true; cp $remoteRoot/settings.json $remoteRoot/backups/settings-$backupStamp.json 2>/dev/null || true")
   New-Item -ItemType File -Path $restartPath -Force | Out-Null
   @"
-put -r dist $remoteRoot
-put server.js $remoteRoot/server.js
-put -r src $remoteRoot
-put package.json $remoteRoot/package.json
-put package-lock.json $remoteRoot/package-lock.json
-put $restartPath $remoteRoot/tmp/restart.txt
+cd $remoteRoot
+put -r dist
+put server.js
+put -r src
+put package.json
+put package-lock.json
+put $restartPath tmp/restart.txt
 bye
 "@ | Set-Content -LiteralPath $tempBatch -Encoding ascii
   Invoke-Checked "sftp" @("-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new", "-b", $tempBatch, $remoteTarget)
