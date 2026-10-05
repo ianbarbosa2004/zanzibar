@@ -340,29 +340,52 @@ $("#cancel-income-dialog").addEventListener("click", () => $("#income-dialog").c
 function openCashClosingDialog(item) {
   $("#cash-closing-id").value = item?.id || "";
   $("#cash-closing-date").value = item?.date || localDate();
-  $("#cash-closing-payment-method").innerHTML = paymentMethods.map((method) => `<option>${escapeHtml(method)}</option>`).join("");
-  $("#cash-closing-payment-method").value = item?.paymentMethod || paymentMethods[0];
-  $("#cash-closing-sale-count").value = item?.saleCount || 0;
-  $("#cash-closing-amount").value = item ? formatInputAmount(item.totalAmount) : "";
-  $("#cash-closing-total-preview").textContent = item ? formatMoney(item.totalAmount) : "R$ 0,00";
+  const rows = item?.items || cashClosings.filter((entry) => entry.date === item?.date);
+  $("#cash-closing-methods").innerHTML = paymentMethods.map((method) => {
+    const entry = rows.find((row) => row.paymentMethod === method);
+    return `<label class="cash-closing-method"><span>${escapeHtml(method)}</span><input data-closing-sales type="number" min="0" step="1" value="${entry?.saleCount || 0}" aria-label="Vendas com ${escapeHtml(method)}" /><input data-closing-amount type="text" inputmode="decimal" dir="rtl" value="${entry ? formatInputAmount(entry.totalAmount) : ""}" placeholder="R$ 0,00" aria-label="Valor recebido em ${escapeHtml(method)}" /></label>`;
+  }).join("");
+  updateCashClosingTotal();
   $("#cash-closing-dialog").showModal();
 }
 $("#new-cash-closing").addEventListener("click", () => openCashClosingDialog());
 $("#close-cash-closing-dialog").addEventListener("click", () => $("#cash-closing-dialog").close());
 $("#cancel-cash-closing-dialog").addEventListener("click", () => $("#cash-closing-dialog").close());
-$("#cash-closing-amount").addEventListener("input", (event) => {
+function updateCashClosingTotal() {
+  const total = [...document.querySelectorAll("[data-closing-amount]")].reduce((sum, input) => sum + parseInputAmount(input.value), 0);
+  $("#cash-closing-total-preview").textContent = formatMoney(total);
+}
+$("#cash-closing-methods").addEventListener("input", (event) => {
+  if (event.target.matches("[data-closing-amount]")) {
+    const amount = parseInputAmount(event.target.value);
+    event.target.value = amount ? formatInputAmount(amount) : "";
+  }
+  updateCashClosingTotal();
+});
+/* Keep the total derived from every receiving method. */
+$("#cash-closing-amount")?.addEventListener("input", (event) => {
   const amount = parseInputAmount(event.target.value);
   event.target.value = amount ? formatInputAmount(amount) : "";
   $("#cash-closing-total-preview").textContent = formatMoney(amount);
 });
 $("#cash-closing-form").addEventListener("submit", (event) => {
   event.preventDefault();
-  const amount = parseInputAmount($("#cash-closing-amount").value);
-  if (!amount) return showFeedback("Informe um valor maior que zero.");
+  const date = $("#cash-closing-date").value;
   const id = $("#cash-closing-id").value;
-  const item = { id: id || crypto.randomUUID(), date: $("#cash-closing-date").value, paymentMethod: $("#cash-closing-payment-method").value, saleCount: Number($("#cash-closing-sale-count").value), totalAmount: amount };
-  cashClosings = id ? cashClosings.map((entry) => entry.id === id ? item : entry) : [item, ...cashClosings];
-  save().then(() => { renderCashClosings(); $("#cash-closing-dialog").close(); showFeedback(id ? "Fechamento atualizado." : "Fechamento adicionado."); }).catch(() => showFeedback("Não foi possível salvar o fechamento."));
+  if (!id && cashClosings.some((entry) => entry.date === date)) return showFeedback("Já existe fechamento para esta data.");
+  const rows = [...document.querySelectorAll(".cash-closing-method")].map((row, index) => ({
+    id: id && index === 0 ? id : crypto.randomUUID(),
+    date,
+    paymentMethod: paymentMethods[index],
+    saleCount: Number(row.querySelector("[data-closing-sales]").value || 0),
+    totalAmount: parseInputAmount(row.querySelector("[data-closing-amount]").value),
+  })).filter((entry) => entry.saleCount || entry.totalAmount);
+  const amount = rows.reduce((sum, entry) => sum + entry.totalAmount, 0);
+  if (!amount) return showFeedback("Informe um valor maior que zero.");
+  cashClosings = cashClosings.filter((entry) => entry.date !== date).concat(rows);
+  const income = { id: `cash-closing-income-${date}`, description: `Vendas dia ${formatTransactionDate(date)}`, amount, type: "income", source: "Vendas", incomeSourceId: 5, date };
+  incomes = incomes.filter((entry) => entry.id !== income.id).concat(income);
+  save().then(() => { renderCashClosings(); render(); renderReports(); $("#cash-closing-dialog").close(); showFeedback(id ? "Fechamento atualizado." : "Fechamento adicionado."); }).catch(() => showFeedback("Não foi possível salvar o fechamento."));
 });
 $("#cash-closings-list").addEventListener("click", (event) => {
   const button = event.target.closest("[data-edit-cash-closing]");
