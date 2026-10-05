@@ -10,6 +10,9 @@ const settingsFile = join(root, "settings.json");
 const port = Number(process.env.PORT) || 4173;
 const contentTypes = { ".css": "text/css", ".js": "text/javascript", ".json": "application/json", ".html": "text/html" };
 const basePath = process.env.CLAREZA_BASE_PATH || "/clareza";
+const databaseHost = process.env.CLAREZA_DB_HOST?.trim() || "localhost";
+const databaseName = process.env.CLAREZA_DB_NAME?.trim();
+const databaseUser = process.env.CLAREZA_DB_USER?.trim();
 const requestPath = (url) => {
   const pathname = new URL(url || "/", "http://localhost").pathname;
   if (basePath !== "/" && pathname.startsWith(`${basePath}/`)) return pathname.slice(basePath.length) || "/";
@@ -18,11 +21,11 @@ const requestPath = (url) => {
 const isDataApi = (url) => /\/api\/data\/?$/.test(requestPath(url));
 const databaseConfigured = Boolean(process.env.CLAREZA_DB_PASSWORD);
 const dbPool = databaseConfigured ? mysql.createPool({
-  host: process.env.CLAREZA_DB_HOST || "localhost",
+  host: databaseHost,
   port: Number(process.env.CLAREZA_DB_PORT) || 3306,
-  user: process.env.CLAREZA_DB_USER,
+  user: databaseUser,
   password: process.env.CLAREZA_DB_PASSWORD,
-  database: process.env.CLAREZA_DB_NAME,
+  database: databaseName,
   waitForConnections: true,
   connectionLimit: 5,
   charset: "utf8mb4",
@@ -45,7 +48,7 @@ async function body(request) {
 
 async function initializeDatabase() {
   if (!dbPool) return;
-  if (!process.env.CLAREZA_DB_USER || !process.env.CLAREZA_DB_NAME) throw new Error("Configuração MySQL incompleta.");
+  if (!databaseUser || !databaseName) throw new Error("Configuração MySQL incompleta.");
   await dbPool.query(`CREATE TABLE IF NOT EXISTS transactions (
     id VARCHAR(36) PRIMARY KEY,
     description VARCHAR(60) NOT NULL,
