@@ -1,4 +1,4 @@
-import { splitTransactions } from "./src/shared/transactions.js";
+import { createAppState } from "./src/client/app-state.js";
 import { inMonth, groupTotals, summarize } from "./src/shared/finance.js";
 import { currentMonth, localDate, todayLabel } from "./src/shared/dates.js";
 import { formatDate, formatInputAmount, formatMoney, formatTransactionDate, parseInputAmount } from "./src/shared/formatters.js";
@@ -32,15 +32,13 @@ const selectedMonth = () => $("#month-filter").value || currentMonth();
 async function loadData() {
   try {
     const data = await fetchData(API_URL);
-    ({ transactions, incomes } = splitTransactions(data.transactions || data.incomes || []));
-    if (data.incomes?.length && !data.transactions?.some((item) => item.type === "income")) {
-      ({ transactions, incomes } = splitTransactions([...(data.transactions || []), ...data.incomes]));
-    }
-    expenseTypes = data.settings.expenseTypes?.length ? data.settings.expenseTypes : [...defaultExpenseTypes];
-    takers = data.settings.takers?.length ? data.settings.takers : [...defaultTakers];
-    locations = data.settings.locations?.length ? data.settings.locations : [...defaultLocations];
-    creditors = data.settings.creditors?.length ? data.settings.creditors : [...defaultCreditors];
-    incomeSources = data.settings.incomeSources?.length ? data.settings.incomeSources : [...defaultIncomeSources];
+    ({ transactions, incomes, expenseTypes, takers, locations, creditors, incomeSources } = createAppState(data, {
+      expenseTypes: defaultExpenseTypes,
+      takers: defaultTakers,
+      locations: defaultLocations,
+      creditors: defaultCreditors,
+      incomeSources: defaultIncomeSources,
+    }));
     return;
   } catch {
     const localState = readLocalState({
@@ -63,8 +61,13 @@ async function loadData() {
       return;
     }
     const data = await fetchData("./data.json");
-    transactions = data.map((item) => ({ ...item, type: "expense" }));
-    incomes = JSON.parse(localStorage.getItem("clareza-incomes") || "[]");
+    ({ transactions, incomes } = createAppState({ transactions: data, incomes: [], settings: {} }, {
+      expenseTypes: defaultExpenseTypes,
+      takers: defaultTakers,
+      locations: defaultLocations,
+      creditors: defaultCreditors,
+      incomeSources: defaultIncomeSources,
+    }));
   }
 }
 
