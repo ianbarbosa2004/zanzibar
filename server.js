@@ -66,6 +66,28 @@ async function initializeDatabase() {
     id TINYINT UNSIGNED PRIMARY KEY,
     settings JSON NOT NULL
   ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+  const appSettingColumns = {
+    currency: "CHAR(3) NOT NULL DEFAULT 'BRL'",
+    schema_version: "INT UNSIGNED NOT NULL DEFAULT 1",
+  };
+  for (const [column, definition] of Object.entries(appSettingColumns)) {
+    const [[found]] = await dbPool.query(
+      "SELECT COUNT(*) AS total FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'app_settings' AND column_name = ?",
+      [column],
+    );
+    if (!found.total) await dbPool.query(`ALTER TABLE app_settings ADD COLUMN ${column} ${definition}`);
+  }
+  const [[settingsColumn]] = await dbPool.query(
+    "SELECT COUNT(*) AS total FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'app_settings' AND column_name = 'settings'",
+  );
+  if (settingsColumn.total) {
+    await dbPool.query(
+      `UPDATE app_settings
+       SET currency = COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(settings, '$.currency')), ''), 'BRL'),
+           schema_version = COALESCE(JSON_EXTRACT(settings, '$.schemaVersion'), 1)`,
+    );
+    await dbPool.query("ALTER TABLE app_settings DROP COLUMN settings");
+  }
   for (const table of ["expense_types", "takers", "locations", "creditors"]) {
     await dbPool.query(`CREATE TABLE IF NOT EXISTS ${table} (
       id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -85,6 +107,7 @@ async function initializeDatabase() {
   for (const [table, names] of Object.entries(catalogs)) {
     for (const name of names.filter(Boolean)) await dbPool.execute(`INSERT IGNORE INTO ${table} (name) VALUES (?)`, [name]);
   }
+  await dbPool.execute("INSERT IGNORE INTO takers (name) VALUES ('Zanzibar')");
   const columns = {
     expense_type_id: "INT UNSIGNED NULL",
     taker_id: "INT UNSIGNED NULL",
@@ -137,8 +160,7 @@ async function initializeDatabase() {
     }
   }
   await dbPool.query(
-    "INSERT INTO app_settings (id, settings) VALUES (1, ?) ON DUPLICATE KEY UPDATE settings = VALUES(settings)",
-    [JSON.stringify({ currency: "BRL", schemaVersion: 2 })],
+    "INSERT INTO app_settings (id, currency, schema_version) VALUES (1, 'BRL', 3) ON DUPLICATE KEY UPDATE schema_version = 3",
   );
   if (transactionCount.total === 0 && transactions.length) console.log(`MySQL inicializado com ${transactions.length} transações migradas.`);
 }
@@ -153,8 +175,7 @@ async function readDatabase() {
     JOIN locations l ON l.id = t.location_id
     JOIN creditors c ON c.id = t.creditor_id
     ORDER BY t.transaction_date DESC, t.updated_at DESC`);
-  const [[settings]] = await dbPool.query("SELECT settings FROM app_settings WHERE id = 1");
-  const value = settings?.settings;
+  const [[settings]] = await dbPool.query("SELECT currency, schema_version AS schemaVersion FROM app_settings WHERE id = 1");
   const [expenseTypes] = await dbPool.query("SELECT name FROM expense_types ORDER BY name");
   const [takers] = await dbPool.query("SELECT name FROM takers ORDER BY name");
   const [locations] = await dbPool.query("SELECT name FROM locations ORDER BY name");
@@ -162,7 +183,8 @@ async function readDatabase() {
   return {
     transactions: rows.map((item) => ({ ...item, amount: Number(item.amount) })),
     settings: {
-      ...(typeof value === "string" ? JSON.parse(value) : (value || {})),
+      currency: settings?.currency || "BRL",
+      schemaVersion: settings?.schemaVersion || 3,
       expenseTypes: expenseTypes.map((item) => item.name),
       takers: takers.map((item) => item.name),
       locations: locations.map((item) => item.name),
@@ -201,9 +223,8 @@ async function writeDatabase(payload) {
       );
     }
     await connection.execute(
-      `INSERT INTO app_settings (id, settings) VALUES (1, ?)
-       ON DUPLICATE KEY UPDATE settings = VALUES(settings)`,
-      [JSON.stringify({ currency: "BRL", schemaVersion: 2 })],
+      `INSERT INTO app_settings (id, currency, schema_version) VALUES (1, 'BRL', 3)
+       ON DUPLICATE KEY UPDATE schema_version = 3`,
     );
     await connection.commit();
   } catch (error) {
