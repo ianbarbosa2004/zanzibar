@@ -1,7 +1,6 @@
 import { createServer } from "node:http";
-import { existsSync, promises as fs } from "node:fs";
-import { extname, join, normalize } from "node:path";
-import { basePath, contentTypes, port, root } from "./src/server/config.js";
+import { readStaticFile } from "./src/server/static-files.js";
+import { basePath, port } from "./src/server/config.js";
 import { dbPool, initializeDataStore, readData, writeData } from "./src/server/data-store.js";
 import { normalizeDataPayload } from "./src/shared/payload.js";
 
@@ -45,14 +44,9 @@ const server = createServer(async (request, response) => {
     }
     const normalizedPath = requestPath(request.url);
     const requested = normalizedPath === "/" ? "index.html" : normalizedPath.replace(/^\/+/, "");
-    const publicRoot = existsSync(join(root, "dist")) ? join(root, "dist") : root;
-    let file = normalize(join(publicRoot, requested));
-    if (!file.startsWith(publicRoot)) return send(response, 404, { error: "Não encontrado." });
-    if (!existsSync(file)) {
-      file = join(publicRoot, "index.html");
-      if (!existsSync(file)) return send(response, 404, { error: "Não encontrado." });
-    }
-    return send(response, 200, await fs.readFile(file), contentTypes[extname(file)] || "application/octet-stream");
+    const file = await readStaticFile(requested);
+    if (!file) return send(response, 404, { error: "Não encontrado." });
+    return send(response, 200, file.body, file.contentType);
   } catch (error) {
     console.error(error);
     return send(response, 500, { error: "Erro interno ao salvar os dados." });

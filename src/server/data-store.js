@@ -2,6 +2,8 @@ import { dataFile, defaultSettings, incomesFile, settingsFile } from "./config.j
 import { dbPool, initializeDatabase, readDatabase, writeDatabase } from "./database/repository.js";
 import { readJson, writeJson } from "./json-store.js";
 
+export { dbPool };
+
 export async function initializeDataStore() {
   await initializeDatabase({ readJson, dataFile, settingsFile, incomesFile, defaultSettings });
 }
