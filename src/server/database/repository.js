@@ -137,7 +137,8 @@ export async function readDatabase() {
   const [[settings]] = await dbPool.query("SELECT currency, schema_version AS schemaVersion FROM app_settings WHERE id = 1");
   const catalogRows = {};
   for (const table of ["expense_types", "takers", "locations", "creditors", "payment_methods", "income_sources"]) {
-    const [rows] = await dbPool.query(`SELECT name, COALESCE(display_order, 0) AS displayOrder, is_active AS isActive FROM ${table} ORDER BY COALESCE(display_order, 0), name`);
+    const hasOrder = ["takers", "creditors", "payment_methods", "income_sources"].includes(table);
+    const [rows] = await dbPool.query(`SELECT name, ${hasOrder ? "display_order" : "0"} AS displayOrder, is_active AS isActive FROM ${table} ORDER BY ${hasOrder ? "display_order," : ""} name`);
     catalogRows[table] = rows;
   }
   const expenseTypes = catalogRows.expense_types;
