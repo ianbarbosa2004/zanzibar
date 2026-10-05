@@ -168,7 +168,7 @@ td:first-child { color: var(--ink); font-weight: 650; }
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
 dialog { width: min(480px, calc(100% - 32px)); padding: 0; border: 0; border-radius: 16px; color: var(--ink); box-shadow: 0 20px 60px #193b3730; }
 dialog::backdrop { background: #193b3766; }
-#transaction-form { padding: 25px; }
+#transaction-form, #income-form { padding: 25px; }
 .dialog-heading { display: flex; align-items: start; justify-content: space-between; margin-bottom: 22px; }
 .dialog-heading h2 { margin: 0; font-size: 21px; }
 .close-button { color: var(--muted); background: transparent; font-size: 25px; line-height: 1; }
@@ -186,6 +186,8 @@ label input, label select { display: block; width: 100%; margin-top: 6px; paddin
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
 .secondary-button { padding: 11px 15px; border-radius: 8px; color: #52625b; background: #edf1ed; font-size: 13px; }
+label input:focus-visible, label select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+dialog { overscroll-behavior: contain; }
 @media (max-width: 1050px) { .reports-grid { grid-template-columns: 1fr 1fr; } .reports-grid .report-panel:last-child { grid-column: span 2; } }
 @media (max-width: 850px) { .sidebar { width: 205px; } .content { padding: 30px 3%; } .overview { grid-template-columns: 1fr 1fr; gap: 18px; } .balance-card { grid-column: span 2; } .dashboard-grid { grid-template-columns: 1fr; gap: 18px; } .reports-grid, .registry-grid { grid-template-columns: 1fr; gap: 18px; } .reports-grid .report-panel:last-child { grid-column: auto; } }
 @media (max-width: 600px) { .app-shell { display: block; } .sidebar { align-items: center; flex-direction: row; width: 100%; padding: 14px 18px; } .brand { margin: 0; } .main-nav, .sidebar-bottom { display: none; } .content { padding: 25px 16px; } .topbar { margin-bottom: 25px; } .topbar h1 { font-size: 24px; } .overview { display: block; margin-bottom: 22px; } .balance-card, .metric-card, .panel { margin-bottom: 16px; } .metric-card { display: inline-flex; width: calc(50% - 7px); min-height: 128px; margin-right: 7px; } .dashboard-grid { margin: 22px 0 36px; } .toolbar { align-items: stretch; flex-wrap: wrap; } .search-box { width: 100%; } .toolbar select { flex: 1; min-width: 130px; } .toolbar-hint { display: none; } table { min-width: 700px; } .table-wrap { overflow-x: auto; } .section-heading { align-items: flex-start; gap: 12px; } .section-heading h2 { font-size: 18px; } .section-actions { flex-direction: column; align-items: stretch; } .section-actions select { width: 100%; } .primary-button { padding: 10px; } .transactions-section { margin-bottom: 22px; padding: 14px; } }

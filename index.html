@@ -45,9 +45,20 @@
               <span class="card-label">Despesas do mês <small>● atualizado agora</small></span>
               <button class="icon-button" id="toggle-balance" type="button" aria-label="Ocultar despesas">◉</button>
             </div>
+            <div class="metric-card income"><span class="metric-icon">↗</span><div><span>Receitas do mês</span><strong id="income-value">R$ 0,00</strong><em id="income-caption">0 entradas registradas</em></div></div>
+            <div class="metric-card"><span class="metric-icon">=</span><div><span>Saldo do mês</span><strong id="balance-value">R$ 0,00</strong><em>receitas menos despesas</em></div></div>
             <strong id="expense-value" class="balance-value">R$ 0,00</strong>
             <p id="expense-caption" class="balance-caption">0 despesas registradas</p>
             <div class="balance-decoration" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+          </div>
+        </section>
+
+        <section id="receitas" class="transactions-section income-section">
+          <div class="section-heading"><div><p class="eyebrow">Entradas</p><h2>Receitas registradas</h2></div><button class="primary-button" id="new-income" type="button"><span>＋</span> Nova receita</button></div>
+          <div class="location-panel" data-income-panel>
+            <div class="toolbar"><label class="search-box"><span>⌕</span><input data-income-search type="search" placeholder="Buscar receita..." /></label><select data-income-source-filter aria-label="Filtrar receitas por fonte"><option value="all">Todas as fontes</option></select></div>
+            <div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Fonte</th><th class="align-right">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody data-income-list></tbody></table><div data-income-empty class="empty-state" hidden>Nenhuma receita encontrada.</div></div>
+            <nav data-income-pagination class="pagination" aria-label="Paginação das receitas" hidden><span class="pagination-controls"><button data-income-pagination-prev class="pagination-button" type="button">← Anterior</button><span data-income-pagination-status aria-live="polite"></span><button data-income-pagination-next class="pagination-button" type="button">Próxima →</button></span><label class="page-size">Por página <select data-income-page-size aria-label="Registros por página em receitas"><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label></nav>
           </div>
         </section>
 
@@ -93,6 +104,9 @@
             <h2>Registre enquanto lembra</h2>
             <button class="secondary-button quick-action" id="quick-new-transaction" type="button">Adicionar despesa <span>→</span></button>
           </article>
+          <article class="panel quick-panel income-quick-panel">
+            <p class="eyebrow">Atalho</p><h2>Registre uma entrada</h2><button class="secondary-button quick-action" id="quick-new-income" type="button">Adicionar receita <span>→</span></button>
+          </article>
         </section>
 
         <section id="relatorios" class="reports-section">
@@ -111,6 +125,7 @@
             <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">Pessoas ou áreas</p><h3>Tomadores da despesa</h3></div><button id="add-taker" class="small-button" type="button">＋ Novo tomador</button></div><ul id="taker-registry-list" class="registry-list"></ul></article>
             <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">Onde aconteceu</p><h3>Locais da despesa</h3></div><button id="add-location" class="small-button" type="button">＋ Novo local</button></div><ul id="location-registry-list" class="registry-list"></ul></article>
             <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">Para quem foi pago</p><h3>Credores</h3></div><button id="add-creditor" class="small-button" type="button">＋ Novo credor</button></div><ul id="creditor-registry-list" class="registry-list"></ul></article>
+            <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">De onde veio</p><h3>Fontes de receita</h3></div><button id="add-income-source" class="small-button" type="button">＋ Nova fonte</button></div><ul id="income-source-registry-list" class="registry-list"></ul></article>
           </div>
         </section>
       </section>
@@ -130,6 +145,17 @@
         <label>Credor<select id="creditor" name="creditor"></select></label>
         <label>Data<input id="date" name="date" type="date" required /></label>
         <div class="dialog-actions"><button class="secondary-button" id="cancel-dialog" type="button">Cancelar</button><button class="primary-button" type="submit">Salvar despesa</button></div>
+      </form>
+    </dialog>
+    <dialog id="income-dialog">
+      <form id="income-form" method="dialog">
+        <div class="dialog-heading"><div><p class="eyebrow">Nova movimentação</p><h2 id="income-dialog-title">Nova receita</h2></div><button class="close-button" id="close-income-dialog" type="button" aria-label="Fechar">×</button></div>
+        <input id="income-id" type="hidden" />
+        <label>Descrição<input id="income-description" name="incomeDescription" required maxlength="60" placeholder="Ex.: Salário" /></label>
+        <label>Valor<input id="income-amount" name="incomeAmount" type="text" inputmode="decimal" dir="rtl" autocomplete="off" required placeholder="R$ 0,00" /></label>
+        <label>Fonte<select id="income-source" name="incomeSource"></select></label>
+        <label>Data<input id="income-date" name="incomeDate" type="date" required /></label>
+        <div class="dialog-actions"><button class="secondary-button" id="cancel-income-dialog" type="button">Cancelar</button><button class="primary-button" type="submit">Salvar receita</button></div>
       </form>
     </dialog>
     <script type="module" src="./app.js?v=79105fe"></script>

@@ -3,4 +3,5 @@ dist/
 
 # Runtime data is local and must survive repository updates.
 data.json
+incomes.json
 settings.json
