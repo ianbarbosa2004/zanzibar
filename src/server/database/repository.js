@@ -157,12 +157,13 @@ export async function writeDatabase(payload) {
   const connection = await dbPool.getConnection();
   try {
     await connection.beginTransaction();
-    const catalogTables = { expenseType: "expense_types", taker: "takers", location: "locations", creditor: "creditors", paymentMethod: "payment_methods" };
-    const catalogSettings = { expenseType: "expenseTypes", taker: "takers", location: "locations", creditor: "creditors", paymentMethod: "paymentMethods" };
+    const catalogTables = { expenseType: "expense_types", taker: "takers", location: "locations", creditor: "creditors", paymentMethod: "payment_methods", incomeSource: "income_sources" };
+    const catalogSettings = { expenseType: "expenseTypes", taker: "takers", location: "locations", creditor: "creditors", paymentMethod: "paymentMethods", incomeSource: "incomeSources" };
     const ids = {};
     for (const [property, table] of Object.entries(catalogTables)) {
       ids[property] = new Map();
-      const values = [...new Set([...payload.transactions.map((item) => item[property]), ...(payload.settings?.[catalogSettings[property]] || [])].filter(Boolean))];
+      const sourceEntries = property === "incomeSource" ? [...(payload.incomes || []), ...(payload.transactions || [])] : payload.transactions;
+      const values = [...new Set([...sourceEntries.map((item) => property === "incomeSource" ? item.source : item[property]), ...(payload.settings?.[catalogSettings[property]] || [])].filter(Boolean))];
       for (const value of values) await connection.execute(`INSERT IGNORE INTO ${table} (name) VALUES (?)`, [value]);
       const [rows] = await connection.query(`SELECT id, name FROM ${table}`);
       rows.forEach((item) => ids[property].set(item.name, item.id));
