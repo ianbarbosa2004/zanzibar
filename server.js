@@ -4,6 +4,7 @@ import { extname, join, normalize } from "node:path";
 import { basePath, contentTypes, dataFile, defaultSettings, incomesFile, port, root, settingsFile } from "./src/server/config.js";
 import { readJson, writeJson } from "./src/server/json-store.js";
 import { dbPool, initializeDatabase, readDatabase, writeDatabase } from "./src/server/database/repository.js";
+import { normalizeDataPayload } from "./src/shared/payload.js";
 
 const requestPath = (url) => {
   const pathname = new URL(url || "/", "http://localhost").pathname;
@@ -37,8 +38,10 @@ const server = createServer(async (request, response) => {
       return send(response, 200, data);
     }
     if (isDataApi(request.url) && request.method === "PUT") {
-      const payload = await body(request);
-      if (!Array.isArray(payload.transactions) || (payload.incomes !== undefined && !Array.isArray(payload.incomes)) || typeof payload.settings !== "object" || payload.settings === null) {
+      let payload;
+      try {
+        payload = normalizeDataPayload(await body(request));
+      } catch {
         return send(response, 400, { error: "Dados inválidos." });
       }
       if (dbPool) {
