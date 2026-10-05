@@ -24,6 +24,30 @@ O banco normalizado mantém todas as movimentações em `transactions`, diferenc
 
 As dependências de interface incluem `lucide` para iconografia e `chart.js` para gráficos no frontend JavaScript puro. A interface apresenta receitas com descrição, valor, fonte, data, filtros, paginação, edição e saldo mensal (receitas menos despesas).
 
+## Estrutura do código
+
+```text
+src/
+  client/                 # API, estado e persistência do navegador
+  server/                 # HTTP, arquivos estáticos, armazenamento e banco
+  shared/                 # Regras de domínio reutilizadas pelos dois lados
+tests/
+  unit/                   # Funções puras e adaptadores isolados
+  integration/             # API HTTP em servidor efêmero
+server.js                 # Entry point do Passenger/cPanel
+app.js                    # Bootstrap atual da interface Vite
+```
+
+A refatoração é incremental: cada extração preserva o contrato da API e é acompanhada por testes. Novos módulos devem preferir funções pequenas e sem dependência de DOM, banco ou ambiente global; integrações ficam nas camadas `client` e `server`.
+
+Os testes podem ser executados separadamente:
+
+```bash
+npm run test:unit
+npm run test:integration
+npm test
+```
+
 ## Publicação no cPanel
 
 O build do Vite é publicado somente em `dist/`. O `server.js` serve essa pasta quando ela existe, portanto os arquivos compilados não precisam ser copiados também para a raiz da aplicação. O deploy envia para a raiz remota apenas o servidor Node, os manifestos de dependências e os arquivos de runtime preservados; `index.html`, `app.js` e `style.css` permanecem como fontes no repositório e são entregues pelo build.
