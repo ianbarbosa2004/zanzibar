@@ -2,6 +2,7 @@ import { splitTransactions } from "./src/shared/transactions.js";
 import { inMonth, groupTotals, summarize } from "./src/shared/finance.js";
 import { currentMonth, localDate, todayLabel } from "./src/shared/dates.js";
 import { formatDate, formatInputAmount, formatMoney, formatTransactionDate, parseInputAmount } from "./src/shared/formatters.js";
+import { canDeleteRegistry, hasRegistryName, registryDefinition, renameRegistry } from "./src/shared/registries.js";
 import { fetchData, saveData } from "./src/client/data-api.js";
 import { readLocalState, writeLocalState } from "./src/client/local-store.js";
 
@@ -367,11 +368,12 @@ $("#add-location").addEventListener("click", () => addCatalogItem("location"));
 $("#add-creditor").addEventListener("click", () => addCatalogItem("creditor"));
 $("#add-income-source").addEventListener("click", () => addCatalogItem("incomeSource"));
 function addCatalogItem(kind) {
-  const label = { type: "tipo de despesa", taker: "tomador", location: "local", creditor: "credor", incomeSource: "fonte de receita" }[kind];
+  const definition = registryDefinition(kind);
+  const label = definition.label;
   const value = prompt(`Nome do ${label}:`)?.trim();
   if (!value) return;
   const list = { type: expenseTypes, taker: takers, location: locations, creditor: creditors, incomeSource: incomeSources }[kind];
-  if (list.some((item) => item.toLowerCase() === value.toLowerCase())) return showFeedback(`${label[0].toUpperCase() + label.slice(1)} já cadastrado.`);
+  if (hasRegistryName(list, value)) return showFeedback(`${label[0].toUpperCase() + label.slice(1)} já cadastrado.`);
   list.push(value);
   save().then(() => { setupFormOptions(); renderRegistries(); showFeedback(`${label[0].toUpperCase() + label.slice(1)} cadastrado.`); }).catch(() => showFeedback("Não foi possível salvar o cadastro."));
 }
@@ -380,22 +382,19 @@ $("#registry-lists").addEventListener("click", (event) => {
   if (!button) return;
   const kind = button.dataset.editRegistry || button.dataset.deleteRegistry;
   const list = { type: expenseTypes, taker: takers, location: locations, creditor: creditors, incomeSource: incomeSources }[kind];
+  const definition = registryDefinition(kind);
   const index = Number(button.dataset.registryIndex);
   const current = list[index];
   if (button.dataset.editRegistry) {
-    const registryLabel = { type: "tipo de despesa", taker: "tomador", location: "local", creditor: "credor", incomeSource: "fonte de receita" }[kind];
-    const value = prompt(`Editar ${registryLabel}:`, current)?.trim();
+    const value = prompt(`Editar ${definition.label}:`, current)?.trim();
     if (!value || value === current) return;
-    if (list.some((item, itemIndex) => itemIndex !== index && item.toLowerCase() === value.toLowerCase())) return showFeedback("Já existe um cadastro com esse nome.");
-    const property = { type: "expenseType", taker: "taker", location: "location", creditor: "creditor" }[kind];
-    if (kind === "incomeSource") incomes = incomes.map((item) => item.source === current ? { ...item, source: value } : item);
-    if (property) transactions = transactions.map((item) => item[property] === current ? { ...item, [property]: value } : item);
-    list[index] = value;
+    if (hasRegistryName(list, value, index)) return showFeedback("Já existe um cadastro com esse nome.");
+    const updated = renameRegistry(kind, current, value, { transactions, incomes, expenseTypes, takers, locations, creditors, incomeSources });
+    ({ transactions, incomes, expenseTypes, takers, locations, creditors, incomeSources } = updated);
     save().then(() => { setupFormOptions(); render(); renderReports(); renderRegistries(); showFeedback("Cadastro atualizado."); }).catch(() => showFeedback("Não foi possível atualizar o cadastro."));
     return;
   }
-  const property = { type: "expenseType", taker: "taker", location: "location", creditor: "creditor" }[kind];
-  if ((property && transactions.some((item) => item[property] === current)) || (kind === "incomeSource" && incomes.some((item) => item.source === current))) return showFeedback("Este cadastro está vinculado a lançamentos e não pode ser excluído.");
+  if (!canDeleteRegistry(kind, current, { transactions, incomes })) return showFeedback("Este cadastro está vinculado a lançamentos e não pode ser excluído.");
   if (list.length === 1) return showFeedback("Mantenha pelo menos um cadastro disponível.");
   if (!confirm(`Excluir "${current}"?`)) return;
   list.splice(index, 1);
