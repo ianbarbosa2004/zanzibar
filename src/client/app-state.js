@@ -1,9 +1,7 @@
-import { splitTransactions } from "../shared/transactions.js";
+import { mergeTransactions, splitTransactions } from "../shared/transactions.js";
 
 export function createAppState(data, defaults) {
-  const unified = data.transactions?.length || data.incomes?.length
-    ? [...(data.transactions || []), ...(data.incomes || [])]
-    : [];
+  const unified = mergeTransactions(data.transactions || [], data.incomes || []);
   const { transactions, incomes } = splitTransactions(unified);
   const settings = data.settings || {};
   return {

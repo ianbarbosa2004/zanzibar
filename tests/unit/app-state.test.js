@@ -22,6 +22,16 @@ test("normaliza dados unificados e separa receitas", () => {
   assert.equal(state.incomes[0].id, "i1");
 });
 
+test("remove receita duplicada quando aparece nas listas unificada e separada", () => {
+  const state = createAppState({
+    transactions: [{ id: "i1", type: "income", description: "Salário", amount: 100 }],
+    incomes: [{ id: "i1", description: "Salário", amount: 100 }],
+    settings: {},
+  }, defaults);
+  assert.equal(state.incomes.length, 1);
+  assert.equal(state.incomes[0].id, "i1");
+});
+
 test("usa catálogos padrão quando a API não retorna opções", () => {
   const state = createAppState({ transactions: [], settings: {} }, defaults);
   assert.deepEqual(state.incomeSources, ["Salário"]);

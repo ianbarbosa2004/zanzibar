@@ -13,14 +13,14 @@
   <body>
     <main class="app-shell">
       <aside class="sidebar">
-        <a class="brand" href="/" aria-label="Clareza início">
+        <a class="brand" href="#resumo" aria-label="Clareza início">
           <span class="brand-mark">C</span>
           <span>clareza<small>finanças pessoais</small></span>
         </a>
         <nav class="main-nav" aria-label="Navegação principal">
           <p class="nav-label">Menu</p>
-          <a class="nav-link active" href="#transacoes"><span>↔</span> Lançamentos</a>
-          <a class="nav-link" href="#visao-geral"><span>⌂</span> Resumo</a>
+          <a class="nav-link" href="#lancamentos"><span>↔</span> Saídas</a>
+          <a class="nav-link active" href="#resumo"><span>⌂</span> Resumo</a>
           <a class="nav-link" href="#relatorios"><span>▥</span> Relatórios</a>
           <a class="nav-link" href="#cadastros"><span>⚙</span> Cadastros</a>
         </nav>
@@ -39,59 +39,81 @@
         </header>
 
         <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
-        <section id="visao-geral" class="overview">
-          <div class="balance-card">
-            <div class="card-heading">
-              <span class="card-label">Despesas do mês <small>● atualizado agora</small></span>
-              <button class="icon-button" id="toggle-balance" type="button" aria-label="Ocultar despesas">◉</button>
+        <section id="visao-geral" class="overview" data-page="resumo">
+          <div class="summary-panel">
+            <div class="summary-heading">
+              <div>
+                <p class="eyebrow">Visão geral</p>
+                <h2>Resumo do mês</h2>
+              </div>
+              <div class="summary-heading-actions">
+                <label class="month-picker"><span class="sr-only">Mês e ano</span><select id="month-filter" aria-label="Selecionar mês e ano"></select></label>
+              </div>
             </div>
-            <div class="metric-card income"><span class="metric-icon">↗</span><div><span>Receitas do mês</span><strong id="income-value">R$ 0,00</strong><em id="income-caption">0 entradas registradas</em></div></div>
-            <div class="metric-card"><span class="metric-icon">=</span><div><span>Saldo do mês</span><strong id="balance-value">R$ 0,00</strong><em>receitas menos despesas</em></div></div>
-            <strong id="expense-value" class="balance-value">R$ 0,00</strong>
-            <p id="expense-caption" class="balance-caption">0 despesas registradas</p>
-            <div class="balance-decoration" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+            <div class="summary-grid">
+              <article class="summary-card summary-card-income">
+                <span class="summary-icon" aria-hidden="true">↗</span>
+                <div><span>Receitas</span><strong id="income-value">R$ 0,00</strong><em id="income-caption">0 entradas registradas</em></div>
+              </article>
+              <article class="summary-card summary-card-home">
+                <span class="summary-icon" aria-hidden="true">⌂</span>
+                <div><span>Despesas Casa</span><strong id="home-expense-value">R$ 0,00</strong><em id="home-expense-caption">0 despesas registradas</em></div>
+              </article>
+              <article class="summary-card summary-card-business">
+                <span class="summary-icon" aria-hidden="true">◆</span>
+                <div><span>Despesas Zanzibar</span><strong id="business-expense-value">R$ 0,00</strong><em id="business-expense-caption">0 despesas registradas</em></div>
+              </article>
+              <article class="summary-card summary-card-balance">
+                <span class="summary-icon" aria-hidden="true">=</span>
+                <div><span>Saldo</span><strong id="balance-value">R$ 0,00</strong></div>
+              </article>
+            </div>
+            <div class="home-actions">
+              <button class="primary-button" id="home-new-income" type="button"><span>＋</span> Incluir receita</button>
+              <button class="secondary-button" id="home-new-transaction" type="button"><span>＋</span> Incluir despesa</button>
+            </div>
           </div>
         </section>
 
-        <section id="receitas" class="transactions-section income-section">
-          <div class="section-heading"><div><p class="eyebrow">Entradas</p><h2>Receitas registradas</h2></div><button class="primary-button" id="new-income" type="button"><span>＋</span> Nova receita</button></div>
+        <section id="receitas" class="transactions-section income-section" data-page="lancamentos">
+          <div class="section-heading"><div><p class="eyebrow">Entradas</p><h2>Receitas registradas <span id="income-section-total" class="section-total">(R$ 0,00)</span></h2></div><div class="section-actions"><select data-month-select aria-label="Selecionar mês e ano das receitas"></select><button class="primary-button" id="new-income" type="button"><span>＋</span> Nova receita</button></div></div>
           <div class="location-panel" data-income-panel>
             <div class="toolbar"><label class="search-box"><span>⌕</span><input data-income-search type="search" placeholder="Buscar receita..." /></label><select data-income-source-filter aria-label="Filtrar receitas por fonte"><option value="all">Todas as fontes</option></select></div>
             <div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Fonte</th><th class="align-right">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody data-income-list></tbody></table><div data-income-empty class="empty-state" hidden>Nenhuma receita encontrada.</div></div>
-            <nav data-income-pagination class="pagination" aria-label="Paginação das receitas" hidden><span class="pagination-controls"><button data-income-pagination-prev class="pagination-button" type="button">← Anterior</button><span data-income-pagination-status aria-live="polite"></span><button data-income-pagination-next class="pagination-button" type="button">Próxima →</button></span><label class="page-size">Por página <select data-income-page-size aria-label="Registros por página em receitas"><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label></nav>
+            <nav data-income-pagination class="pagination" aria-label="Paginação das receitas"><span class="pagination-controls"><button data-income-pagination-prev class="pagination-button" type="button">← Anterior</button><span data-income-pagination-status aria-live="polite"></span><button data-income-pagination-next class="pagination-button" type="button">Próxima →</button></span><label class="page-size">Por página <select data-income-page-size aria-label="Registros por página em receitas"><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label></nav>
           </div>
         </section>
 
-        <section id="transacoes" class="transactions-section">
+        <section id="transacoes" class="transactions-section" data-page="lancamentos">
           <div class="section-heading">
-            <div><p class="eyebrow">Lançamentos</p><h2>Despesas registradas</h2></div>
-            <div class="section-actions"><select id="month-filter" aria-label="Selecionar mês"></select><button class="primary-button" id="new-transaction" type="button"><span>＋</span> Nova despesa</button></div>
+            <div><p class="eyebrow">Saídas</p><h2>Despesas registradas <span id="expense-section-total" class="section-total">(R$ 0,00)</span></h2></div>
+            <div class="section-actions"><select data-month-select aria-label="Selecionar mês e ano das despesas"></select><button class="primary-button" id="new-transaction" type="button"><span>＋</span> Nova despesa</button></div>
           </div>
           <div class="location-panels">
             <div class="location-panel" data-location-panel="Casa">
-              <div class="location-panel-heading"><h3>Casa</h3></div>
+              <div class="location-panel-heading"><h3>Casa <span data-location-total>(R$ 0,00)</span></h3></div>
               <div class="toolbar">
                 <label class="search-box"><span>⌕</span><input data-search type="search" placeholder="Buscar em Casa..." /></label>
                 <select data-type-filter aria-label="Filtrar despesas de Casa por tipo"><option value="all">Todos os tipos</option></select>
                 <select data-taker-filter aria-label="Filtrar despesas de Casa por tomador"><option value="all">Todos os tomadores</option></select>
               </div>
               <div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Tomador</th><th>Credor</th><th class="align-right">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody data-transactions-list></tbody></table><div data-empty-state class="empty-state" hidden>Nenhuma transação encontrada.</div></div>
-              <nav data-pagination class="pagination" aria-label="Paginação das despesas de Casa" hidden><span class="pagination-controls"><button data-pagination-prev class="pagination-button" type="button">← Anterior</button><span data-pagination-status aria-live="polite"></span><button data-pagination-next class="pagination-button" type="button">Próxima →</button></span><label class="page-size">Por página <select data-page-size aria-label="Registros por página em Casa"><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label></nav>
+              <nav data-pagination class="pagination" aria-label="Paginação das despesas de Casa"><span class="pagination-controls"><button data-pagination-prev class="pagination-button" type="button">← Anterior</button><span data-pagination-status aria-live="polite"></span><button data-pagination-next class="pagination-button" type="button">Próxima →</button></span><label class="page-size">Por página <select data-page-size aria-label="Registros por página em Casa"><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label></nav>
             </div>
             <div class="location-panel" data-location-panel="Zanzibar">
-              <div class="location-panel-heading"><h3>Zanzibar</h3></div>
+              <div class="location-panel-heading"><h3>Zanzibar <span data-location-total>(R$ 0,00)</span></h3></div>
               <div class="toolbar">
                 <label class="search-box"><span>⌕</span><input data-search type="search" placeholder="Buscar em Zanzibar..." /></label>
                 <select data-type-filter aria-label="Filtrar despesas de Zanzibar por tipo"><option value="all">Todos os tipos</option></select>
                 <select data-taker-filter aria-label="Filtrar despesas de Zanzibar por tomador"><option value="all">Todos os tomadores</option></select>
               </div>
               <div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Tomador</th><th>Credor</th><th class="align-right">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody data-transactions-list></tbody></table><div data-empty-state class="empty-state" hidden>Nenhuma transação encontrada.</div></div>
-              <nav data-pagination class="pagination" aria-label="Paginação das despesas de Zanzibar" hidden><span class="pagination-controls"><button data-pagination-prev class="pagination-button" type="button">← Anterior</button><span data-pagination-status aria-live="polite"></span><button data-pagination-next class="pagination-button" type="button">Próxima →</button></span><label class="page-size">Por página <select data-page-size aria-label="Registros por página em Zanzibar"><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label></nav>
+              <nav data-pagination class="pagination" aria-label="Paginação das despesas de Zanzibar"><span class="pagination-controls"><button data-pagination-prev class="pagination-button" type="button">← Anterior</button><span data-pagination-status aria-live="polite"></span><button data-pagination-next class="pagination-button" type="button">Próxima →</button></span><label class="page-size">Por página <select data-page-size aria-label="Registros por página em Zanzibar"><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label></nav>
             </div>
           </div>
         </section>
 
-        <section class="dashboard-grid">
+        <section class="dashboard-grid" data-page="lancamentos">
           <article id="planejamento" class="panel spending-panel">
             <div class="panel-header">
               <div><p class="eyebrow">Comportamento</p><h2>Despesas por dia</h2></div>
@@ -99,17 +121,9 @@
             <div id="chart" class="chart" aria-label="Gráfico de despesas por dia"></div>
             <div class="chart-legend"><span><i class="dot expense-dot"></i> Despesas</span></div>
           </article>
-          <article class="panel quick-panel">
-            <p class="eyebrow">Atalho</p>
-            <h2>Registre enquanto lembra</h2>
-            <button class="secondary-button quick-action" id="quick-new-transaction" type="button">Adicionar despesa <span>→</span></button>
-          </article>
-          <article class="panel quick-panel income-quick-panel">
-            <p class="eyebrow">Atalho</p><h2>Registre uma entrada</h2><button class="secondary-button quick-action" id="quick-new-income" type="button">Adicionar receita <span>→</span></button>
-          </article>
         </section>
 
-        <section id="relatorios" class="reports-section">
+        <section id="relatorios" class="reports-section" data-page="relatorios">
           <div class="section-heading"><div><p class="eyebrow">Análise do período</p><h2>Relatórios de despesas</h2></div><strong id="report-total" class="report-total">R$ 0,00</strong></div>
           <div class="reports-grid">
             <article class="panel report-panel"><div class="panel-header"><div><p class="eyebrow">Linha do tempo</p><h3>Por dia</h3></div><span class="report-icon">◷</span></div><div id="daily-report" class="report-list"></div></article>
@@ -118,7 +132,7 @@
           </div>
         </section>
 
-        <section id="cadastros" class="registries-section">
+        <section id="cadastros" class="registries-section" data-page="cadastros">
           <div class="section-heading"><div><p class="eyebrow">Configuração</p><h2>Cadastros auxiliares</h2></div></div>
           <div id="registry-lists" class="registry-grid">
             <article class="panel registry-panel"><div class="panel-header"><div><p class="eyebrow">Classificação</p><h3>Tipos de despesa</h3></div><button id="add-type" class="small-button" type="button">＋ Novo tipo</button></div><ul id="type-registry-list" class="registry-list"></ul></article>

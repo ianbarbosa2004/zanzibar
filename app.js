@@ -14,7 +14,6 @@ const defaultCreditors = ["Caixa"];
 const defaultIncomeSources = ["Salário"];
 const API_URL = new URL("api/data", document.baseURI).pathname;
 let transactions = [];
-let balanceVisible = true;
 let expenseTypes = [...defaultExpenseTypes];
 let takers = [...defaultTakers];
 let locations = [...defaultLocations];
@@ -59,8 +58,8 @@ function setupFormOptions() {
   $("#income-source").innerHTML = incomeSources.map((source) => `<option>${escapeHtml(source)}</option>`).join("");
   renderLocationOptions();
   const availableMonths = [...new Set([currentMonth(), ...transactions.map((item) => item.date), ...incomes.map((item) => item.date)].map((date) => date.slice(0, 7)))].sort().reverse();
-  $("#month-filter").innerHTML = availableMonths.map((month) => `<option value="${month}">${new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date(`${month}-15`))}</option>`).join("");
-  $("#month-filter").value = currentMonth();
+  const monthOptions = availableMonths.map((month) => `<option value="${month}">${new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date(`${month}-15`))}</option>`).join("");
+  document.querySelectorAll("[data-month-select], #month-filter").forEach((select) => { select.innerHTML = monthOptions; select.value = currentMonth(); });
   document.querySelectorAll("[data-type-filter]").forEach((filter) => {
     filter.innerHTML = `<option value="all">Todos os tipos</option>${expenseTypes.map((type) => `<option>${escapeHtml(type)}</option>`).join("")}`;
   });
@@ -80,13 +79,33 @@ function monthIncomes() {
 
 function renderSummary() {
   const summary = summarize([...transactions, ...incomes], selectedMonth());
-  const expenseCount = summary.items.filter((item) => item.type !== "income").length;
   const incomeCount = summary.items.filter((item) => item.type === "income").length;
-  $("#expense-value").textContent = balanceVisible ? formatMoney(summary.expense) : "••••••";
-  $("#expense-caption").textContent = `${expenseCount} ${expenseCount === 1 ? "despesa registrada" : "despesas registradas"}`;
-  $("#income-value").textContent = balanceVisible ? formatMoney(summary.income) : "••••••";
-  $("#balance-value").textContent = balanceVisible ? formatMoney(summary.balance) : "••••••";
+  const locationSummary = (location) => {
+    const items = monthTransactions().filter((item) => item.location === location);
+    return {
+      amount: items.reduce((total, item) => total + Number(item.amount || 0), 0),
+      count: items.length,
+    };
+  };
+  const home = locationSummary("Casa");
+  const business = locationSummary("Zanzibar");
+  $("#income-value").textContent = formatMoney(summary.income);
   $("#income-caption").textContent = `${incomeCount} ${incomeCount === 1 ? "entrada registrada" : "entradas registradas"}`;
+  $("#home-expense-value").textContent = formatMoney(-home.amount);
+  $("#home-expense-caption").textContent = `${home.count} ${home.count === 1 ? "despesa registrada" : "despesas registradas"}`;
+  $("#business-expense-value").textContent = formatMoney(-business.amount);
+  $("#business-expense-caption").textContent = `${business.count} ${business.count === 1 ? "despesa registrada" : "despesas registradas"}`;
+  $("#expense-section-total").textContent = `(${formatMoney(summary.expense)})`;
+  $("#income-section-total").textContent = `(${formatMoney(summary.income)})`;
+  document.querySelectorAll("[data-location-panel]").forEach((panel) => {
+    const location = panel.dataset.locationPanel;
+    const total = monthTransactions().filter((item) => item.location === location).reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    panel.querySelector("[data-location-total]").textContent = `(${formatMoney(total)})`;
+  });
+  const balanceValue = $("#balance-value");
+  balanceValue.textContent = formatMoney(summary.balance);
+  balanceValue.classList.toggle("value-positive", summary.balance >= 0);
+  balanceValue.classList.toggle("value-negative", summary.balance < 0);
 }
 
 function renderChart() {
@@ -121,7 +140,6 @@ function renderLocationTransactions(location) {
     <td class="align-right expense-text">- ${formatMoney(item.amount)}</td>
     <td class="align-right"><button class="action-button" data-edit="${item.id}" aria-label="Editar ${escapeHtml(item.description)}">•••</button></td></tr>`).join("");
   panel.querySelector("[data-empty-state]").hidden = filtered.length > 0;
-  panel.querySelector("[data-pagination]").hidden = filtered.length <= state.pageSize;
   panel.querySelector("[data-pagination-status]").textContent = `Página ${state.page} de ${totalPages}`;
   panel.querySelector("[data-pagination-prev]").disabled = state.page === 1;
   panel.querySelector("[data-pagination-next]").disabled = state.page === totalPages;
@@ -147,7 +165,6 @@ function renderIncomeTransactions() {
   const { items: pageItems, totalPages } = paged;
   panel.querySelector("[data-income-list]").innerHTML = pageItems.map((item) => `<tr><td>${escapeHtml(formatTransactionDate(item.date))}</td><td><div class="transaction-description"><span class="transaction-icon income">↗</span>${escapeHtml(item.description)}</div></td><td>${escapeHtml(item.source)}</td><td class="align-right income-text">+ ${formatMoney(item.amount)}</td><td class="align-right"><button class="action-button" data-edit-income="${item.id}" aria-label="Editar ${escapeHtml(item.description)}">•••</button></td></tr>`).join("");
   panel.querySelector("[data-income-empty]").hidden = filtered.length > 0;
-  panel.querySelector("[data-income-pagination]").hidden = filtered.length <= state.pageSize;
   panel.querySelector("[data-income-pagination-status]").textContent = `Página ${state.page} de ${totalPages}`;
   panel.querySelector("[data-income-pagination-prev]").disabled = state.page === 1;
   panel.querySelector("[data-income-pagination-next]").disabled = state.page === totalPages;
@@ -300,9 +317,9 @@ $("#location-options").addEventListener("click", (event) => {
   setLocation(option.dataset.location);
 });
 $("#new-transaction").addEventListener("click", () => openDialog());
-$("#quick-new-transaction").addEventListener("click", () => openDialog());
 $("#new-income").addEventListener("click", () => openIncomeDialog());
-$("#quick-new-income").addEventListener("click", () => openIncomeDialog());
+$("#home-new-transaction").addEventListener("click", () => openDialog());
+$("#home-new-income").addEventListener("click", () => openIncomeDialog());
 $("#close-dialog").addEventListener("click", () => $("#transaction-dialog").close());
 $("#cancel-dialog").addEventListener("click", () => $("#transaction-dialog").close());
 $("#close-income-dialog").addEventListener("click", () => $("#income-dialog").close());
@@ -315,8 +332,6 @@ $("#income-amount").addEventListener("input", (event) => {
   const amount = parseInputAmount(event.target.value);
   event.target.value = amount ? formatInputAmount(amount) : "";
 });
-$("#toggle-balance").addEventListener("click", () => { balanceVisible = !balanceVisible; $("#toggle-balance").textContent = balanceVisible ? "◉" : "◎"; renderSummary(); });
-$("#month-filter").addEventListener("change", render);
 document.querySelectorAll("[data-location-panel]").forEach((panel) => {
   panel.querySelectorAll("[data-search], [data-type-filter], [data-taker-filter]").forEach((control) => control.addEventListener("input", () => {
     paginationState[panel.dataset.locationPanel].page = 1;
@@ -348,7 +363,11 @@ document.querySelectorAll("[data-location-panel]").forEach((panel) => {
     if (button) openDialog(transactions.find((item) => item.id === button.dataset.edit));
   });
 });
-$("#month-filter").addEventListener("change", () => { render(); renderReports(); });
+document.querySelectorAll("[data-month-select], #month-filter").forEach((select) => select.addEventListener("change", (event) => {
+  document.querySelectorAll("[data-month-select], #month-filter").forEach((other) => { other.value = event.target.value; });
+  render();
+  renderReports();
+}));
 $("#add-type").addEventListener("click", () => addCatalogItem("type"));
 $("#add-taker").addEventListener("click", () => addCatalogItem("taker"));
 $("#add-location").addEventListener("click", () => addCatalogItem("location"));
@@ -389,4 +408,14 @@ $("#registry-lists").addEventListener("click", (event) => {
 });
 $("#export-button").addEventListener("click", () => { const blob = new Blob([JSON.stringify([...transactions, ...incomes], null, 2)], { type: "application/json" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "clareza-transacoes.json"; link.click(); URL.revokeObjectURL(link.href); showFeedback("Dados exportados."); });
 
-loadData().then(() => { transactions = transactions.map((item) => ({ ...item, expenseType: item.expenseType || item.category || "Outros", taker: item.taker || "Pessoal", location: item.location || "Casa", creditor: item.creditor || "Caixa" })); $("#today-label").textContent = todayLabel(); setupFormOptions(); render(); renderReports(); renderRegistries(); }).catch(() => { showFeedback("Não foi possível carregar os dados iniciais."); });
+const pages = ["resumo", "lancamentos", "relatorios", "cadastros"];
+function renderPage() {
+  const page = pages.includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : "resumo";
+  document.querySelectorAll("[data-page]").forEach((section) => { section.hidden = section.dataset.page !== page; });
+  document.querySelectorAll(".nav-link").forEach((link) => link.classList.toggle("active", link.getAttribute("href") === `#${page}`));
+  if (window.location.hash !== `#${page}`) history.replaceState(null, "", `#${page}`);
+}
+window.addEventListener("hashchange", renderPage);
+
+renderPage();
+loadData().then(() => { transactions = transactions.map((item) => ({ ...item, expenseType: item.expenseType || item.category || "Outros", taker: item.taker || "Pessoal", location: item.location || "Casa", creditor: item.creditor || "Caixa" })); $("#today-label").textContent = todayLabel(); setupFormOptions(); render(); renderReports(); renderRegistries(); renderPage(); }).catch(() => { showFeedback("Não foi possível carregar os dados iniciais."); });

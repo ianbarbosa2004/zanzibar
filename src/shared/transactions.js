@@ -21,5 +21,5 @@ export function mergeTransactions(transactions = [], incomes = []) {
     ...transactions.map(normalizeTransaction),
     ...incomes.map((income) => normalizeTransaction({ ...income, type: "income" })),
   ];
-  return entries.filter((entry, index, all) => all.findIndex((candidate) => candidate.id === entry.id) === index);
+  return entries.filter((entry, index, all) => !entry.id || all.findIndex((candidate) => candidate.id === entry.id) === index);
 }
