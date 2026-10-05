@@ -189,7 +189,7 @@ td:first-child { color: var(--ink); font-weight: 650; }
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
 dialog { width: min(480px, calc(100% - 32px)); padding: 0; border: 0; border-radius: 16px; color: var(--ink); box-shadow: 0 20px 60px #193b3730; }
 dialog::backdrop { background: #193b3766; }
-#transaction-form, #income-form { padding: 25px; }
+#transaction-form, #income-form, #cash-closing-form { padding: 25px; }
 .dialog-heading { display: flex; align-items: start; justify-content: space-between; margin-bottom: 22px; }
 .dialog-heading h2 { margin: 0; font-size: 21px; }
 .close-button { color: var(--muted); background: transparent; font-size: 25px; line-height: 1; }
@@ -205,10 +205,13 @@ label input, label select { display: block; width: 100%; margin-top: 6px; paddin
 .location-radio { width: 10px; height: 10px; border: 1px solid #aebbb4; border-radius: 50%; background: #fff; }
 .location-option.selected .location-radio { border: 3px solid var(--accent); }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
-.cash-closing-methods { display: grid; gap: 9px; margin: 4px 0 16px; }
-.cash-closing-method { display: grid; grid-template-columns: minmax(0, 1fr) 100px 130px; align-items: center; gap: 10px; }
-.cash-closing-method > span { color: var(--ink); font-size: 13px; font-weight: 600; }
-.cash-closing-method input { min-width: 0; }
+.cash-closing-methods { display: grid; gap: 7px; margin: 3px 0 18px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: #fbfcfb; }
+.cash-closing-method { display: grid; grid-template-columns: minmax(0, 1fr) 92px 125px; align-items: center; gap: 9px; margin: 0; }
+.cash-closing-method > span { min-width: 0; overflow: hidden; color: #596862; font-size: 11px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.cash-closing-method input { min-width: 0; margin-top: 0; padding: 9px; background: #fff; font-size: 12px; }
+.cash-closing-total { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 18px; padding: 12px 14px; border: 1px solid #cfe5d7; border-radius: 10px; background: #f3faf5; }
+.cash-closing-total span { color: #596862; font-size: 11px; font-weight: 650; }
+.cash-closing-total strong { color: #248452; font-size: 18px; font-variant-numeric: tabular-nums; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
 .secondary-button { padding: 11px 15px; border-radius: 8px; color: #52625b; background: #edf1ed; font-size: 13px; }
 label input:focus-visible, label select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
