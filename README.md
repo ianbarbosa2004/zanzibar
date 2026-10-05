@@ -118,7 +118,7 @@ CLAREZA_DB_USER=itsitescom_clareza_user
 CLAREZA_DB_PASSWORD=(senha somente no ambiente)
 ```
 
-Quando configurado, o servidor cria e migra as tabelas necessárias. O modelo consolidado usa `transactions`, com `type` igual a `expense` ou `income`. Receitas usam `income_source_id`; os campos exclusivos de despesas aceitam `NULL` para receitas. A tabela legada `incomes` é migrada para `transactions` durante a inicialização.
+Quando configurado, o servidor cria e migra as tabelas necessárias. O modelo consolidado usa uma única tabela `transactions`, com `id` numérico sequencial, `type` igual a `expense` ou `income` e `client_id` para manter a identidade do lançamento no navegador. Receitas usam `income_source_id`; os campos exclusivos de despesas aceitam `NULL` para receitas. A tabela legada `incomes` é migrada para `transactions` durante a inicialização. As tabelas possuem `created_at` e `updated_at`; a data efetiva informada pelo usuário fica em `transaction_date`.
 
 Nunca versionar senhas, arquivos de produção ou dumps do banco.
 
