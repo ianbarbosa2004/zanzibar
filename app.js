@@ -3,6 +3,7 @@ const defaultTakers = ["Pessoal", "Zanzibar"];
 const defaultLocations = ["Casa", "Zanzibar"];
 const defaultCreditors = ["Caixa"];
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+const dateFormat = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 const formatTransactionDate = (value) => {
   const [year, month, day] = String(value).split("-");
   return year && month && day ? `${day}/${month}/${year}` : value;
