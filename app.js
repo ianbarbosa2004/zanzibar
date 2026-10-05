@@ -1,4 +1,5 @@
 import { splitTransactions } from "./src/shared/transactions.js";
+import { fetchData, saveData } from "./src/client/data-api.js";
 
 const defaultExpenseTypes = ["Moradia", "Alimentação", "Contas", "Transporte", "Lazer", "Saúde", "Educação", "Outros"];
 const defaultTakers = ["Pessoal", "Zanzibar"];
@@ -45,9 +46,7 @@ const parseInputAmount = (value) => {
 
 async function loadData() {
   try {
-    const response = await fetch(API_URL);
-    if (!response.ok) throw new Error("API indisponível.");
-    const data = await response.json();
+    const data = await fetchData(API_URL);
     ({ transactions, incomes } = splitTransactions(data.transactions || data.incomes || []));
     if (data.incomes?.length && !data.transactions?.some((item) => item.type === "income")) {
       ({ transactions, incomes } = splitTransactions([...(data.transactions || []), ...data.incomes]));
@@ -70,14 +69,13 @@ async function loadData() {
       incomeSources = JSON.parse(localStorage.getItem("clareza-income-sources") || "null") || [...defaultIncomeSources];
       return;
     }
-    const response = await fetch("./data.json");
-    transactions = (await response.json()).map((item) => ({ ...item, type: "expense" }));
+    const data = await fetchData("./data.json");
+    transactions = data.map((item) => ({ ...item, type: "expense" }));
     incomes = JSON.parse(localStorage.getItem("clareza-incomes") || "[]");
   }
 }
 
 async function save() {
-  const payload = JSON.stringify({ transactions, incomes, settings: { expenseTypes, takers, locations, creditors, incomeSources } });
   localStorage.setItem("clareza-transactions", JSON.stringify(transactions));
   localStorage.setItem("clareza-incomes", JSON.stringify(incomes));
   localStorage.setItem("clareza-expense-types", JSON.stringify(expenseTypes));
@@ -86,8 +84,7 @@ async function save() {
   localStorage.setItem("clareza-creditors", JSON.stringify(creditors));
   localStorage.setItem("clareza-income-sources", JSON.stringify(incomeSources));
   try {
-    const response = await fetch(API_URL, { method: "PUT", headers: { "Content-Type": "application/json" }, body: payload });
-    if (!response.ok) throw new Error("API indisponível.");
+    await saveData(API_URL, { transactions, incomes, settings: { expenseTypes, takers, locations, creditors, incomeSources } });
   } catch {
     // GitHub Pages não possui uma API de escrita; neste caso, os dados ficam no navegador.
   }
