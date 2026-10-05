@@ -24,8 +24,6 @@ try {
   npm run build
 
   Invoke-Checked "ssh" @("-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new", $remoteTarget, "mkdir -p $remoteRoot/backups; cp $remoteRoot/data.json $remoteRoot/backups/data-$backupStamp.json 2>/dev/null || true; cp $remoteRoot/settings.json $remoteRoot/backups/settings-$backupStamp.json 2>/dev/null || true")
-  Invoke-Checked "ssh" @("-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new", $remoteTarget, "/home1/itsitescom/nodevenv/public_html/clareza/22/bin/npm ci --omit=dev")
-
   New-Item -ItemType File -Path $restartPath -Force | Out-Null
   @"
 put -r dist $remoteRoot
@@ -36,6 +34,7 @@ put $restartPath $remoteRoot/tmp/restart.txt
 bye
 "@ | Set-Content -LiteralPath $tempBatch -Encoding ascii
   Invoke-Checked "sftp" @("-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new", "-b", $tempBatch, $remoteTarget)
+Invoke-Checked "ssh" @("-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new", $remoteTarget, "cd $remoteRoot && /home1/itsitescom/nodevenv/public_html/clareza/22/bin/npm ci --omit=dev && touch tmp/restart.txt")
 
   $page = Invoke-WebRequest -Uri "https://itsites.com.br/clareza/" -UseBasicParsing
   $api = Invoke-WebRequest -Uri "https://itsites.com.br/clareza/api/data" -UseBasicParsing
