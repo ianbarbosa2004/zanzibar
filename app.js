@@ -46,8 +46,8 @@ async function loadData() {
     const response = await fetch(API_URL);
     if (!response.ok) throw new Error("API indisponível.");
     const data = await response.json();
-    transactions = data.transactions.map((item) => ({ ...item, type: "expense" }));
-    incomes = data.incomes || [];
+    transactions = data.transactions.filter((item) => item.type !== "income").map((item) => ({ ...item, type: "expense" }));
+    incomes = data.incomes || data.transactions.filter((item) => item.type === "income");
     expenseTypes = data.settings.expenseTypes?.length ? data.settings.expenseTypes : [...defaultExpenseTypes];
     takers = data.settings.takers?.length ? data.settings.takers : [...defaultTakers];
     locations = data.settings.locations?.length ? data.settings.locations : [...defaultLocations];
@@ -418,6 +418,6 @@ $("#registry-lists").addEventListener("click", (event) => {
   list.splice(index, 1);
   save().then(() => { setupFormOptions(); renderRegistries(); showFeedback("Cadastro excluído."); }).catch(() => showFeedback("Não foi possível excluir o cadastro."));
 });
-$("#export-button").addEventListener("click", () => { const blob = new Blob([JSON.stringify(transactions, null, 2)], { type: "application/json" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "clareza-transacoes.json"; link.click(); URL.revokeObjectURL(link.href); showFeedback("Dados exportados."); });
+$("#export-button").addEventListener("click", () => { const blob = new Blob([JSON.stringify([...transactions, ...incomes], null, 2)], { type: "application/json" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "clareza-transacoes.json"; link.click(); URL.revokeObjectURL(link.href); showFeedback("Dados exportados."); });
 
 loadData().then(() => { transactions = transactions.map((item) => ({ ...item, expenseType: item.expenseType || item.category || "Outros", taker: item.taker || "Pessoal", location: item.location || "Casa", creditor: item.creditor || "Caixa" })); $("#today-label").textContent = todayLabel(); setupFormOptions(); render(); renderReports(); renderRegistries(); }).catch(() => { showFeedback("Não foi possível carregar os dados iniciais."); });
