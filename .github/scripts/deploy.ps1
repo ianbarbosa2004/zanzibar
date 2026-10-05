@@ -27,6 +27,9 @@ try {
   New-Item -ItemType File -Path $restartPath -Force | Out-Null
   @"
 put -r dist $remoteRoot
+put index.html $remoteRoot/index.html
+put app.js $remoteRoot/app.js
+put style.css $remoteRoot/style.css
 put server.js $remoteRoot/server.js
 put package.json $remoteRoot/package.json
 put package-lock.json $remoteRoot/package-lock.json
