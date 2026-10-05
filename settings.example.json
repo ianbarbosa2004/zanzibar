@@ -10,10 +10,14 @@
     "Transporte"
   ],
   "takers": [
-    "Pessoal"
+    "Pessoal",
+    "Zanzibar"
   ],
   "locations": [
     "Casa",
     "Zanzibar"
+  ],
+  "creditors": [
+    "Caixa"
   ]
 }

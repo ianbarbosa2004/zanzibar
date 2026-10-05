@@ -16,6 +16,7 @@
     "esbuild@0.28.2": true
   },
   "dependencies": {
+    "mysql2": "^3.24.5",
     "open-props": "^1.7.23"
   }
 }
