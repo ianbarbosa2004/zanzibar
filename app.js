@@ -5,6 +5,7 @@ import { formatDate, formatInputAmount, formatMoney, formatTransactionDate, pars
 import { canDeleteRegistry, hasRegistryName, registryDefinition, renameRegistry } from "./src/shared/registries.js";
 import { dataPayload, defaultAppState } from "./src/client/state-persistence.js";
 import { createExpenseEntry, createIncomeEntry, upsertEntry } from "./src/shared/entry-factories.js";
+import { filterEntries, paginate, sortByDateDescending } from "./src/shared/collections.js";
 import { fetchData, saveData } from "./src/client/data-api.js";
 import { readLocalState, writeLocalState } from "./src/client/local-store.js";
 
@@ -143,13 +144,14 @@ function renderLocationTransactions(location) {
   const query = panel.querySelector("[data-search]").value.toLowerCase().trim();
   const type = panel.querySelector("[data-type-filter]").value;
   const taker = panel.querySelector("[data-taker-filter]").value;
-  const filtered = monthTransactions().filter((item) => {
-    const matchesSearch = `${item.description} ${item.expenseType} ${item.taker} ${item.location} ${item.creditor}`.toLowerCase().includes(query);
-    return item.location === location && matchesSearch && (type === "all" || item.expenseType === type) && (taker === "all" || item.taker === taker);
-  }).sort((a, b) => b.date.localeCompare(a.date));
-  const totalPages = Math.max(1, Math.ceil(filtered.length / state.pageSize));
-  state.page = Math.min(state.page, totalPages);
-  const pageItems = filtered.slice((state.page - 1) * state.pageSize, state.page * state.pageSize);
+  const filtered = sortByDateDescending(filterEntries(monthTransactions(), {
+    query,
+    fields: ["description", "expenseType", "taker", "location", "creditor"],
+    filters: { location, expenseType: type, taker },
+  }));
+  const paged = paginate(filtered, state.page, state.pageSize);
+  state.page = paged.page;
+  const { items: pageItems, totalPages } = paged;
   panel.querySelector("[data-transactions-list]").innerHTML = pageItems.map((item) => `<tr>
     <td>${escapeHtml(formatTransactionDate(item.date))}</td><td><div class="transaction-description"><span class="transaction-icon expense">↘</span>${escapeHtml(item.description)}</div></td>
     <td><span class="tag">${escapeHtml(item.expenseType)}</span></td><td>${escapeHtml(item.taker)}</td><td>${escapeHtml(item.creditor)}</td>
@@ -172,10 +174,14 @@ function renderIncomeTransactions() {
   const state = paginationState.Receitas;
   const query = panel.querySelector("[data-income-search]").value.toLowerCase().trim();
   const source = panel.querySelector("[data-income-source-filter]").value;
-  const filtered = monthIncomes().filter((item) => `${item.description} ${item.source}`.toLowerCase().includes(query) && (source === "all" || item.source === source)).sort((a, b) => b.date.localeCompare(a.date));
-  const totalPages = Math.max(1, Math.ceil(filtered.length / state.pageSize));
-  state.page = Math.min(state.page, totalPages);
-  const pageItems = filtered.slice((state.page - 1) * state.pageSize, state.page * state.pageSize);
+  const filtered = sortByDateDescending(filterEntries(monthIncomes(), {
+    query,
+    fields: ["description", "source"],
+    filters: { source },
+  }));
+  const paged = paginate(filtered, state.page, state.pageSize);
+  state.page = paged.page;
+  const { items: pageItems, totalPages } = paged;
   panel.querySelector("[data-income-list]").innerHTML = pageItems.map((item) => `<tr><td>${escapeHtml(formatTransactionDate(item.date))}</td><td><div class="transaction-description"><span class="transaction-icon income">↗</span>${escapeHtml(item.description)}</div></td><td>${escapeHtml(item.source)}</td><td class="align-right income-text">+ ${formatMoney(item.amount)}</td><td class="align-right"><button class="action-button" data-edit-income="${item.id}" aria-label="Editar ${escapeHtml(item.description)}">•••</button></td></tr>`).join("");
   panel.querySelector("[data-income-empty]").hidden = filtered.length > 0;
   panel.querySelector("[data-income-pagination]").hidden = filtered.length <= state.pageSize;
