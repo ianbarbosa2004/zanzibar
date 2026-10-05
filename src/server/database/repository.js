@@ -142,7 +142,11 @@ export async function writeDatabase(payload) {
       const [rows] = await connection.query(`SELECT id, name FROM ${table}`);
       rows.forEach((item) => ids[property].set(item.name, item.id));
     }
-    const entries = mergeTransactions(payload.transactions, payload.incomes || []);
+    const closingIncomeEntries = [...new Set((payload.cashClosings || []).map((item) => item.date))].map((date) => {
+      const rows = (payload.cashClosings || []).filter((item) => item.date === date);
+      return { id: `cash-closing-income-${date}`, description: `Vendas dia ${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)}`, amount: rows.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0), type: "income", date, incomeSourceId: 5 };
+    });
+    const entries = mergeTransactions(payload.transactions, [...(payload.incomes || []), ...closingIncomeEntries]);
     const [paymentMethodRows] = await connection.query("SELECT id, name FROM payment_methods");
     const paymentMethodIds = new Map(paymentMethodRows.map((item) => [item.name, item.id]));
     const sourceNames = [...new Set([...entries.filter((item) => item.type === "income").map((item) => item.source), ...(payload.settings?.incomeSources || [])].filter(Boolean))];
@@ -157,7 +161,7 @@ export async function writeDatabase(payload) {
       const existingRow = numericId
         ? existing.find((row) => row.id === numericId)
         : existing.find((row) => row.clientId === String(item.id));
-      const values = [item.description, item.amount, income ? "income" : "expense", income ? null : item.expenseType || "Outros", income ? null : item.taker || "Pessoal", income ? null : item.location || "Casa", income ? null : item.creditor || "Caixa", income ? null : ids.expenseType.get(item.expenseType || "Outros"), income ? null : ids.taker.get(item.taker || "Pessoal"), income ? null : ids.location.get(item.location || "Casa"), income ? null : ids.creditor.get(item.creditor || "Caixa"), income ? sourceIds.get(item.source || "Salário") : null, item.date];
+      const values = [item.description, item.amount, income ? "income" : "expense", income ? null : item.expenseType || "Outros", income ? null : item.taker || "Pessoal", income ? null : item.location || "Casa", income ? null : item.creditor || "Caixa", income ? null : ids.expenseType.get(item.expenseType || "Outros"), income ? null : ids.taker.get(item.taker || "Pessoal"), income ? null : ids.location.get(item.location || "Casa"), income ? null : ids.creditor.get(item.creditor || "Caixa"), income ? item.incomeSourceId || sourceIds.get(item.source || "Salário") : null, item.date];
       if (existingRow) {
         await connection.execute("UPDATE transactions SET description = ?, amount = ?, type = ?, expense_type = ?, taker = ?, location = ?, creditor = ?, expense_type_id = ?, taker_id = ?, location_id = ?, creditor_id = ?, income_source_id = ?, transaction_date = ? WHERE id = ?", [...values, existingRow.id]);
         retainedIds.add(existingRow.id);
@@ -170,6 +174,12 @@ export async function writeDatabase(payload) {
     else await connection.query("DELETE FROM transactions");
     const [existingClosings] = await connection.query("SELECT id, client_id AS clientId FROM cash_closings");
     const retainedClosingIds = new Set();
+    const closingDates = [...new Set((payload.cashClosings || []).map((item) => item.date))];
+    for (const date of closingDates) {
+      const submittedIds = (payload.cashClosings || []).filter((item) => item.date === date).map((item) => String(item.id));
+      const [duplicates] = await connection.query("SELECT id FROM cash_closings WHERE closing_date = ? AND (client_id IS NULL OR client_id NOT IN (?)) LIMIT 1", [date, submittedIds.length ? submittedIds : [""]]);
+      if (duplicates.length) throw new Error(`Já existe fechamento para ${date}.`);
+    }
     for (const item of payload.cashClosings || []) {
       const numericId = Number.isInteger(item.id) || /^\d+$/.test(String(item.id)) ? Number(item.id) : null;
       const existing = numericId ? existingClosings.find((row) => row.id === numericId) : existingClosings.find((row) => row.clientId === String(item.id));
