@@ -24,6 +24,7 @@ try {
   npm run build
 
   Invoke-Checked "ssh" @("-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new", $remoteTarget, "mkdir -p $remoteRoot/backups; cp $remoteRoot/data.json $remoteRoot/backups/data-$backupStamp.json 2>/dev/null || true; cp $remoteRoot/settings.json $remoteRoot/backups/settings-$backupStamp.json 2>/dev/null || true")
+  Invoke-Checked "ssh" @("-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new", $remoteTarget, "/home1/itsitescom/nodevenv/public_html/clareza/22/bin/npm ci --omit=dev")
 
   New-Item -ItemType File -Path $restartPath -Force | Out-Null
   @"
