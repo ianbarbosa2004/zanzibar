@@ -9,7 +9,13 @@ const dataFile = join(root, "data.json");
 const settingsFile = join(root, "settings.json");
 const port = Number(process.env.PORT) || 4173;
 const contentTypes = { ".css": "text/css", ".js": "text/javascript", ".json": "application/json", ".html": "text/html" };
-const isDataApi = (url) => /\/api\/data\/?$/.test(url.split("?")[0]);
+const basePath = process.env.CLAREZA_BASE_PATH || "/clareza";
+const requestPath = (url) => {
+  const pathname = new URL(url || "/", "http://localhost").pathname;
+  if (basePath !== "/" && pathname.startsWith(`${basePath}/`)) return pathname.slice(basePath.length) || "/";
+  return pathname;
+};
+const isDataApi = (url) => /\/api\/data\/?$/.test(requestPath(url));
 const databaseConfigured = Boolean(process.env.CLAREZA_DB_PASSWORD);
 const dbPool = databaseConfigured ? mysql.createPool({
   host: process.env.CLAREZA_DB_HOST || "localhost",
@@ -140,7 +146,8 @@ const server = createServer(async (request, response) => {
       return send(response, 200, { ok: true });
     }
 
-    const requested = request.url === "/" ? "index.html" : request.url.split("?")[0].replace(/^\/+/, "");
+    const normalizedPath = requestPath(request.url);
+    const requested = normalizedPath === "/" ? "index.html" : normalizedPath.replace(/^\/+/, "");
     const publicRoot = existsSync(join(root, "dist")) ? join(root, "dist") : root;
     let file = normalize(join(publicRoot, requested));
     if (!file.startsWith(publicRoot)) return send(response, 404, { error: "Não encontrado." });
