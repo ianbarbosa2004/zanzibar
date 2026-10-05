@@ -4,6 +4,7 @@ export function createAppState(data, defaults) {
   const unified = mergeTransactions(data.transactions || [], data.incomes || []);
   const { transactions, incomes } = splitTransactions(unified);
   const settings = data.settings || {};
+  const catalogMetadata = settings.catalogMetadata || {};
   const cashClosings = (data.cashClosings || []).map((item) => ({
     ...item,
     saleCount: Number(item.saleCount || 0),
@@ -25,5 +26,6 @@ export function createAppState(data, defaults) {
     creditors: settings.creditors?.length ? settings.creditors : [...defaults.creditors],
     paymentMethods: settings.paymentMethods?.length ? settings.paymentMethods : [...(defaults.paymentMethods || [])],
     incomeSources: settings.incomeSources?.length ? settings.incomeSources : [...defaults.incomeSources],
+    catalogMetadata,
   };
 }

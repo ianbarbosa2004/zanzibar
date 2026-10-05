@@ -36,6 +36,19 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
     await dbPool.query(`CREATE TABLE IF NOT EXISTS ${table} (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, name VARCHAR(120) NOT NULL UNIQUE, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
   }
   await dbPool.query(`CREATE TABLE IF NOT EXISTS income_sources (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, name VARCHAR(120) NOT NULL UNIQUE, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+  for (const [table, columns] of Object.entries({
+    expense_types: { is_active: "TINYINT(1) NOT NULL DEFAULT 1" },
+    takers: { display_order: "INT NOT NULL DEFAULT 0", is_active: "TINYINT(1) NOT NULL DEFAULT 1" },
+    locations: { is_active: "TINYINT(1) NOT NULL DEFAULT 1" },
+    creditors: { display_order: "INT NOT NULL DEFAULT 0", is_active: "TINYINT(1) NOT NULL DEFAULT 1" },
+    payment_methods: { display_order: "INT NOT NULL DEFAULT 0", is_active: "TINYINT(1) NOT NULL DEFAULT 1" },
+    income_sources: { display_order: "INT NOT NULL DEFAULT 0", is_active: "TINYINT(1) NOT NULL DEFAULT 1" },
+  })) {
+    for (const [column, definition] of Object.entries(columns)) {
+      const [[found]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?", [table, column]);
+      if (!found.total) await dbPool.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+    }
+  }
   await dbPool.query(`CREATE TABLE IF NOT EXISTS cash_closings (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, client_id VARCHAR(36) NULL UNIQUE, closing_date DATE NOT NULL,
     payment_method_id INT UNSIGNED NOT NULL, sale_count INT UNSIGNED NOT NULL DEFAULT 0,
@@ -116,16 +129,27 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
   if (paymentColumn.total) await dbPool.query("ALTER TABLE transactions DROP COLUMN payment_method_id");
   const [[paymentTextColumn]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'transactions' AND column_name = 'payment_method'");
   if (paymentTextColumn.total) await dbPool.query("ALTER TABLE transactions DROP COLUMN payment_method");
-  await dbPool.query("INSERT INTO app_settings (id, currency, schema_version) VALUES (1, 'BRL', 7) ON DUPLICATE KEY UPDATE schema_version = 7");
+  await dbPool.query("INSERT INTO app_settings (id, currency, schema_version) VALUES (1, 'BRL', 8) ON DUPLICATE KEY UPDATE schema_version = 8");
 }
 
 export async function readDatabase() {
   const [rows] = await dbPool.query("SELECT t.id, t.client_id AS clientId, t.description, t.amount, t.type, et.name AS expenseType, tk.name AS taker, l.name AS location, c.name AS creditor, s.name AS source, DATE_FORMAT(t.transaction_date, '%Y-%m-%d') AS date, t.created_at AS createdAt, t.updated_at AS updatedAt FROM transactions t LEFT JOIN expense_types et ON et.id = t.expense_type_id LEFT JOIN takers tk ON tk.id = t.taker_id LEFT JOIN locations l ON l.id = t.location_id LEFT JOIN creditors c ON c.id = t.creditor_id LEFT JOIN income_sources s ON s.id = t.income_source_id ORDER BY t.transaction_date DESC, t.updated_at DESC");
   const [[settings]] = await dbPool.query("SELECT currency, schema_version AS schemaVersion FROM app_settings WHERE id = 1");
-  const [[expenseTypes], [takers], [locations], [creditors], [paymentMethods], [incomeSources]] = await Promise.all(["expense_types", "takers", "locations", "creditors", "payment_methods", "income_sources"].map((table) => dbPool.query(`SELECT name FROM ${table} ORDER BY name`)));
+  const catalogRows = {};
+  for (const table of ["expense_types", "takers", "locations", "creditors", "payment_methods", "income_sources"]) {
+    const [rows] = await dbPool.query(`SELECT name, COALESCE(display_order, 0) AS displayOrder, is_active AS isActive FROM ${table} ORDER BY COALESCE(display_order, 0), name`);
+    catalogRows[table] = rows;
+  }
+  const expenseTypes = catalogRows.expense_types;
+  const takers = catalogRows.takers;
+  const locations = catalogRows.locations;
+  const creditors = catalogRows.creditors;
+  const paymentMethods = catalogRows.payment_methods;
+  const incomeSources = catalogRows.income_sources;
+  const catalogMetadata = Object.fromEntries(Object.entries(catalogRows).map(([table, rows]) => [table, rows.map((item) => ({ name: item.name, displayOrder: Number(item.displayOrder), isActive: Boolean(item.isActive) }))]));
   const normalizedRows = rows.map((item) => ({ ...item, amount: Number(item.amount) }));
   const [cashClosings] = await dbPool.query("SELECT c.id, c.client_id AS clientId, DATE_FORMAT(c.closing_date, '%Y-%m-%d') AS date, p.name AS paymentMethod, c.sale_count AS saleCount, c.total_amount AS totalAmount, c.created_at AS createdAt, c.updated_at AS updatedAt FROM cash_closings c JOIN payment_methods p ON p.id = c.payment_method_id ORDER BY c.closing_date DESC, c.updated_at DESC");
-  return { transactions: normalizedRows, incomes: normalizedRows.filter((item) => item.type === "income"), cashClosings: cashClosings.map((item) => ({ ...item, saleCount: Number(item.saleCount), totalAmount: Number(item.totalAmount) })), settings: { currency: settings?.currency || "BRL", schemaVersion: settings?.schemaVersion || 7, expenseTypes: expenseTypes.map((item) => item.name), takers: takers.map((item) => item.name), locations: locations.map((item) => item.name), creditors: creditors.map((item) => item.name), paymentMethods: paymentMethods.map((item) => item.name), incomeSources: incomeSources.map((item) => item.name) } };
+  return { transactions: normalizedRows, incomes: normalizedRows.filter((item) => item.type === "income"), cashClosings: cashClosings.map((item) => ({ ...item, saleCount: Number(item.saleCount), totalAmount: Number(item.totalAmount) })), settings: { currency: settings?.currency || "BRL", schemaVersion: settings?.schemaVersion || 8, expenseTypes: expenseTypes.map((item) => item.name), takers: takers.map((item) => item.name), locations: locations.map((item) => item.name), creditors: creditors.map((item) => item.name), paymentMethods: paymentMethods.map((item) => item.name), incomeSources: incomeSources.map((item) => item.name), catalogMetadata } };
 }
 
 export async function writeDatabase(payload) {
@@ -141,6 +165,28 @@ export async function writeDatabase(payload) {
       for (const value of values) await connection.execute(`INSERT IGNORE INTO ${table} (name) VALUES (?)`, [value]);
       const [rows] = await connection.query(`SELECT id, name FROM ${table}`);
       rows.forEach((item) => ids[property].set(item.name, item.id));
+    }
+    const catalogMetadata = payload.settings?.catalogMetadata || {};
+    for (const [table, entries] of Object.entries(catalogMetadata)) {
+      if (!catalogTables || !["expense_types", "takers", "locations", "creditors", "payment_methods", "income_sources"].includes(table)) continue;
+      const hasOrder = ["takers", "creditors", "payment_methods", "income_sources"].includes(table);
+      for (const entry of entries || []) {
+        await connection.execute(`UPDATE ${table} SET ${hasOrder ? "display_order = ?, " : ""}is_active = ? WHERE name = ?`, hasOrder ? [Number(entry.displayOrder) || 0, entry.isActive === false ? 0 : 1, entry.name] : [entry.isActive === false ? 0 : 1, entry.name]);
+      }
+    }
+    const deleteRules = {
+      expense_types: ["expense_type_id", "transactions"],
+      takers: ["taker_id", "transactions"],
+      locations: ["location_id", "transactions"],
+      creditors: ["creditor_id", "transactions"],
+      payment_methods: ["id", "cash_closings"],
+      income_sources: ["income_source_id", "transactions"],
+    };
+    for (const [table, [column, referenceTable]] of Object.entries(deleteRules)) {
+      const submittedNames = (catalogMetadata[table] || []).map((entry) => entry.name);
+      if (!submittedNames.length) continue;
+      const placeholders = submittedNames.map(() => "?").join(",");
+      await connection.query(`DELETE c FROM ${table} c LEFT JOIN ${referenceTable} r ON r.${column} = c.id WHERE c.name NOT IN (${placeholders}) AND r.id IS NULL`, submittedNames);
     }
     const closingIncomeEntries = [...new Set((payload.cashClosings || []).map((item) => item.date))].map((date) => {
       const rows = (payload.cashClosings || []).filter((item) => item.date === date);
@@ -195,7 +241,7 @@ export async function writeDatabase(payload) {
     }
     if (retainedClosingIds.size) await connection.query("DELETE FROM cash_closings WHERE id NOT IN (?)", [[...retainedClosingIds]]);
     else await connection.query("DELETE FROM cash_closings");
-    await connection.execute("INSERT INTO app_settings (id, currency, schema_version) VALUES (1, 'BRL', 7) ON DUPLICATE KEY UPDATE schema_version = 7");
+    await connection.execute("INSERT INTO app_settings (id, currency, schema_version) VALUES (1, 'BRL', 8) ON DUPLICATE KEY UPDATE schema_version = 8");
     await connection.commit();
   } catch (error) {
     await connection.rollback();
