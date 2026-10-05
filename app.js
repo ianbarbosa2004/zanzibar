@@ -1,5 +1,7 @@
 import { splitTransactions } from "./src/shared/transactions.js";
 import { inMonth, groupTotals, summarize } from "./src/shared/finance.js";
+import { currentMonth, localDate, todayLabel } from "./src/shared/dates.js";
+import { formatDate, formatInputAmount, formatMoney, formatTransactionDate, parseInputAmount } from "./src/shared/formatters.js";
 import { fetchData, saveData } from "./src/client/data-api.js";
 
 const defaultExpenseTypes = ["Moradia", "Alimentação", "Contas", "Transporte", "Lazer", "Saúde", "Educação", "Outros"];
@@ -7,12 +9,6 @@ const defaultTakers = ["Pessoal", "Zanzibar"];
 const defaultLocations = ["Casa", "Zanzibar"];
 const defaultCreditors = ["Caixa"];
 const defaultIncomeSources = ["Salário"];
-const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-const dateFormat = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
-const formatTransactionDate = (value) => {
-  const [year, month, day] = String(value).split("-");
-  return year && month && day ? `${day}/${month}/${year}` : value;
-};
 const API_URL = new URL("api/data", document.baseURI).pathname;
 let transactions = [];
 let balanceVisible = true;
@@ -29,21 +25,7 @@ const paginationState = {
 };
 
 const $ = (selector) => document.querySelector(selector);
-const formatMoney = (value) => money.format(value).replace(/\u00a0/g, " ");
-const currentMonth = () => localDate().slice(0, 7);
 const selectedMonth = () => $("#month-filter").value || currentMonth();
-const todayLabel = () => new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "2-digit", month: "long" }).format(new Date());
-const localDate = () => {
-  const now = new Date();
-  const utcMinusThree = -180;
-  const offset = utcMinusThree - now.getTimezoneOffset();
-  return new Date(now.getTime() + offset * 60000).toISOString().slice(0, 10);
-};
-const formatInputAmount = (value) => formatMoney(Number(value) || 0);
-const parseInputAmount = (value) => {
-  const digits = String(value).replace(/\D/g, "");
-  return Number(digits) / 100;
-};
 
 async function loadData() {
   try {
@@ -204,7 +186,7 @@ function renderReports() {
   const total = items.reduce((sum, item) => sum + item.amount, 0);
   const group = (key) => groupTotals(items, key);
   const rows = (entries) => entries.length ? entries.map(([label, value]) => `<div class="report-row"><span>${escapeHtml(label)}</span><strong>${formatMoney(value)}</strong><i><b style="width:${total ? value / total * 100 : 0}%"></b></i></div>`).join("") : `<p class="muted">Nenhuma despesa neste período.</p>`;
-  $("#daily-report").innerHTML = rows(Object.entries(items.reduce((result, item) => { result[item.date] = (result[item.date] || 0) + item.amount; return result; }, {})).sort((a, b) => b[0].localeCompare(a[0])).map(([date, value]) => [dateFormat.format(new Date(`${date}T12:00:00`)), value]));
+  $("#daily-report").innerHTML = rows(Object.entries(items.reduce((result, item) => { result[item.date] = (result[item.date] || 0) + item.amount; return result; }, {})).sort((a, b) => b[0].localeCompare(a[0])).map(([date, value]) => [formatDate(date), value]));
   $("#type-report").innerHTML = rows(group("expenseType"));
   $("#taker-report").innerHTML = rows(group("taker"));
   $("#report-total").textContent = formatMoney(total);
