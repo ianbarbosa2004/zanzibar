@@ -25,11 +25,6 @@
           <a class="nav-link" href="#cadastros"><span>⚙</span> Cadastros</a>
         </nav>
         <div class="sidebar-bottom">
-          <div class="sidebar-tip">
-            <span class="tip-icon">✦</span>
-            <strong>Pequenos passos.</strong>
-            <p>Registrar seus gastos hoje deixa o amanhã mais leve.</p>
-          </div>
           <button class="sidebar-footer" id="export-button" type="button"><span>↓</span> Exportar dados</button>
         </div>
       </aside>
@@ -58,12 +53,12 @@
 
         <section id="transacoes" class="transactions-section">
           <div class="section-heading">
-            <div><p class="eyebrow">Lançamentos</p><h2>Despesas registradas</h2><p class="section-description">Tudo que foi lançado no mês selecionado, em um só lugar.</p></div>
+            <div><p class="eyebrow">Lançamentos</p><h2>Despesas registradas</h2></div>
             <div class="section-actions"><select id="month-filter" aria-label="Selecionar mês"></select><button class="primary-button" id="new-transaction" type="button"><span>＋</span> Nova despesa</button></div>
           </div>
           <div class="location-panels">
             <div class="location-panel" data-location-panel="Casa">
-              <div class="location-panel-heading"><h3>Casa</h3><span>Despesas do local Casa</span></div>
+              <div class="location-panel-heading"><h3>Casa</h3></div>
               <div class="toolbar">
                 <label class="search-box"><span>⌕</span><input data-search type="search" placeholder="Buscar em Casa..." /></label>
                 <select data-type-filter aria-label="Filtrar despesas de Casa por tipo"><option value="all">Todos os tipos</option></select>
@@ -74,7 +69,7 @@
               <nav data-pagination class="pagination" aria-label="Paginação das despesas de Casa" hidden><button data-pagination-prev class="pagination-button" type="button">← Anterior</button><span data-pagination-status aria-live="polite"></span><button data-pagination-next class="pagination-button" type="button">Próxima →</button></nav>
             </div>
             <div class="location-panel" data-location-panel="Zanzibar">
-              <div class="location-panel-heading"><h3>Zanzibar</h3><span>Despesas do local Zanzibar</span></div>
+              <div class="location-panel-heading"><h3>Zanzibar</h3></div>
               <div class="toolbar">
                 <label class="search-box"><span>⌕</span><input data-search type="search" placeholder="Buscar em Zanzibar..." /></label>
                 <select data-type-filter aria-label="Filtrar despesas de Zanzibar por tipo"><option value="all">Todos os tipos</option></select>
@@ -91,7 +86,6 @@
           <article id="planejamento" class="panel spending-panel">
             <div class="panel-header">
               <div><p class="eyebrow">Comportamento</p><h2>Despesas por dia</h2></div>
-              <span class="panel-note">últimos lançamentos</span>
             </div>
             <div id="chart" class="chart" aria-label="Gráfico de despesas por dia"></div>
             <div class="chart-legend"><span><i class="dot expense-dot"></i> Despesas</span></div>
@@ -99,7 +93,6 @@
           <article class="panel quick-panel">
             <p class="eyebrow">Atalho</p>
             <h2>Registre enquanto lembra</h2>
-            <p class="muted">Um lançamento detalhado facilita seus relatórios e deixa os gastos mais fáceis de entender.</p>
             <button class="secondary-button quick-action" id="quick-new-transaction" type="button">Adicionar despesa <span>→</span></button>
           </article>
         </section>
