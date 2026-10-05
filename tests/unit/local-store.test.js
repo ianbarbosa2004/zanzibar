@@ -15,7 +15,7 @@ function withLocalStorage() {
 test("lê estado local usando valores padrão", () => {
   const restore = withLocalStorage();
   try {
-    assert.deepEqual(readLocalState({ transactions: [], incomes: [], expenseTypes: ["Outros"], takers: [], locations: [], creditors: [], incomeSources: ["Salário"] }), {
+    assert.deepEqual(readLocalState({ transactions: [], incomes: [], expenseTypes: ["Outros"], takers: [], locations: [], creditors: [], incomeSources: ["Salário"], cashClosings: [] }), {
       transactions: [],
       incomes: [],
       expenseTypes: ["Outros"],
@@ -23,6 +23,7 @@ test("lê estado local usando valores padrão", () => {
       locations: [],
       creditors: [],
       incomeSources: ["Salário"],
+      cashClosings: [],
     });
   } finally {
     restore();
@@ -32,7 +33,7 @@ test("lê estado local usando valores padrão", () => {
 test("grava e recupera o estado local", () => {
   const restore = withLocalStorage();
   try {
-    const state = { transactions: [{ id: "1" }], incomes: [], expenseTypes: [], takers: [], locations: [], creditors: [], incomeSources: [] };
+    const state = { transactions: [{ id: "1" }], incomes: [], expenseTypes: [], takers: [], locations: [], creditors: [], incomeSources: [], cashClosings: [] };
     writeLocalState(state);
     assert.deepEqual(readLocalState(state), state);
   } finally {

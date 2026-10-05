@@ -10,10 +10,11 @@ test("cria estado inicial independente dos defaults", () => {
 });
 
 test("monta payload da API com configurações agrupadas", () => {
-  const state = { transactions: [{ id: "1" }], incomes: [], expenseTypes: ["Outros"], takers: [], locations: [], creditors: [], incomeSources: ["Salário"] };
+  const state = { transactions: [{ id: "1" }], incomes: [], cashClosings: [], expenseTypes: ["Outros"], takers: [], locations: [], creditors: [], incomeSources: ["Salário"] };
   assert.deepEqual(dataPayload(state), {
     transactions: [{ id: "1" }],
     incomes: [],
+    cashClosings: [],
     settings: { expenseTypes: ["Outros"], takers: [], locations: [], creditors: [], incomeSources: ["Salário"] },
   });
 });

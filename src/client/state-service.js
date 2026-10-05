@@ -10,6 +10,7 @@ export async function loadAppState(apiUrl, fallbackUrl, defaults) {
     const localState = readLocalState({
       transactions: [],
       incomes: [],
+      cashClosings: [],
       expenseTypes: [...defaults.expenseTypes],
       takers: [...defaults.takers],
       locations: [...defaults.locations],

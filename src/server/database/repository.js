@@ -3,7 +3,7 @@ import { dbPool } from "./pool.js";
 import { databaseName, databaseUser } from "../config.js";
 export { dbPool };
 
-export async function initializeDatabase({ readJson, dataFile, settingsFile, incomesFile, defaultSettings }) {
+export async function initializeDatabase({ readJson, dataFile, settingsFile, incomesFile, cashClosingsFile, defaultSettings }) {
   if (!dbPool) return;
   if (!databaseUser || !databaseName) throw new Error("Configuração MySQL incompleta.");
 
@@ -36,7 +36,15 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
     await dbPool.query(`CREATE TABLE IF NOT EXISTS ${table} (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, name VARCHAR(120) NOT NULL UNIQUE, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
   }
   await dbPool.query(`CREATE TABLE IF NOT EXISTS income_sources (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, name VARCHAR(120) NOT NULL UNIQUE, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
-  const timestampTables = ["transactions", "app_settings", "expense_types", "takers", "locations", "creditors", "income_sources"];
+  await dbPool.query(`CREATE TABLE IF NOT EXISTS cash_closings (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, client_id VARCHAR(36) NULL UNIQUE, closing_date DATE NOT NULL,
+    payment_method_id INT UNSIGNED NOT NULL, sale_count INT UNSIGNED NOT NULL DEFAULT 0,
+    total_amount DECIMAL(12, 2) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_cash_closings_payment_method FOREIGN KEY (payment_method_id) REFERENCES payment_methods(id)
+  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+  const timestampTables = ["transactions", "app_settings", "expense_types", "takers", "locations", "creditors", "income_sources", "payment_methods", "cash_closings"];
   for (const table of timestampTables) {
     for (const [column, definition] of Object.entries({ created_at: "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP", updated_at: "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" })) {
       const [[found]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?", [table, column]);
@@ -46,6 +54,7 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
   const transactions = await readJson(dataFile, []);
   const appSettings = await readJson(settingsFile, defaultSettings);
   const incomes = await readJson(incomesFile, []);
+  const cashClosings = await readJson(cashClosingsFile, []);
   for (const name of [...new Set(["Salário", ...(appSettings.incomeSources || []), ...incomes.map((item) => item.source).filter(Boolean)])]) await dbPool.execute("INSERT IGNORE INTO income_sources (name) VALUES (?)", [name]);
   const [existingTransactions] = await dbPool.query("SELECT expense_type, taker, location, creditor FROM transactions");
   const catalogs = {
@@ -80,6 +89,12 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
     await dbPool.query("DROP TABLE incomes");
   }
   for (const item of incomes) await dbPool.execute("INSERT INTO transactions (client_id, description, amount, type, income_source_id, transaction_date) SELECT ?, ?, ?, 'income', (SELECT id FROM income_sources WHERE name = ?), ? WHERE NOT EXISTS (SELECT 1 FROM transactions WHERE client_id = ?)", [item.id, item.description, item.amount, item.source || "Salário", item.date, item.id]);
+  for (const item of cashClosings) {
+    const [[existing]] = await dbPool.query("SELECT id FROM cash_closings WHERE client_id = ?", [item.id]);
+    const [[paymentMethod]] = await dbPool.query("SELECT id FROM payment_methods WHERE name = ?", [item.paymentMethod]);
+    if (!paymentMethod) continue;
+    if (!existing) await dbPool.execute("INSERT INTO cash_closings (client_id, closing_date, payment_method_id, sale_count, total_amount) VALUES (?, ?, ?, ?, ?)", [item.id, item.date, paymentMethod.id, item.saleCount || 0, item.totalAmount || 0]);
+  }
   const [[transactionCount]] = await dbPool.query("SELECT COUNT(*) AS total FROM transactions");
   if (transactionCount.total === 0 && transactions.length) {
     const [rows] = await dbPool.query("SELECT id, name FROM expense_types");
@@ -109,15 +124,16 @@ export async function readDatabase() {
   const [[settings]] = await dbPool.query("SELECT currency, schema_version AS schemaVersion FROM app_settings WHERE id = 1");
   const [[expenseTypes], [takers], [locations], [creditors], [paymentMethods], [incomeSources]] = await Promise.all(["expense_types", "takers", "locations", "creditors", "payment_methods", "income_sources"].map((table) => dbPool.query(`SELECT name FROM ${table} ORDER BY name`)));
   const normalizedRows = rows.map((item) => ({ ...item, amount: Number(item.amount) }));
-  return { transactions: normalizedRows, incomes: normalizedRows.filter((item) => item.type === "income"), settings: { currency: settings?.currency || "BRL", schemaVersion: settings?.schemaVersion || 7, expenseTypes: expenseTypes.map((item) => item.name), takers: takers.map((item) => item.name), locations: locations.map((item) => item.name), creditors: creditors.map((item) => item.name), paymentMethods: paymentMethods.map((item) => item.name), incomeSources: incomeSources.map((item) => item.name) } };
+  const [cashClosings] = await dbPool.query("SELECT c.id, c.client_id AS clientId, DATE_FORMAT(c.closing_date, '%Y-%m-%d') AS date, p.name AS paymentMethod, c.sale_count AS saleCount, c.total_amount AS totalAmount, c.created_at AS createdAt, c.updated_at AS updatedAt FROM cash_closings c JOIN payment_methods p ON p.id = c.payment_method_id ORDER BY c.closing_date DESC, c.updated_at DESC");
+  return { transactions: normalizedRows, incomes: normalizedRows.filter((item) => item.type === "income"), cashClosings: cashClosings.map((item) => ({ ...item, saleCount: Number(item.saleCount), totalAmount: Number(item.totalAmount) })), settings: { currency: settings?.currency || "BRL", schemaVersion: settings?.schemaVersion || 7, expenseTypes: expenseTypes.map((item) => item.name), takers: takers.map((item) => item.name), locations: locations.map((item) => item.name), creditors: creditors.map((item) => item.name), paymentMethods: paymentMethods.map((item) => item.name), incomeSources: incomeSources.map((item) => item.name) } };
 }
 
 export async function writeDatabase(payload) {
   const connection = await dbPool.getConnection();
   try {
     await connection.beginTransaction();
-    const catalogTables = { expenseType: "expense_types", taker: "takers", location: "locations", creditor: "creditors" };
-    const catalogSettings = { expenseType: "expenseTypes", taker: "takers", location: "locations", creditor: "creditors" };
+    const catalogTables = { expenseType: "expense_types", taker: "takers", location: "locations", creditor: "creditors", paymentMethod: "payment_methods" };
+    const catalogSettings = { expenseType: "expenseTypes", taker: "takers", location: "locations", creditor: "creditors", paymentMethod: "paymentMethods" };
     const ids = {};
     for (const [property, table] of Object.entries(catalogTables)) {
       ids[property] = new Map();
@@ -127,6 +143,8 @@ export async function writeDatabase(payload) {
       rows.forEach((item) => ids[property].set(item.name, item.id));
     }
     const entries = mergeTransactions(payload.transactions, payload.incomes || []);
+    const [paymentMethodRows] = await connection.query("SELECT id, name FROM payment_methods");
+    const paymentMethodIds = new Map(paymentMethodRows.map((item) => [item.name, item.id]));
     const sourceNames = [...new Set([...entries.filter((item) => item.type === "income").map((item) => item.source), ...(payload.settings?.incomeSources || [])].filter(Boolean))];
     for (const name of sourceNames) await connection.execute("INSERT IGNORE INTO income_sources (name) VALUES (?)", [name]);
     const [sourceRows] = await connection.query("SELECT id, name FROM income_sources");
@@ -150,6 +168,23 @@ export async function writeDatabase(payload) {
     }
     if (retainedIds.size) await connection.query("DELETE FROM transactions WHERE id NOT IN (?)", [[...retainedIds]]);
     else await connection.query("DELETE FROM transactions");
+    const [existingClosings] = await connection.query("SELECT id, client_id AS clientId FROM cash_closings");
+    const retainedClosingIds = new Set();
+    for (const item of payload.cashClosings || []) {
+      const numericId = Number.isInteger(item.id) || /^\d+$/.test(String(item.id)) ? Number(item.id) : null;
+      const existing = numericId ? existingClosings.find((row) => row.id === numericId) : existingClosings.find((row) => row.clientId === String(item.id));
+      const values = [item.date, paymentMethodIds.get(item.paymentMethod), item.saleCount || 0, item.totalAmount || 0];
+      if (!values[1]) throw new Error(`Forma de recebimento não encontrada: ${item.paymentMethod}`);
+      if (existing) {
+        await connection.execute("UPDATE cash_closings SET closing_date = ?, payment_method_id = ?, sale_count = ?, total_amount = ? WHERE id = ?", [...values, existing.id]);
+        retainedClosingIds.add(existing.id);
+      } else {
+        const [result] = await connection.execute("INSERT INTO cash_closings (client_id, closing_date, payment_method_id, sale_count, total_amount) VALUES (?, ?, ?, ?, ?)", [numericId ? null : String(item.id), ...values]);
+        retainedClosingIds.add(result.insertId);
+      }
+    }
+    if (retainedClosingIds.size) await connection.query("DELETE FROM cash_closings WHERE id NOT IN (?)", [[...retainedClosingIds]]);
+    else await connection.query("DELETE FROM cash_closings");
     await connection.execute("INSERT INTO app_settings (id, currency, schema_version) VALUES (1, 'BRL', 7) ON DUPLICATE KEY UPDATE schema_version = 7");
     await connection.commit();
   } catch (error) {

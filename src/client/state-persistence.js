@@ -2,6 +2,7 @@ export function defaultAppState(defaults) {
   const payload = {
     transactions: [],
     incomes: [],
+    cashClosings: [],
     expenseTypes: [...defaults.expenseTypes],
     takers: [...defaults.takers],
     locations: [...defaults.locations],
@@ -16,6 +17,7 @@ export function dataPayload(state) {
   const payload = {
     transactions: state.transactions,
     incomes: state.incomes,
+    cashClosings: state.cashClosings || [],
     settings: {
       expenseTypes: state.expenseTypes,
       takers: state.takers,

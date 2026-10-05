@@ -20,6 +20,7 @@
         <nav class="main-nav" aria-label="Navegação principal">
           <p class="nav-label">Menu</p>
           <a class="nav-link" href="#lancamentos"><span>↔</span> Saídas</a>
+          <a class="nav-link" href="#vendas"><span>▣</span> Vendas</a>
           <a class="nav-link active" href="#resumo"><span>⌂</span> Resumo</a>
           <a class="nav-link" href="#relatorios"><span>▥</span> Relatórios</a>
           <a class="nav-link" href="#cadastros"><span>⚙</span> Cadastros</a>
@@ -132,6 +133,11 @@
           </div>
         </section>
 
+        <section id="vendas" class="transactions-section" data-page="vendas">
+          <div class="section-heading"><div><p class="eyebrow">Operação</p><h2>Fechamentos de caixa <span id="cash-closing-total" class="section-total">(R$ 0,00)</span></h2></div><button class="primary-button" id="new-cash-closing" type="button"><span>＋</span> Fechamento de caixa</button></div>
+          <div class="table-wrap"><table><thead><tr><th>Data</th><th>Forma de recebimento</th><th>Vendas</th><th class="align-right">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody id="cash-closings-list"></tbody></table><div id="cash-closings-empty" class="empty-state" hidden>Nenhum fechamento de caixa encontrado.</div></div>
+        </section>
+
         <section id="cadastros" class="registries-section" data-page="cadastros">
           <div class="section-heading"><div><p class="eyebrow">Configuração</p><h2>Cadastros auxiliares</h2></div></div>
           <div id="registry-lists" class="registry-grid">
@@ -171,6 +177,17 @@
         <label>Fonte<select id="income-source" name="incomeSource"></select></label>
         <label>Data<input id="income-date" name="incomeDate" type="date" required /></label>
         <div class="dialog-actions"><button class="secondary-button" id="cancel-income-dialog" type="button">Cancelar</button><button class="primary-button" type="submit">Salvar receita</button></div>
+      </form>
+    </dialog>
+    <dialog id="cash-closing-dialog">
+      <form id="cash-closing-form" method="dialog">
+        <div class="dialog-heading"><div><p class="eyebrow">Nova venda</p><h2 id="cash-closing-dialog-title">Fechamento de Caixa</h2></div><button class="close-button" id="close-cash-closing-dialog" type="button" aria-label="Fechar">×</button></div>
+        <input id="cash-closing-id" type="hidden" />
+        <label>Data<input id="cash-closing-date" type="date" required /></label>
+        <label>Forma de recebimento<select id="cash-closing-payment-method" required></select></label>
+        <div class="form-row"><label>Número de vendas<input id="cash-closing-sale-count" type="number" min="0" step="1" required value="0" /></label><label>Valor<input id="cash-closing-amount" type="text" inputmode="decimal" dir="rtl" required placeholder="R$ 0,00" /></label></div>
+        <div class="summary-card summary-card-income"><span>💰</span><div><span>Total do fechamento</span><strong id="cash-closing-total-preview">R$ 0,00</strong></div></div>
+        <div class="dialog-actions"><button class="secondary-button" id="cancel-cash-closing-dialog" type="button">Cancelar</button><button class="primary-button" type="submit">Salvar fechamento</button></div>
       </form>
     </dialog>
     <script type="module" src="./app.js?v=79105fe"></script>
