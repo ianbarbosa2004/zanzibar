@@ -3,7 +3,10 @@ const defaultTakers = ["Pessoal", "Zanzibar"];
 const defaultLocations = ["Casa", "Zanzibar"];
 const defaultCreditors = ["Caixa"];
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-const dateFormat = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+const formatTransactionDate = (value) => {
+  const [year, month, day] = String(value).split("-");
+  return year && month && day ? `${day}/${month}/${year}` : value;
+};
 const API_URL = new URL("api/data", document.baseURI).pathname;
 let transactions = [];
 let balanceVisible = true;
@@ -133,7 +136,7 @@ function renderLocationTransactions(location) {
   state.page = Math.min(state.page, totalPages);
   const pageItems = filtered.slice((state.page - 1) * state.pageSize, state.page * state.pageSize);
   panel.querySelector("[data-transactions-list]").innerHTML = pageItems.map((item) => `<tr>
-    <td>${dateFormat.format(new Date(`${item.date}T12:00:00`))}</td><td><div class="transaction-description"><span class="transaction-icon expense">↘</span>${escapeHtml(item.description)}</div></td>
+    <td>${escapeHtml(formatTransactionDate(item.date))}</td><td><div class="transaction-description"><span class="transaction-icon expense">↘</span>${escapeHtml(item.description)}</div></td>
     <td><span class="tag">${escapeHtml(item.expenseType)}</span></td><td>${escapeHtml(item.taker)}</td><td>${escapeHtml(item.creditor)}</td>
     <td class="align-right expense-text">- ${formatMoney(item.amount)}</td>
     <td class="align-right"><button class="action-button" data-edit="${item.id}" aria-label="Editar ${escapeHtml(item.description)}">•••</button></td></tr>`).join("");
