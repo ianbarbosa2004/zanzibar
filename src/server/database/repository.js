@@ -176,18 +176,18 @@ export async function writeDatabase(payload) {
       }
     }
     const deleteRules = {
-      expense_types: ["expense_type_id", "transactions"],
-      takers: ["taker_id", "transactions"],
-      locations: ["location_id", "transactions"],
-      creditors: ["creditor_id", "transactions"],
-      payment_methods: ["id", "cash_closings"],
-      income_sources: ["income_source_id", "transactions"],
+      expense_types: { referenceTable: "transactions", referenceColumn: "expense_type_id" },
+      takers: { referenceTable: "transactions", referenceColumn: "taker_id" },
+      locations: { referenceTable: "transactions", referenceColumn: "location_id" },
+      creditors: { referenceTable: "transactions", referenceColumn: "creditor_id" },
+      payment_methods: { referenceTable: "cash_closings", referenceColumn: "payment_method_id" },
+      income_sources: { referenceTable: "transactions", referenceColumn: "income_source_id" },
     };
-    for (const [table, [column, referenceTable]] of Object.entries(deleteRules)) {
+    for (const [table, { referenceTable, referenceColumn }] of Object.entries(deleteRules)) {
       const submittedNames = (catalogMetadata[table] || []).map((entry) => entry.name);
       if (!submittedNames.length) continue;
       const placeholders = submittedNames.map(() => "?").join(",");
-      await connection.query(`DELETE c FROM ${table} c LEFT JOIN ${referenceTable} r ON r.${column} = c.id WHERE c.name NOT IN (${placeholders}) AND r.id IS NULL`, submittedNames);
+      await connection.query(`DELETE c FROM ${table} c LEFT JOIN ${referenceTable} r ON r.${referenceColumn} = c.id WHERE c.name NOT IN (${placeholders}) AND r.id IS NULL`, submittedNames);
     }
     const closingIncomeEntries = [...new Set((payload.cashClosings || []).map((item) => item.date))].map((date) => {
       const rows = (payload.cashClosings || []).filter((item) => item.date === date);
