@@ -11,7 +11,6 @@ export function createAppState(data, defaults) {
       taker: item.taker || "Pessoal",
       location: item.location || "Casa",
       creditor: item.creditor || "Caixa",
-      paymentMethod: item.paymentMethod || "Pix",
     })),
     incomes,
     expenseTypes: settings.expenseTypes?.length ? settings.expenseTypes : [...defaults.expenseTypes],
