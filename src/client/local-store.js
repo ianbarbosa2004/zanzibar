@@ -7,6 +7,7 @@ const keys = {
   creditors: "clareza-creditors",
   paymentMethods: "clareza-payment-methods",
   incomeSources: "clareza-income-sources",
+  cashClosings: "clareza-cash-closings",
 };
 
 function read(key, fallback) {
@@ -25,6 +26,7 @@ export function readLocalState(defaults) {
     incomeSources: read("incomeSources", defaults.incomeSources),
   };
   if (defaults.paymentMethods !== undefined) state.paymentMethods = read("paymentMethods", defaults.paymentMethods);
+  state.cashClosings = read("cashClosings", defaults.cashClosings || []);
   return state;
 }
 

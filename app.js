@@ -22,6 +22,7 @@ let creditors = [...defaultCreditors];
 let paymentMethods = [...defaultPaymentMethods];
 let incomes = [];
 let incomeSources = [...defaultIncomeSources];
+let cashClosings = [];
 const initialState = defaultAppState({
   expenseTypes: defaultExpenseTypes,
   takers: defaultTakers,
@@ -40,11 +41,11 @@ const $ = (selector) => document.querySelector(selector);
 const selectedMonth = () => $("#month-filter").value || currentMonth();
 
 async function loadData() {
-  ({ transactions, incomes, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources } = await loadAppState(API_URL, "./data.json", initialState));
+  ({ transactions, incomes, cashClosings, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources } = await loadAppState(API_URL, "./data.json", initialState));
 }
 
 async function save() {
-  const state = { transactions, incomes, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources };
+  const state = { transactions, incomes, cashClosings, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources };
   await persistAppState(API_URL, state);
 }
 
@@ -206,6 +207,13 @@ function renderRegistries() {
   $("#income-source-registry-list").innerHTML = renderList(incomeSources, "incomeSource");
 }
 
+function renderCashClosings() {
+  const total = cashClosings.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0);
+  $("#cash-closing-total").textContent = `(${formatMoney(total)})`;
+  $("#cash-closings-list").innerHTML = cashClosings.map((item) => `<tr><td>${escapeHtml(formatTransactionDate(item.date))}</td><td>${escapeHtml(item.paymentMethod)}</td><td>${item.saleCount}</td><td class="align-right income-text">+ ${formatMoney(item.totalAmount)}</td><td class="align-right"><button class="action-button" data-edit-cash-closing="${item.id}" aria-label="Editar fechamento">•••</button></td></tr>`).join("");
+  $("#cash-closings-empty").hidden = cashClosings.length > 0;
+}
+
 function openDialog(item) {
   $("#dialog-title").textContent = item ? "Editar despesa" : "Nova despesa";
   $("#transaction-id").value = item?.id || "";
@@ -329,6 +337,37 @@ $("#close-dialog").addEventListener("click", () => $("#transaction-dialog").clos
 $("#cancel-dialog").addEventListener("click", () => $("#transaction-dialog").close());
 $("#close-income-dialog").addEventListener("click", () => $("#income-dialog").close());
 $("#cancel-income-dialog").addEventListener("click", () => $("#income-dialog").close());
+function openCashClosingDialog(item) {
+  $("#cash-closing-id").value = item?.id || "";
+  $("#cash-closing-date").value = item?.date || localDate();
+  $("#cash-closing-payment-method").innerHTML = paymentMethods.map((method) => `<option>${escapeHtml(method)}</option>`).join("");
+  $("#cash-closing-payment-method").value = item?.paymentMethod || paymentMethods[0];
+  $("#cash-closing-sale-count").value = item?.saleCount || 0;
+  $("#cash-closing-amount").value = item ? formatInputAmount(item.totalAmount) : "";
+  $("#cash-closing-total-preview").textContent = item ? formatMoney(item.totalAmount) : "R$ 0,00";
+  $("#cash-closing-dialog").showModal();
+}
+$("#new-cash-closing").addEventListener("click", () => openCashClosingDialog());
+$("#close-cash-closing-dialog").addEventListener("click", () => $("#cash-closing-dialog").close());
+$("#cancel-cash-closing-dialog").addEventListener("click", () => $("#cash-closing-dialog").close());
+$("#cash-closing-amount").addEventListener("input", (event) => {
+  const amount = parseInputAmount(event.target.value);
+  event.target.value = amount ? formatInputAmount(amount) : "";
+  $("#cash-closing-total-preview").textContent = formatMoney(amount);
+});
+$("#cash-closing-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const amount = parseInputAmount($("#cash-closing-amount").value);
+  if (!amount) return showFeedback("Informe um valor maior que zero.");
+  const id = $("#cash-closing-id").value;
+  const item = { id: id || crypto.randomUUID(), date: $("#cash-closing-date").value, paymentMethod: $("#cash-closing-payment-method").value, saleCount: Number($("#cash-closing-sale-count").value), totalAmount: amount };
+  cashClosings = id ? cashClosings.map((entry) => entry.id === id ? item : entry) : [item, ...cashClosings];
+  save().then(() => { renderCashClosings(); $("#cash-closing-dialog").close(); showFeedback(id ? "Fechamento atualizado." : "Fechamento adicionado."); }).catch(() => showFeedback("Não foi possível salvar o fechamento."));
+});
+$("#cash-closings-list").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-edit-cash-closing]");
+  if (button) openCashClosingDialog(cashClosings.find((item) => String(item.id) === button.dataset.editCashClosing));
+});
 $("#amount").addEventListener("input", (event) => {
   const amount = parseInputAmount(event.target.value);
   event.target.value = amount ? formatInputAmount(amount) : "";
@@ -414,7 +453,7 @@ $("#registry-lists").addEventListener("click", (event) => {
 });
 $("#export-button").addEventListener("click", () => { const blob = new Blob([JSON.stringify([...transactions, ...incomes], null, 2)], { type: "application/json" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "clareza-transacoes.json"; link.click(); URL.revokeObjectURL(link.href); showFeedback("Dados exportados."); });
 
-const pages = ["resumo", "lancamentos", "relatorios", "cadastros"];
+const pages = ["resumo", "lancamentos", "vendas", "relatorios", "cadastros"];
 function renderPage() {
   const page = pages.includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : "resumo";
   document.querySelectorAll("[data-page]").forEach((section) => { section.hidden = section.dataset.page !== page; });
@@ -424,4 +463,4 @@ function renderPage() {
 window.addEventListener("hashchange", renderPage);
 
 renderPage();
-loadData().then(() => { transactions = transactions.map((item) => ({ ...item, expenseType: item.expenseType || item.category || "Outros", taker: item.taker || "Pessoal", location: item.location || "Casa", creditor: item.creditor || "Caixa" })); $("#today-label").textContent = todayLabel(); setupFormOptions(); render(); renderReports(); renderRegistries(); renderPage(); }).catch(() => { showFeedback("Não foi possível carregar os dados iniciais."); });
+loadData().then(() => { transactions = transactions.map((item) => ({ ...item, expenseType: item.expenseType || item.category || "Outros", taker: item.taker || "Pessoal", location: item.location || "Casa", creditor: item.creditor || "Caixa" })); $("#today-label").textContent = todayLabel(); setupFormOptions(); render(); renderReports(); renderRegistries(); renderCashClosings(); renderPage(); }).catch(() => { showFeedback("Não foi possível carregar os dados iniciais."); });

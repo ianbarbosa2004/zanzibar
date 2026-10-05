@@ -4,6 +4,11 @@ export function createAppState(data, defaults) {
   const unified = mergeTransactions(data.transactions || [], data.incomes || []);
   const { transactions, incomes } = splitTransactions(unified);
   const settings = data.settings || {};
+  const cashClosings = (data.cashClosings || []).map((item) => ({
+    ...item,
+    saleCount: Number(item.saleCount || 0),
+    totalAmount: Number(item.totalAmount || 0),
+  }));
   return {
     transactions: transactions.map((item) => ({
       ...item,
@@ -13,6 +18,7 @@ export function createAppState(data, defaults) {
       creditor: item.creditor || "Caixa",
     })),
     incomes,
+    cashClosings,
     expenseTypes: settings.expenseTypes?.length ? settings.expenseTypes : [...defaults.expenseTypes],
     takers: settings.takers?.length ? settings.takers : [...defaults.takers],
     locations: settings.locations?.length ? settings.locations : [...defaults.locations],

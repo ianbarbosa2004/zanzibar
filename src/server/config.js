@@ -5,6 +5,7 @@ export const root = fileURLToPath(new URL("../../", import.meta.url));
 export const dataFile = join(root, "data.json");
 export const settingsFile = join(root, "settings.json");
 export const incomesFile = join(root, "incomes.json");
+export const cashClosingsFile = join(root, "cash-closings.json");
 export const port = Number(process.env.PORT) || 4173;
 export const contentTypes = {
   ".css": "text/css",
