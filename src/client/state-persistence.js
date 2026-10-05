@@ -1,17 +1,19 @@
 export function defaultAppState(defaults) {
-  return {
+  const payload = {
     transactions: [],
     incomes: [],
     expenseTypes: [...defaults.expenseTypes],
     takers: [...defaults.takers],
     locations: [...defaults.locations],
     creditors: [...defaults.creditors],
+    paymentMethods: [...(defaults.paymentMethods || [])],
     incomeSources: [...defaults.incomeSources],
   };
+  return payload;
 }
 
 export function dataPayload(state) {
-  return {
+  const payload = {
     transactions: state.transactions,
     incomes: state.incomes,
     settings: {
@@ -22,4 +24,6 @@ export function dataPayload(state) {
       incomeSources: state.incomeSources,
     },
   };
+  if (state.paymentMethods !== undefined) payload.settings.paymentMethods = state.paymentMethods;
+  return payload;
 }

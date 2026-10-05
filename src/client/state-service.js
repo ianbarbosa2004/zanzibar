@@ -14,6 +14,7 @@ export async function loadAppState(apiUrl, fallbackUrl, defaults) {
       takers: [...defaults.takers],
       locations: [...defaults.locations],
       creditors: [...defaults.creditors],
+      paymentMethods: [...(defaults.paymentMethods || [])],
       incomeSources: [...defaults.incomeSources],
     });
     if (localState.transactions.length) return localState;
