@@ -3,6 +3,7 @@ import { inMonth, groupTotals, summarize } from "./src/shared/finance.js";
 import { currentMonth, localDate, todayLabel } from "./src/shared/dates.js";
 import { formatDate, formatInputAmount, formatMoney, formatTransactionDate, parseInputAmount } from "./src/shared/formatters.js";
 import { canDeleteRegistry, hasRegistryName, registryDefinition, renameRegistry } from "./src/shared/registries.js";
+import { dataPayload, defaultAppState } from "./src/client/state-persistence.js";
 import { fetchData, saveData } from "./src/client/data-api.js";
 import { readLocalState, writeLocalState } from "./src/client/local-store.js";
 
@@ -20,6 +21,13 @@ let locations = [...defaultLocations];
 let creditors = [...defaultCreditors];
 let incomes = [];
 let incomeSources = [...defaultIncomeSources];
+const initialState = defaultAppState({
+  expenseTypes: defaultExpenseTypes,
+  takers: defaultTakers,
+  locations: defaultLocations,
+  creditors: defaultCreditors,
+  incomeSources: defaultIncomeSources,
+});
 const paginationState = {
   Casa: { page: 1, pageSize: 5 },
   Zanzibar: { page: 1, pageSize: 5 },
@@ -41,15 +49,7 @@ async function loadData() {
     }));
     return;
   } catch {
-    const localState = readLocalState({
-      transactions: [],
-      incomes: [],
-      expenseTypes: [...defaultExpenseTypes],
-      takers: [...defaultTakers],
-      locations: [...defaultLocations],
-      creditors: [...defaultCreditors],
-      incomeSources: [...defaultIncomeSources],
-    });
+    const localState = readLocalState(initialState);
     if (localState.transactions.length) {
       transactions = localState.transactions.map((item) => ({ ...item, type: "expense" }));
       incomes = localState.incomes;
@@ -72,9 +72,10 @@ async function loadData() {
 }
 
 async function save() {
-  writeLocalState({ transactions, incomes, expenseTypes, takers, locations, creditors, incomeSources });
+  const state = { transactions, incomes, expenseTypes, takers, locations, creditors, incomeSources };
+  writeLocalState(state);
   try {
-    await saveData(API_URL, { transactions, incomes, settings: { expenseTypes, takers, locations, creditors, incomeSources } });
+    await saveData(API_URL, dataPayload(state));
   } catch {
     // GitHub Pages não possui uma API de escrita; neste caso, os dados ficam no navegador.
   }
