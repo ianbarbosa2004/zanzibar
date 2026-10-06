@@ -22,6 +22,7 @@ let catalogMetadata = {};
 let lastTransactionUpdate = null;
 const pendingRegistryOrderSaves = new Set();
 let cashClosings = [];
+let limits = [];
 const initialState = defaultAppState({
   expenseTypes: defaultExpenseTypes,
   takers: defaultTakers,
@@ -33,15 +34,17 @@ const initialState = defaultAppState({
 const paginationState = {
   Casa: { page: 1, pageSize: 5 },
   Zanzibar: { page: 1, pageSize: 5 },
+  Empréstimos: { page: 1, pageSize: 5 },
   Receitas: { page: 1, pageSize: 5 },
   Fechamentos: { page: 1, pageSize: 5 },
+  Limites: { page: 1, pageSize: 5 },
 };
 
 const $ = (selector) => document.querySelector(selector);
 const selectedMonth = () => $("#month-filter").value || currentMonth();
 
 async function loadData() {
-  ({ transactions, incomes, cashClosings, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources, catalogMetadata } = await loadAppState(API_URL, "./data.json", initialState));
+  ({ transactions, incomes, cashClosings, limits, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources, catalogMetadata } = await loadAppState(API_URL, "./data.json", initialState));
   lastTransactionUpdate = transactions.reduce((latest, item) => {
     const value = item.updatedAt || item.createdAt;
     return value && (!latest || new Date(String(value).replace(" ", "T")) > new Date(String(latest).replace(" ", "T"))) ? value : latest;
@@ -55,14 +58,14 @@ function markTransactionsUpdated() {
 }
 
 async function save() {
-  const state = { transactions, incomes, cashClosings, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources, catalogMetadata };
+  const state = { transactions, incomes, cashClosings, limits, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources, catalogMetadata };
   await persistAppState(API_URL, state);
 }
 function captureState() {
-  return { transactions: [...transactions], incomes: [...incomes], cashClosings: [...cashClosings], expenseTypes: [...expenseTypes], takers: [...takers], locations: [...locations], creditors: [...creditors], paymentMethods: [...paymentMethods], incomeSources: [...incomeSources], catalogMetadata: structuredClone(catalogMetadata) };
+  return { transactions: [...transactions], incomes: [...incomes], cashClosings: [...cashClosings], limits: [...limits], expenseTypes: [...expenseTypes], takers: [...takers], locations: [...locations], creditors: [...creditors], paymentMethods: [...paymentMethods], incomeSources: [...incomeSources], catalogMetadata: structuredClone(catalogMetadata) };
 }
 function restoreState(previous) {
-  ({ transactions, incomes, cashClosings, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources, catalogMetadata } = previous);
+  ({ transactions, incomes, cashClosings, limits, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources, catalogMetadata } = previous);
 }
 
 function setupFormOptions() {
@@ -74,7 +77,7 @@ function setupFormOptions() {
   $("#creditor").innerHTML = available.creditors.map((creditor) => `<option>${escapeHtml(creditor)}</option>`).join("");
   $("#income-source").innerHTML = available.incomeSources.map((source) => `<option>${escapeHtml(source)}</option>`).join("");
   renderLocationOptions();
-  const availableMonths = [...new Set([currentMonth(), ...transactions.map((item) => item.date), ...incomes.map((item) => item.date)].map((date) => date.slice(0, 7)))].sort().reverse();
+  const availableMonths = [...new Set([currentMonth(), ...transactions.map((item) => item.date), ...incomes.map((item) => item.date), ...limits.map((item) => `${item.year}-${String(item.month).padStart(2, "0")}-01`)].map((date) => date.slice(0, 7)))].sort().reverse();
   const monthOptions = availableMonths.map((month) => `<option value="${month}">${new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date(`${month}-15`))}</option>`).join("");
   document.querySelectorAll("[data-month-select], #month-filter").forEach((select) => { select.innerHTML = monthOptions; select.value = currentMonth(); });
   document.querySelectorAll("[data-type-filter]").forEach((filter) => {
@@ -96,6 +99,8 @@ function monthIncomes() {
 
 function renderSummary() {
   const summary = summarize([...transactions, ...incomes], selectedMonth());
+  const [limitYear, limitMonth] = selectedMonth().split("-").map(Number);
+  const limit = limits.find((item) => item.year === limitYear && item.month === limitMonth);
   const incomeCount = summary.items.filter((item) => item.type === "income").length;
   const locationSummary = (location) => {
     const items = monthTransactions().filter((item) => item.location === location);
@@ -106,12 +111,20 @@ function renderSummary() {
   };
   const home = locationSummary("Casa");
   const business = locationSummary("Zanzibar");
+  const loans = locationSummary("Empréstimos");
+  $("#summary-limit-target").textContent = formatMoney(limit?.target || 0);
+  $("#summary-limit-budget").textContent = formatMoney(limit?.budget || 0);
+  $("#summary-limit-forecast").textContent = formatMoney(limit?.forecast || 0);
+  $("#summary-limit-patamar").textContent = formatMoney(limit?.patamar || 0);
+  $("#summary-limit-result").textContent = formatMoney(limit?.result || 0);
   $("#income-value").textContent = formatMoney(summary.income);
   $("#income-caption").textContent = `${incomeCount} ${incomeCount === 1 ? "entrada registrada" : "entradas registradas"}`;
   $("#home-expense-value").textContent = formatMoney(-home.amount);
   $("#home-expense-caption").textContent = `${home.count} ${home.count === 1 ? "despesa registrada" : "despesas registradas"}`;
   $("#business-expense-value").textContent = formatMoney(-business.amount);
   $("#business-expense-caption").textContent = `${business.count} ${business.count === 1 ? "despesa registrada" : "despesas registradas"}`;
+  $("#loans-expense-value").textContent = formatMoney(-loans.amount);
+  $("#loans-expense-caption").textContent = `${loans.count} ${loans.count === 1 ? "despesa registrada" : "despesas registradas"}`;
   $("#expense-section-total").textContent = `(${formatMoney(summary.expense)})`;
   $("#income-section-total").textContent = `(${formatMoney(summary.income)})`;
   document.querySelectorAll("[data-location-panel]").forEach((panel) => {
@@ -163,7 +176,7 @@ function renderLocationTransactions(location) {
 }
 
 function renderTransactions() {
-  ["Casa", "Zanzibar"].forEach(renderLocationTransactions);
+  ["Casa", "Zanzibar", "Empréstimos"].forEach(renderLocationTransactions);
   renderIncomeTransactions();
 }
 
@@ -238,6 +251,21 @@ function renderCashClosings() {
   $("#cash-closing-pagination-status").textContent = `Página ${state.page} de ${paged.totalPages}`;
   $("#cash-closing-pagination-prev").disabled = state.page === 1;
   $("#cash-closing-pagination-next").disabled = state.page === paged.totalPages;
+}
+
+function renderLimits() {
+  const state = paginationState.Limites;
+  const paged = paginate([...limits].sort((a, b) => (b.year - a.year) || (b.month - a.month)), state.page, state.pageSize);
+  state.page = paged.page;
+  $("#limits-list").innerHTML = paged.items.map((item) => {
+    const period = `${String(item.month).padStart(2, "0")}/${item.year}`;
+    const status = item.closed ? '<span class="status-badge">Fechado</span>' : '<span class="status-badge status-open">Aberto</span>';
+    return `<tr><td>${period}</td><td class="align-right">${formatMoney(item.target)}</td><td class="align-right">${formatMoney(item.budget)}</td><td class="align-right">${formatMoney(item.forecast)}</td><td class="align-right">${formatMoney(item.patamar)}</td><td class="align-right">${formatMoney(item.result)}</td><td>${status}</td><td class="align-right"><button class="action-button" data-edit-limit="${item.id}" aria-label="Editar limite">•••</button></td></tr>`;
+  }).join("");
+  $("#limits-empty").hidden = limits.length > 0;
+  $("#limit-pagination-status").textContent = `Página ${state.page} de ${paged.totalPages}`;
+  $("#limit-pagination-prev").disabled = state.page === 1;
+  $("#limit-pagination-next").disabled = state.page === paged.totalPages;
 }
 
 function activeCatalog(table, values) {
@@ -334,26 +362,48 @@ function setLocation(location) {
 function applyLocationRules(location) {
   const taker = $("#taker");
   const creditor = $("#creditor");
+  const expenseType = $("#expense-type");
+  if (location === "Empréstimos") {
+    expenseType.innerHTML = "<option>Empréstimo</option>";
+    expenseType.value = "Empréstimo";
+    taker.innerHTML = "<option>Zanzibar</option>";
+    taker.value = "Zanzibar";
+    taker.disabled = true;
+    taker.setAttribute("aria-disabled", "true");
+    const availableCreditors = creditors.filter((item) => item !== "Caixa");
+    creditor.innerHTML = availableCreditors.map((item) => `<option>${escapeHtml(item)}</option>`).join("");
+    creditor.value = availableCreditors.includes(creditor.value) ? creditor.value : availableCreditors[0] || "";
+    creditor.disabled = false;
+    creditor.removeAttribute("aria-disabled");
+    expenseType.disabled = true;
+    expenseType.setAttribute("aria-disabled", "true");
+    return;
+  }
+  const availableExpenseTypes = activeCatalog("expense_types", expenseTypes).filter((item) => item !== "Empréstimo");
+  expenseType.innerHTML = availableExpenseTypes.map((item) => `<option>${escapeHtml(item)}</option>`).join("");
+  expenseType.disabled = false;
+  expenseType.removeAttribute("aria-disabled");
   if (location === "Casa") {
+    const availableTakers = takers.filter((item) => item !== "Zanzibar");
     creditor.innerHTML = "<option>Caixa</option>";
     creditor.value = "Caixa";
     creditor.disabled = true;
     creditor.setAttribute("aria-disabled", "true");
-    taker.innerHTML = takers.map((item) => `<option>${escapeHtml(item)}</option>`).join("");
+    taker.innerHTML = availableTakers.map((item) => `<option>${escapeHtml(item)}</option>`).join("");
+    taker.value = availableTakers.includes(taker.value) ? taker.value : availableTakers[0] || "";
     taker.disabled = false;
     taker.removeAttribute("aria-disabled");
     return;
   }
   if (location === "Zanzibar") {
-    const selectedCreditor = creditor.value || "Caixa";
     taker.innerHTML = "<option>Zanzibar</option>";
     taker.value = "Zanzibar";
     taker.disabled = true;
     taker.setAttribute("aria-disabled", "true");
-    creditor.innerHTML = creditors.map((item) => `<option>${escapeHtml(item)}</option>`).join("");
-    creditor.value = creditors.includes(selectedCreditor) ? selectedCreditor : "Caixa";
-    creditor.disabled = false;
-    creditor.removeAttribute("aria-disabled");
+    creditor.innerHTML = "<option>Caixa</option>";
+    creditor.value = "Caixa";
+    creditor.disabled = true;
+    creditor.setAttribute("aria-disabled", "true");
     return;
   }
   taker.innerHTML = takers.map((item) => `<option>${escapeHtml(item)}</option>`).join("");
@@ -386,6 +436,7 @@ function openCashClosingDialog(item) {
   }).join("");
   updateCashClosingTotal();
   $("#cash-closing-dialog").showModal();
+  requestAnimationFrame(() => $("#cash-closing-date").focus());
 }
 $("#new-cash-closing").addEventListener("click", () => openCashClosingDialog());
 $("#close-cash-closing-dialog").addEventListener("click", () => $("#cash-closing-dialog").close());
@@ -458,6 +509,69 @@ $("#cash-closing-page-size").addEventListener("change", (event) => {
   paginationState.Fechamentos.page = 1;
   renderCashClosings();
 });
+function openLimitDialog(item) {
+  $("#limit-dialog-title").textContent = item ? "Editar limite" : "Novo limite";
+  $("#limit-id").value = item?.id || "";
+  $("#limit-month").innerHTML = Array.from({ length: 12 }, (_, index) => `<option value="${index + 1}">${new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(new Date(2020, index, 15))}</option>`).join("");
+  $("#limit-month").value = String(item?.month || new Date().getMonth() + 1);
+  $("#limit-year").value = item?.year || new Date().getFullYear();
+  ["target", "budget", "forecast", "patamar", "result"].forEach((field) => { $(`#limit-${field}`).value = item ? formatInputAmount(item[field]) : ""; });
+  updateLimitResult();
+  $("#limit-dialog").showModal();
+  requestAnimationFrame(() => $("#limit-target").focus());
+}
+$("#new-limit").addEventListener("click", () => openLimitDialog());
+$("#close-limit-dialog").addEventListener("click", () => $("#limit-dialog").close());
+$("#cancel-limit-dialog").addEventListener("click", () => $("#limit-dialog").close());
+["target", "budget", "forecast", "patamar", "result"].forEach((field) => {
+  if (field === "result") return;
+  $(`#limit-${field}`).addEventListener("input", (event) => {
+    const amount = parseInputAmount(event.target.value);
+    event.target.value = amount ? formatInputAmount(amount) : "";
+    updateLimitResult();
+  });
+});
+function updateLimitResult() {
+  const result = parseInputAmount($("#limit-target").value)
+    - parseInputAmount($("#limit-budget").value)
+    - parseInputAmount($("#limit-forecast").value)
+    - parseInputAmount($("#limit-patamar").value);
+  $("#limit-result").value = formatInputAmount(result);
+}
+$("#limit-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const id = $("#limit-id").value;
+  const month = Number($("#limit-month").value);
+  const year = Number($("#limit-year").value);
+  if (limits.some((item) => item.month === month && item.year === year && String(item.id) !== String(id))) return showFeedback("Já existe limite para este mês.");
+  const item = {
+    id: id || crypto.randomUUID(), month, year,
+    target: parseInputAmount($("#limit-target").value),
+    budget: parseInputAmount($("#limit-budget").value),
+    forecast: parseInputAmount($("#limit-forecast").value),
+    patamar: parseInputAmount($("#limit-patamar").value),
+    result: parseInputAmount($("#limit-target").value)
+      - parseInputAmount($("#limit-budget").value)
+      - parseInputAmount($("#limit-forecast").value)
+      - parseInputAmount($("#limit-patamar").value),
+    closed: Boolean(limits.find((entry) => String(entry.id) === String(id))?.closed),
+  };
+  const previous = captureState();
+  limits = upsertEntry(limits, item);
+  save().then(() => { renderLimits(); $("#limit-dialog").close(); showFeedback(id ? "Limite atualizado." : "Limite adicionado."); }).catch((error) => {
+    console.error("Falha ao salvar limite.", error);
+    restoreState(previous);
+    renderLimits();
+    showFeedback("Não foi possível salvar o limite.");
+  });
+});
+$("#limits-list").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-edit-limit]");
+  if (button) openLimitDialog(limits.find((item) => String(item.id) === button.dataset.editLimit));
+});
+$("#limit-pagination-prev").addEventListener("click", () => { if (paginationState.Limites.page > 1) { paginationState.Limites.page -= 1; renderLimits(); } });
+$("#limit-pagination-next").addEventListener("click", () => { paginationState.Limites.page += 1; renderLimits(); });
+$("#limit-page-size").addEventListener("change", (event) => { paginationState.Limites.pageSize = Number(event.target.value); paginationState.Limites.page = 1; renderLimits(); });
 $("#amount").addEventListener("input", (event) => {
   const amount = parseInputAmount(event.target.value);
   event.target.value = amount ? formatInputAmount(amount) : "";
@@ -682,4 +796,4 @@ function renderPage() {
 window.addEventListener("hashchange", renderPage);
 
 renderPage();
-loadData().then(() => { transactions = transactions.map((item) => ({ ...item, expenseType: item.expenseType || item.category || "Outros", taker: item.taker || "Pessoal", location: item.location || "Casa", creditor: item.creditor || "Caixa" })); $("#today-label").textContent = todayLabel(); $("#last-update").textContent = formatLastTransactionUpdate(lastTransactionUpdate); setupFormOptions(); render(); renderReports(); renderRegistries(); renderCashClosings(); renderPage(); }).catch((error) => { console.error("Falha ao inicializar a aplicação.", error); showFeedback("Não foi possível carregar os dados iniciais."); });
+loadData().then(() => { transactions = transactions.map((item) => ({ ...item, expenseType: item.expenseType || item.category || "Outros", taker: item.taker || "Pessoal", location: item.location || "Casa", creditor: item.creditor || "Caixa" })); $("#today-label").textContent = todayLabel(); $("#last-update").textContent = formatLastTransactionUpdate(lastTransactionUpdate); setupFormOptions(); render(); renderReports(); renderRegistries(); renderCashClosings(); renderLimits(); renderPage(); }).catch((error) => { console.error("Falha ao inicializar a aplicação.", error); showFeedback("Não foi possível carregar os dados iniciais."); });

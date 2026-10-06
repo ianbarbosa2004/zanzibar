@@ -8,6 +8,7 @@ const keys = {
   paymentMethods: "clareza-payment-methods",
   incomeSources: "clareza-income-sources",
   cashClosings: "clareza-cash-closings",
+  limits: "clareza-limits",
   catalogMetadata: "clareza-catalog-metadata",
 };
 
@@ -28,6 +29,7 @@ export function readLocalState(defaults) {
   };
   if (defaults.paymentMethods !== undefined) state.paymentMethods = read("paymentMethods", defaults.paymentMethods);
   state.cashClosings = read("cashClosings", defaults.cashClosings || []);
+  state.limits = read("limits", defaults.limits || []);
   state.catalogMetadata = read("catalogMetadata", defaults.catalogMetadata || {});
   return state;
 }

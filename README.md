@@ -123,6 +123,8 @@ Quando configurado, o servidor cria e migra as tabelas necessárias. O modelo co
 
 O cadastro `payment_methods` mantém formas de pagamento comuns, como Dinheiro, Pix, cartões, boleto e transferência bancária, para uso futuro nos fechamentos de caixa diários. Ele não é vinculado à tabela `transactions` nem aos formulários de receitas e despesas.
 A tabela `cash_closings` registra os fechamentos diários com data, forma de recebimento, quantidade de vendas e valor total, vinculando cada registro ao catálogo `payment_methods`.
+A tabela `limits` registra o planejamento mensal com `month`, `year`, `target`, `budget`, `forecast`, `patamar`, `result` e `closed`. Os cinco valores financeiros usam `DECIMAL(12,2)`, o fechamento usa `TINYINT(1)` com padrão `0`, e cada período (`year` + `month`) é único. O `result` é calculado como `target - budget - forecast - patamar`. A tabela também mantém `id`, `client_id`, `created_at` e `updated_at`.
+Na interface, os limites ficam na seção **Vendas**, abaixo dos fechamentos de caixa, com o formulário **Limites e Metas**, valores de meta, orçamento, previsão e resultado, status de fechamento controlado pela lógica, edição e paginação.
 Os cadastros auxiliares usam `display_order` e `is_active` quando aplicável. Registros inativos não aparecem em formulários ou filtros; a exclusão física só ocorre quando não há referência em `transactions` ou `cash_closings`.
 
 Nunca versionar senhas, arquivos de produção ou dumps do banco.
