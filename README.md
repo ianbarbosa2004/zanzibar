@@ -8,7 +8,7 @@ Aplicação web para organização financeira pessoal e empresarial. O sistema r
 - Registro e edição de receitas com fonte e data.
 - Saldo mensal calculado como receitas menos despesas.
 - Categorias, tomadores, locais, credores e fontes de receita.
-- Exportação das movimentações.
+- Interface organizada por resumo, movimentações, vendas, relatórios e cadastros.
 - Persistência MySQL com migração da estrutura legada de receitas.
 - Fallback para JSON local quando o MySQL não está configurado.
 - Interface compilada pelo Vite e servida pelo Node.js.
@@ -133,11 +133,13 @@ Qualquer implementação que altere o schema, as migrações, as foreign keys ou
 
 Inclusões, edições, exclusões, alterações de ordem e ativações ou desativações de cadastros só podem ser confirmadas visualmente depois que o `PUT /api/data` retornar sucesso. Antes de alterar o estado exibido, o frontend deve preservar uma cópia independente do estado anterior; se a persistência falhar, deve restaurar essa cópia, atualizar a interface e informar o erro. Esse rollback visual evita que um registro não salvo no MySQL permaneça aparentando estar salvo.
 
+Os estados auxiliares de paginação devem ser consumidos somente pelo renderer da listagem correspondente. Misturar estados de paginação de seções diferentes pode lançar uma exceção durante o redesenho pós-gravação, fazendo uma operação persistida parecer ter falhado.
+
 ## Prompt inicial para continuidade
 
 O Clareza é uma aplicação de organização financeira pessoal e empresarial: registra despesas, receitas e fechamentos de caixa, com Node.js em módulos ES, JavaScript puro, Vite, MySQL e Passenger. A API HTTP usa MySQL quando configurado e fallback para os arquivos JSON locais no desenvolvimento.
 
-O modelo MySQL principal é formado por `transactions`, `cash_closings` e pelos catálogos `expense_types`, `takers`, `locations`, `creditors`, `payment_methods` e `income_sources`, além de `app_settings`. `transactions` mantém foreign keys para os catálogos de lançamento; `cash_closings.payment_method_id` referencia `payment_methods.id`. Ao persistir, insira primeiro os nomes novos dos catálogos, depois atualize `display_order` e `is_active`. Registros inativos não aparecem nos formulários; não exclua fisicamente um cadastro referenciado por `transactions` ou `cash_closings`.
+O modelo MySQL principal é formado por `transactions`, `cash_closings` e pelos catálogos `expense_types`, `takers`, `locations`, `creditors`, `payment_methods` e `income_sources`, além de `app_settings`. `transactions` mantém foreign keys para os catálogos de lançamento; `cash_closings.payment_method_id` referencia `payment_methods.id`. Ao persistir, insira primeiro os nomes novos dos catálogos, depois atualize `display_order` e `is_active`. Registros inativos não aparecem nos formulários; não exclua fisicamente um cadastro referenciado por `transactions` ou `cash_closings`. O contrato do `PUT /api/data` deve preservar `transactions`, `incomes`, `cashClosings` e `settings` até o repositório.
 
 O Fechamento de Caixa registra data, forma de recebimento, quantidade de vendas e total, e também compõe a receita do dia. A ordenação dos catálogos compatíveis pode ser alterada por arraste e deve ser confirmada pelo botão **Salvar Ordem**. Em investigações, siga o fluxo ponta a ponta (interface, estado, API, persistência e retorno), acrescente testes unitários e de integração, proteja dados de produção e nunca exponha credenciais ou arquivos de runtime. O deploy deve ocorrer somente pelo script oficial `.github/scripts/deploy.ps1`.
 
