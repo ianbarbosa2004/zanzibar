@@ -33,7 +33,7 @@ O deploy via SFTP deve:
 - validar HTTP 200 e conferir os assets publicados por SHA-256;
 - nunca enviar credenciais ou chaves privadas.
 
-As validações locais continuam sendo `npm run build`, `npm test`, `node --check app.js`, `node --check server.js` e `git diff --check`. O deploy, após o merge, deve preservar:
+As validações locais continuam sendo `npm run build`, `npm test`, `node --check app.js`, `node --check server.js` e `git diff --check`. O deploy, após o merge, deve ser executado a partir de `main` sincronizada com `origin/main`. O script oficial bloqueia commits divergentes, publica `deploy-version.json` com o SHA do commit e confirma por HTTP que o cPanel serve esse mesmo SHA. A automação deve registrar a saída `CLAREZA_DEPLOY_COMMIT`; sem essa confirmação, a versão não deve ser considerada publicada. O deploy deve preservar:
 
 - `data.json`, `settings.json`, `incomes.json`, `cash-closings.json` e backups;
 - `.htaccess`;

@@ -8,7 +8,7 @@ O `.htaccess` é administrado pelo cPanel e não deve ser sobrescrito. Dados de 
 
 ## Procedimento oficial
 
-Execute a partir de uma cópia limpa do branch `main`:
+Execute somente a partir de uma cópia limpa do branch `main`, depois que o pull request tiver sido mesclado:
 
 ```powershell
 git fetch origin main
@@ -16,6 +16,8 @@ git switch main
 git pull --ff-only origin main
 powershell -NoProfile -ExecutionPolicy Bypass -File .github\scripts\deploy.ps1
 ```
+
+O script bloqueia a publicação se `HEAD` não for exatamente igual a `origin/main`. Depois do upload, ele publica `deploy-version.json` com o SHA do commit e confirma por HTTP que o cPanel está servindo esse mesmo SHA. A saída `CLAREZA_DEPLOY_COMMIT` é a referência da versão efetivamente publicada.
 
 O script oficial:
 
@@ -25,6 +27,7 @@ O script oficial:
 - reinstala dependências no ambiente Node do cPanel;
 - reinicia o Passenger;
 - valida a aplicação e a API online.
+- confirma que o commit publicado é o mesmo commit de `origin/main`.
 
 ### Autenticação SFTP
 
@@ -59,3 +62,9 @@ https://itsites.com.br/clareza/api/data
 ```
 
 Depois de mudanças em persistência, valide também uma leitura real dos catálogos, status, ordenação, exclusão e Fechamento de Caixa. Não altere ou exclua registros de produção apenas para testar sem uma estratégia explícita de recuperação.
+
+Para conferir rapidamente a versão servida:
+
+```powershell
+Invoke-WebRequest -UseBasicParsing https://itsites.com.br/clareza/deploy-version.json
+```

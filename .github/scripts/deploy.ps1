@@ -23,9 +23,19 @@ try {
   if (-not (Get-Command curl.exe -ErrorAction SilentlyContinue)) { throw "curl.exe não encontrado." }
   if (-not (Test-Path -LiteralPath $sshKey -PathType Leaf)) { throw "Chave SSH não encontrada: $sshKey" }
 
+  $sourceCommit = (git rev-parse HEAD).Trim()
+  $mainCommit = (git rev-parse origin/main).Trim()
+  if ($sourceCommit -ne $mainCommit) {
+    throw "Deploy bloqueado: o workspace não está no mesmo commit de origin/main. Atual: $sourceCommit; origin/main: $mainCommit"
+  }
+
   node --check app.js
   node --check server.js
   npm run build
+  @{
+    commit = $sourceCommit
+    branch = (git branch --show-current).Trim()
+  } | ConvertTo-Json -Compress | Set-Content -LiteralPath "dist/deploy-version.json" -Encoding ascii
 
   Invoke-Checked "ssh" @($connectionOptions + @($remoteTarget, "mkdir -p $remoteRoot/backups $remoteRoot/tmp $remoteRoot/src; cp $remoteRoot/data.json $remoteRoot/backups/data-$backupStamp.json 2>/dev/null || true; cp $remoteRoot/settings.json $remoteRoot/backups/settings-$backupStamp.json 2>/dev/null || true"))
   Invoke-Checked "ssh" @($connectionOptions + @($remoteTarget, "rm -rf $remoteRoot/dist && mkdir -p $remoteRoot/dist"))
@@ -47,6 +57,13 @@ bye
   $page = Invoke-WebRequest -Uri "https://itsites.com.br/clareza/" -UseBasicParsing
   $api = Invoke-WebRequest -Uri "https://itsites.com.br/clareza/api/data" -UseBasicParsing
   if ($page.StatusCode -ne 200 -or $api.StatusCode -ne 200) { throw "Validação online retornou status inesperado." }
+  $version = Invoke-WebRequest -Uri "https://itsites.com.br/clareza/deploy-version.json" -UseBasicParsing
+  if ($version.StatusCode -ne 200) { throw "Não foi possível ler a versão publicada." }
+  $publishedCommit = ($version.Content | ConvertFrom-Json).commit
+  if ($publishedCommit -ne $sourceCommit) {
+    throw "A versão publicada diverge do commit validado. Esperado: $sourceCommit; publicado: $publishedCommit"
+  }
+  Write-Output "CLAREZA_DEPLOY_COMMIT: $publishedCommit"
   $localAssets = [regex]::Matches((Get-Content -LiteralPath "dist/index.html" -Raw), "assets/[^""']+\.(js|css)") | ForEach-Object { $_.Value } | Sort-Object -Unique
   foreach ($asset in $localAssets) {
     if ($page.Content -notlike "*$asset*") { throw "A página online não referencia o asset esperado: $asset" }
