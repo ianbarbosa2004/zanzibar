@@ -161,4 +161,6 @@ O caminho `/clareza` é o padrão e pode ser alterado por `CLAREZA_BASE_PATH`. O
 
 - [Contribuição e validação](CONTRIBUTING.md)
 - [Publicação no cPanel](docs/DEPLOYMENT.md)
+- [Regras das automações](docs/AUTOMATIONS.md)
+- [Contrato técnico dos prompts](docs/AUTOMATION-PROMPTS.md)
 - [Prompt de continuidade para novas sessões](docs/CONTINUITY-PROMPT.md)

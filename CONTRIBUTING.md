@@ -34,6 +34,6 @@ Ao adicionar paginação a uma nova listagem, mantenha seu estado separado dos e
 
 ## Persistência e produção
 
-O banco de produção é MySQL. O fallback local usa `data.json`, `incomes.json` e `settings.json`; esses arquivos são runtime e não devem ser commitados. Alterações de schema, foreign keys, exclusão ou migração devem preservar dados existentes, ser integradas em `main` e obrigatoriamente publicadas na hospedagem/banco de dados ao concluir a tarefa. Não considere a implementação concluída enquanto o deploy e a validação remota não terminarem.
+O banco de produção é MySQL. O fallback local usa `data.json`, `settings.json`, `incomes.json` e `cash-closings.json`; esses arquivos são runtime e não devem ser commitados. Alterações de schema, foreign keys, exclusão ou migração devem preservar dados existentes, ser integradas em `main` e obrigatoriamente publicadas na hospedagem/banco de dados ao concluir a tarefa. Não considere a implementação concluída enquanto o deploy e a validação remota não terminarem.
 
 O procedimento de publicação está em [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
