@@ -8,20 +8,15 @@ O `.htaccess` é administrado pelo cPanel e não deve ser sobrescrito. Dados de 
 
 ## Procedimento oficial
 
-Execute somente a partir de uma cópia limpa do branch `main`, depois que o pull request tiver sido mesclado. As automações devem abrir o PR e solicitar o merge automático; se a proteção exigir aprovação humana, o deploy deve aguardar. Se o checkout local estiver divergente, não use `pull --ff-only` repetidamente nem descarte commits sem registro: crie primeiro uma branch de backup para o commit local e só então alinhe `main` à origem:
+Execute a partir do checkout local que contém a versão que deve ser publicada. Não é necessário criar, mesclar ou aguardar um pull request para executar o deploy operacional. O PR é usado somente para integrar código no repositório. Antes de publicar, confirme que o código foi validado e que o checkout não contém arquivos de runtime ou credenciais destinados ao upload:
 
 ```powershell
-git fetch origin main
-git switch main
-git status --short
-# Com status limpo e divergência local:
-git branch automation-checkpoint-AAAAMMDD-HHMMSS
-git reset --keep origin/main
-git pull --ff-only origin main
+node --check app.js
+node --check server.js
 powershell -NoProfile -ExecutionPolicy Bypass -File .github\scripts\deploy.ps1
 ```
 
-Se `git status --short` retornar arquivos, interrompa e resolva o workspace antes do deploy. A branch de backup preserva qualquer commit local que não pertença à `origin/main`; ela não deve ser publicada automaticamente.
+Alterações de código locais são permitidas e são justamente o conteúdo a ser publicado. O script gera `dist/` localmente, remove somente a pasta `dist/` remota e envia o novo build. `data.json`, `settings.json`, `incomes.json`, `cash-closings.json`, backups e `.htaccess` são preservados no servidor.
 
 O script bloqueia a publicação se `HEAD` não for exatamente igual a `origin/main`. Depois do upload, ele publica `deploy-version.json` com o SHA do commit e confirma por HTTP que o cPanel está servindo esse mesmo SHA. A saída `CLAREZA_DEPLOY_COMMIT` é a referência da versão efetivamente publicada.
 
