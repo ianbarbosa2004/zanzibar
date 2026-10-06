@@ -2,7 +2,7 @@
 
 ## Regra de branch
 
-As automações nunca devem fazer commit, push ou deploy diretamente na branch protegida `main`. Antes de trabalhar, devem fazer `fetch` e `pull --ff-only origin main`, criar uma branch de automação a partir da `origin/main`, executar as validações e abrir um pull request contra `main`. A publicação em produção só pode ocorrer depois que o pull request for mesclado.
+As automações nunca devem fazer commit, push ou deploy diretamente na branch protegida `main`. Antes de trabalhar, devem fazer `fetch` de `origin`, garantir que o checkout esteja em `main` e verificar o estado local. Se `main` estiver divergente de `origin/main`, mas sem alterações não commitadas, devem preservar o commit local em uma branch de backup nomeada com data, alinhar `main` a `origin/main` e registrar essa ação; nunca devem descartar commits silenciosamente. Se houver alterações não commitadas, devem interromper e informar o erro. A publicação em produção só pode ocorrer a partir de `main` exatamente igual a `origin/main`, depois que o pull request tiver sido mesclado.
 
 Quando uma implementação envolver schema, migração, foreign key ou persistência MySQL, a automação deve obrigatoriamente executar o deploy oficial e validar a hospedagem/banco antes de considerar a tarefa concluída.
 
@@ -33,7 +33,7 @@ O deploy via SFTP deve:
 - validar HTTP 200 e conferir os assets publicados por SHA-256;
 - nunca enviar credenciais ou chaves privadas.
 
-As validações locais continuam sendo `npm run build`, `npm test`, `node --check app.js`, `node --check server.js` e `git diff --check`. O deploy, após o merge, deve ser executado a partir de `main` sincronizada com `origin/main`. O script oficial bloqueia commits divergentes, publica `deploy-version.json` com o SHA do commit e confirma por HTTP que o cPanel serve esse mesmo SHA. A automação deve registrar a saída `CLAREZA_DEPLOY_COMMIT`; sem essa confirmação, a versão não deve ser considerada publicada. O deploy deve preservar:
+As validações locais continuam sendo `npm run build`, `npm test`, `node --check app.js`, `node --check server.js` e `git diff --check`. O deploy, após o merge, deve ser executado a partir de `main` sincronizada com `origin/main`. O workspace da automação deve ser preparado antes da execução: branch `main`, status limpo e `HEAD` igual a `origin/main`. O script oficial bloqueia commits divergentes, publica `deploy-version.json` com o SHA do commit e confirma por HTTP que o cPanel serve esse mesmo SHA. A automação deve registrar a saída `CLAREZA_DEPLOY_COMMIT`; sem essa confirmação, a versão não deve ser considerada publicada. O deploy deve preservar:
 
 - `data.json`, `settings.json`, `incomes.json`, `cash-closings.json` e backups;
 - `.htaccess`;
