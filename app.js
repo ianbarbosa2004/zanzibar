@@ -48,6 +48,12 @@ async function save() {
   const state = { transactions, incomes, cashClosings, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources, catalogMetadata };
   await persistAppState(API_URL, state);
 }
+function captureState() {
+  return { transactions: [...transactions], incomes: [...incomes], cashClosings: [...cashClosings], expenseTypes: [...expenseTypes], takers: [...takers], locations: [...locations], creditors: [...creditors], paymentMethods: [...paymentMethods], incomeSources: [...incomeSources], catalogMetadata: structuredClone(catalogMetadata) };
+}
+function restoreState(previous) {
+  ({ transactions, incomes, cashClosings, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources, catalogMetadata } = previous);
+}
 
 function setupFormOptions() {
   const active = (kind, values) => values.filter((name) => catalogMetadata[kind]?.find((item) => item.name === name)?.isActive !== false).sort((a, b) => (catalogMetadata[kind]?.find((item) => item.name === a)?.displayOrder || 0) - (catalogMetadata[kind]?.find((item) => item.name === b)?.displayOrder || 0) || a.localeCompare(b, "pt-BR"));
@@ -268,8 +274,9 @@ $("#transaction-form").addEventListener("submit", (event) => {
     creditor: $("#creditor").value,
     date: $("#date").value,
   }, id);
+  const previous = captureState();
   transactions = upsertEntry(transactions, item);
-  save().then(() => { setupFormOptions(); render(); renderReports(); renderRegistries(); $("#transaction-dialog").close(); showFeedback(id ? "Despesa atualizada." : "Despesa adicionada."); }).catch(() => showFeedback("Não foi possível salvar a despesa."));
+  save().then(() => { setupFormOptions(); render(); renderReports(); renderRegistries(); $("#transaction-dialog").close(); showFeedback(id ? "Despesa atualizada." : "Despesa adicionada."); }).catch(() => { restoreState(previous); setupFormOptions(); render(); renderReports(); renderRegistries(); showFeedback("Não foi possível salvar a despesa."); });
 });
 $("#income-form").addEventListener("submit", (event) => {
   event.preventDefault();
@@ -282,8 +289,9 @@ $("#income-form").addEventListener("submit", (event) => {
     source: $("#income-source").value,
     date: $("#income-date").value,
   }, id);
+  const previous = captureState();
   incomes = upsertEntry(incomes, item);
-  save().then(() => { setupFormOptions(); render(); renderReports(); renderRegistries(); $("#income-dialog").close(); showFeedback(id ? "Receita atualizada." : "Receita adicionada."); }).catch((error) => { console.error(error); showFeedback("Não foi possível salvar a receita."); });
+  save().then(() => { setupFormOptions(); render(); renderReports(); renderRegistries(); $("#income-dialog").close(); showFeedback(id ? "Receita atualizada." : "Receita adicionada."); }).catch((error) => { console.error(error); restoreState(previous); setupFormOptions(); render(); renderReports(); renderRegistries(); showFeedback("Não foi possível salvar a receita."); });
 });
 function renderLocationOptions() {
   const selected = $("#location-options").dataset.value || "Casa";
@@ -463,11 +471,12 @@ function addCatalogItem(kind) {
   if (!value) return;
   const list = { type: expenseTypes, taker: takers, location: locations, creditor: creditors, paymentMethod: paymentMethods, incomeSource: incomeSources }[kind];
   if (hasRegistryName(list, value)) return showFeedback(`${label[0].toUpperCase() + label.slice(1)} já cadastrado.`);
+  const previous = captureState();
   list.push(value);
   const table = { type: "expense_types", taker: "takers", location: "locations", creditor: "creditors", paymentMethod: "payment_methods", incomeSource: "income_sources" }[kind];
   catalogMetadata[table] ||= [];
   catalogMetadata[table].push({ name: value, displayOrder: catalogMetadata[table].length, isActive: true });
-  save().then(() => { setupFormOptions(); renderRegistries(); showFeedback(`${label[0].toUpperCase() + label.slice(1)} cadastrado.`); }).catch(() => showFeedback("Não foi possível salvar o cadastro."));
+  save().then(() => { setupFormOptions(); renderRegistries(); showFeedback(`${label[0].toUpperCase() + label.slice(1)} cadastrado.`); }).catch(() => { restoreState(previous); setupFormOptions(); renderRegistries(); showFeedback("Não foi possível salvar o cadastro."); });
 }
 function openRegistryEditDialog(kind, index) {
   const list = { type: expenseTypes, taker: takers, location: locations, creditor: creditors, paymentMethod: paymentMethods, incomeSource: incomeSources }[kind];
@@ -492,10 +501,17 @@ $("#registry-lists").addEventListener("click", (event) => {
     saveOrderButton.disabled = true;
     save().then(() => {
       pendingRegistryOrderSaves.delete(kind);
+      registryOrderSnapshots.delete(kind);
       renderRegistries();
       showFeedback("Ordem dos cadastros salva.");
     }).catch(() => {
       saveOrderButton.disabled = false;
+      const previous = registryOrderSnapshots.get(kind);
+      if (previous) restoreState(previous);
+      registryOrderSnapshots.delete(kind);
+      pendingRegistryOrderSaves.delete(kind);
+      setupFormOptions();
+      renderRegistries();
       showFeedback("Não foi possível salvar a ordem.");
     });
     return;
@@ -519,11 +535,12 @@ $("#registry-lists").addEventListener("click", (event) => {
   }
   if (list.length === 1) return showFeedback("Mantenha pelo menos um cadastro disponível.");
   if (!confirm(`Excluir "${current}"?`)) return;
+  const previous = captureState();
   list.splice(index, 1);
   const table = { type: "expense_types", taker: "takers", location: "locations", creditor: "creditors", paymentMethod: "payment_methods", incomeSource: "income_sources" }[kind];
   catalogMetadata[table] = catalogMetadata[table].filter((entry) => entry.name !== current);
   pendingRegistryOrderSaves.delete(kind);
-  save().then(() => { setupFormOptions(); renderRegistries(); showFeedback("Cadastro excluído."); }).catch(() => showFeedback("Não foi possível excluir o cadastro."));
+  save().then(() => { setupFormOptions(); renderRegistries(); showFeedback("Cadastro excluído."); }).catch(() => { restoreState(previous); setupFormOptions(); renderRegistries(); showFeedback("Não foi possível excluir o cadastro."); });
 });
 $("#registry-form").addEventListener("submit", (event) => {
   event.preventDefault();
@@ -534,6 +551,7 @@ $("#registry-form").addEventListener("submit", (event) => {
   const value = $("#registry-name").value.trim();
   if (!value) return;
   if (hasRegistryName(list, value, index)) return showFeedback("Já existe um cadastro com esse nome.");
+  const previous = captureState();
   const updated = renameRegistry(kind, current, value, { transactions, incomes, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources, catalogMetadata });
   ({ transactions, incomes, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources, catalogMetadata } = updated);
   const table = { type: "expense_types", taker: "takers", location: "locations", creditor: "creditors", paymentMethod: "payment_methods", incomeSource: "income_sources" }[kind];
@@ -543,12 +561,13 @@ $("#registry-form").addEventListener("submit", (event) => {
     metadata.displayOrder = Math.max(0, Number($("#registry-order").value) || 0);
     metadata.isActive = $("#registry-status").checked;
   }
-  save().then(() => { setupFormOptions(); render(); renderReports(); renderRegistries(); $("#registry-dialog").close(); showFeedback("Cadastro atualizado."); }).catch(() => showFeedback("Não foi possível atualizar o cadastro."));
+  save().then(() => { setupFormOptions(); render(); renderReports(); renderRegistries(); $("#registry-dialog").close(); showFeedback("Cadastro atualizado."); }).catch(() => { restoreState(previous); setupFormOptions(); render(); renderReports(); renderRegistries(); showFeedback("Não foi possível atualizar o cadastro."); });
 });
 document.querySelectorAll("#close-registry-dialog, #cancel-registry-dialog").forEach((button) => button.addEventListener("click", () => $("#registry-dialog").close()));
 let draggedRegistryRow = null;
 let draggedRegistryKind = "";
 let draggedRegistryIndex = -1;
+const registryOrderSnapshots = new Map();
 $("#registry-lists").addEventListener("dragstart", (event) => {
   const row = event.target.closest("[data-registry-drag-kind]");
   if (!row || event.target.closest("input, button, label")) return;
@@ -577,6 +596,7 @@ $("#registry-lists").addEventListener("drop", (event) => {
   const list = { taker: takers, creditor: creditors, paymentMethod: paymentMethods, incomeSource: incomeSources }[kind];
   const targetIndex = Number(target.dataset.registryDragIndex);
   if (!Number.isInteger(sourceIndex) || !Number.isInteger(targetIndex) || sourceIndex === targetIndex) return;
+  if (!registryOrderSnapshots.has(kind)) registryOrderSnapshots.set(kind, captureState());
   const [moved] = list.splice(sourceIndex, 1);
   const insertionIndex = event.clientY > target.getBoundingClientRect().top + target.getBoundingClientRect().height / 2 ? targetIndex + 1 : targetIndex;
   list.splice(sourceIndex < insertionIndex ? insertionIndex - 1 : insertionIndex, 0, moved);
@@ -604,9 +624,10 @@ $("#registry-lists").addEventListener("change", (event) => {
   const table = { type: "expense_types", taker: "takers", location: "locations", creditor: "creditors", paymentMethod: "payment_methods", incomeSource: "income_sources" }[kind];
   const name = list[Number((orderInput || statusInput).dataset.registryIndex)];
   const entry = catalogMetadata[table].find((item) => item.name === name);
+  const previous = captureState();
   if (orderInput) entry.displayOrder = Math.max(0, Number(orderInput.value) || 0);
   if (statusInput) entry.isActive = statusInput.checked;
-  save().then(() => { setupFormOptions(); renderRegistries(); showFeedback("Cadastro atualizado."); }).catch(() => showFeedback("Não foi possível atualizar o cadastro."));
+  save().then(() => { setupFormOptions(); renderRegistries(); showFeedback("Cadastro atualizado."); }).catch(() => { restoreState(previous); setupFormOptions(); renderRegistries(); showFeedback("Não foi possível atualizar o cadastro."); });
 });
 $("#export-button").addEventListener("click", () => { const blob = new Blob([JSON.stringify([...transactions, ...incomes], null, 2)], { type: "application/json" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "clareza-transacoes.json"; link.click(); URL.revokeObjectURL(link.href); showFeedback("Dados exportados."); });
 
