@@ -26,6 +26,27 @@ O script oficial:
 - reinicia o Passenger;
 - valida a aplicação e a API online.
 
+### Autenticação SFTP
+
+O script usa a chave SSH protegida por senha em `~/.ssh/clareza_cpanel_deploy`. Carregue-a no `ssh-agent` antes do deploy. Para usar outro arquivo ou ajustar o destino sem editar o script, defina:
+
+```powershell
+$env:CLAREZA_SSH_KEY = "$HOME\.ssh\clareza_cpanel_deploy"
+$env:CLAREZA_SFTP_HOST = "itsites.com.br"
+$env:CLAREZA_SFTP_USER = "itsitescom"
+$env:CLAREZA_SFTP_ROOT = "/home1/itsitescom/public_html/clareza"
+```
+
+No Windows, ative o serviço e carregue a chave com:
+
+```powershell
+Set-Service -Name ssh-agent -StartupType Manual
+Start-Service -Name ssh-agent
+ssh-add "$HOME\.ssh\clareza_cpanel_deploy"
+```
+
+Cadastre o conteúdo do arquivo `.pub` correspondente em **cPanel > SSH Access > Manage SSH Keys > Import Key > Authorization**, antes de executar o deploy. A chave privada nunca deve ser commitada ou enviada ao servidor.
+
 Não replique a lógica SFTP em outro script ou comando manual. Se a validação falhar, interrompa o procedimento e preserve a saída do erro para investigação.
 
 ## Pós-publicação

@@ -30,6 +30,6 @@ Mudanças que envolvem banco de dados devem ser verificadas no fluxo completo: i
 
 ## Persistência e produção
 
-O banco de produção é MySQL. O fallback local usa `data.json`, `incomes.json` e `settings.json`; esses arquivos são runtime e não devem ser commitados. Alterações de schema, foreign keys, exclusão ou migração devem preservar dados existentes e ser integradas em `main` antes do deploy.
+O banco de produção é MySQL. O fallback local usa `data.json`, `incomes.json` e `settings.json`; esses arquivos são runtime e não devem ser commitados. Alterações de schema, foreign keys, exclusão ou migração devem preservar dados existentes, ser integradas em `main` e obrigatoriamente publicadas na hospedagem/banco de dados ao concluir a tarefa. Não considere a implementação concluída enquanto o deploy e a validação remota não terminarem.
 
 O procedimento de publicação está em [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
