@@ -8,7 +8,13 @@ Quando uma implementação envolver schema, migração, foreign key ou persistê
 
 As automações também devem verificar a consistência visual das escritas: formulários de despesas, receitas e cadastros auxiliares só podem confirmar o sucesso depois do `PUT /api/data`; em caso de falha, o estado anterior deve ser restaurado. A verificação inclui inclusão, edição, exclusão, ordenação e ativação ou desativação.
 
-## `atualizar readme main`
+O contrato técnico versionado dos prompts está em [`docs/AUTOMATION-PROMPTS.md`](AUTOMATION-PROMPTS.md). A configuração executável da automação deve permanecer coerente com esse documento.
+
+## `atualizar repo`
+
+Integra alterações de código, testes, configuração e documentação por pull request protegido contra `main`. Deve analisar o checkout e o histórico local/remoto, incorporar somente arquivos seguros, executar as validações obrigatórias, aguardar o merge e confirmar que `origin/main` é a versão oficial. Não executa deploy no cPanel.
+
+## `atualizar readme`
 
 Automação manual do projeto `zanzibar`. Trabalha em uma branch de automação, analisa as implementações recentes e atualiza:
 
@@ -17,10 +23,11 @@ Automação manual do projeto `zanzibar`. Trabalha em uma branch de automação,
 - `docs/DEPLOYMENT.md`
 - `docs/CONTINUITY-PROMPT.md`
 - `docs/AUTOMATIONS.md`
+- `docs/AUTOMATION-PROMPTS.md`
 
 Executa `npm run build`, depois `npm test`, `node --check app.js`, `node --check server.js` e `git diff --check`. Ao concluir, cria commit com o trailer `Co-authored-by` exigido, envia a branch para `origin`, abre um pull request com `gh pr create` e solicita merge automático com `gh pr merge --auto --squash`. Se houver aprovação humana, conflito ou check falho, interrompe e informa o bloqueio exato. Não deve incluir credenciais, chaves privadas, dados de produção, JSON de runtime, `dist/` ou `node_modules/`.
 
-## `atualizar online main`
+## `atualizar online`
 
 Automação manual do projeto `zanzibar`. Publica diretamente o checkout local, sem criar PR, trocar branch, fazer merge ou aguardar o GitHub. O PR fica reservado à integração do código no repositório; esta automação é somente o caminho operacional do cPanel.
 
@@ -48,4 +55,4 @@ Se a ferramenta exibir `deploy-version.json` como `{"type":"Buffer","data":[...]
 
 ## Separação entre publicação e integração
 
-`atualizar online` publica o checkout local diretamente e não faz PR. `atualizar readme main` continua usando branch e PR para alterações de documentação. Essa separação evita bloquear uma publicação operacional por uma regra de proteção da branch.
+`atualizar online` publica o checkout local diretamente e não faz PR. `atualizar readme` continua usando branch e PR para alterações de documentação. Essa separação evita bloquear uma publicação operacional por uma regra de proteção da branch.
