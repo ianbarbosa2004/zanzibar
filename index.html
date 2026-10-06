@@ -56,26 +56,35 @@
             </div>
             <div class="summary-grid">
               <article class="summary-card summary-card-income">
+                <div class="summary-limit" aria-label="Meta do mês"><span>Meta:</span><strong id="summary-limit-target">R$ 0,00</strong></div>
                 <span class="summary-icon" aria-hidden="true">↗</span>
                 <div><span>Receitas</span><strong id="income-value">R$ 0,00</strong><em id="income-caption">0 entradas registradas</em></div>
               </article>
               <article class="summary-card summary-card-home">
+                <div class="summary-limit" aria-label="Orçamento do mês"><span>Orçamento:</span><strong id="summary-limit-budget">R$ 0,00</strong></div>
                 <span class="summary-icon" aria-hidden="true">⌂</span>
                 <div><span>Despesas Casa</span><strong id="home-expense-value">R$ 0,00</strong><em id="home-expense-caption">0 despesas registradas</em></div>
               </article>
               <article class="summary-card summary-card-business">
+                <div class="summary-limit" aria-label="Previsão do mês"><span>Previsão:</span><strong id="summary-limit-forecast">R$ 0,00</strong></div>
                 <span class="summary-icon" aria-hidden="true">◆</span>
                 <div><span>Despesas Zanzibar</span><strong id="business-expense-value">R$ 0,00</strong><em id="business-expense-caption">0 despesas registradas</em></div>
               </article>
+              <article class="summary-card summary-card-loans">
+                <div class="summary-limit" aria-label="Patamar do mês"><span>Patamar:</span><strong id="summary-limit-patamar">R$ 0,00</strong></div>
+                <span class="summary-icon" aria-hidden="true">↔</span>
+                <div><span>Empréstimos</span><strong id="loans-expense-value">R$ 0,00</strong><em id="loans-expense-caption">0 despesas registradas</em></div>
+              </article>
               <article class="summary-card summary-card-balance">
+                <div class="summary-limit" aria-label="Resultado do mês"><span>Resultado:</span><strong id="summary-limit-result">R$ 0,00</strong></div>
                 <span class="summary-icon" aria-hidden="true">=</span>
                 <div><span>Saldo</span><strong id="balance-value">R$ 0,00</strong></div>
               </article>
             </div>
-            <div class="home-actions">
-              <button class="primary-button" id="home-new-income" type="button"><span>＋</span> Incluir receita</button>
-              <button class="secondary-button" id="home-new-transaction" type="button"><span>＋</span> Incluir despesa</button>
-            </div>
+          </div>
+          <div class="home-actions">
+            <button class="primary-button" id="home-new-income" type="button"><span>＋</span> Incluir receita</button>
+            <button class="primary-button" id="home-new-transaction" type="button"><span>＋</span> Incluir despesa</button>
           </div>
         </section>
 
@@ -114,6 +123,16 @@
               <div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Tomador</th><th>Credor</th><th class="align-right">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody data-transactions-list></tbody></table><div data-empty-state class="empty-state" hidden>Nenhuma transação encontrada.</div></div>
               <nav data-pagination class="pagination" aria-label="Paginação das despesas de Zanzibar"><span class="pagination-controls"><button data-pagination-prev class="pagination-button" type="button">← Anterior</button><span data-pagination-status aria-live="polite"></span><button data-pagination-next class="pagination-button" type="button">Próxima →</button></span><label class="page-size">Por página <select data-page-size aria-label="Registros por página em Zanzibar"><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label></nav>
             </div>
+            <div class="location-panel" data-location-panel="Empréstimos">
+              <div class="location-panel-heading"><h3>Empréstimos <span data-location-total>(R$ 0,00)</span></h3></div>
+              <div class="toolbar">
+                <label class="search-box"><span>⌕</span><input data-search type="search" placeholder="Buscar em Empréstimos..." /></label>
+                <select data-type-filter aria-label="Filtrar despesas de Empréstimos por tipo"><option value="all">Todos os tipos</option></select>
+                <select data-taker-filter aria-label="Filtrar despesas de Empréstimos por tomador"><option value="all">Todos os tomadores</option></select>
+              </div>
+              <div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Tomador</th><th>Credor</th><th class="align-right">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody data-transactions-list></tbody></table><div data-empty-state class="empty-state" hidden>Nenhuma transação encontrada.</div></div>
+              <nav data-pagination class="pagination" aria-label="Paginação das despesas de Empréstimos"><span class="pagination-controls"><button data-pagination-prev class="pagination-button" type="button">← Anterior</button><span data-pagination-status aria-live="polite"></span><button data-pagination-next class="pagination-button" type="button">Próxima →</button></span><label class="page-size">Por página <select data-page-size aria-label="Registros por página em Empréstimos"><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label></nav>
+            </div>
           </div>
         </section>
 
@@ -140,6 +159,11 @@
           <div class="section-heading"><div><p class="eyebrow">Operação</p><h2>Fechamentos de caixa <span id="cash-closing-total" class="section-total">(R$ 0,00)</span></h2></div><button class="primary-button" id="new-cash-closing" type="button"><span>＋</span> Fechamento de caixa</button></div>
           <div class="table-wrap"><table><thead><tr><th>Data</th><th>Forma de recebimento</th><th>Vendas</th><th class="align-right">Valor</th><th class="align-right">Total</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody id="cash-closings-list"></tbody></table><div id="cash-closings-empty" class="empty-state" hidden>Nenhum fechamento de caixa encontrado.</div></div>
           <nav class="pagination" aria-label="Paginação dos fechamentos de caixa"><span class="pagination-controls"><button id="cash-closing-pagination-prev" class="pagination-button" type="button">← Anterior</button><span id="cash-closing-pagination-status" aria-live="polite"></span><button id="cash-closing-pagination-next" class="pagination-button" type="button">Próxima →</button></span><label class="page-size">Por página <select id="cash-closing-page-size" aria-label="Fechamentos por página"><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label></nav>
+        </section>
+        <section class="transactions-section limits-section" data-page="vendas">
+          <div class="section-heading limits-heading"><div><p class="eyebrow">Planejamento</p><h2>Limites e Metas</h2></div><button class="primary-button" id="new-limit" type="button"><span>＋</span> Limite</button></div>
+          <div class="table-wrap"><table><thead><tr><th>Período</th><th class="align-right">Meta</th><th class="align-right">Orçamento</th><th class="align-right">Previsão</th><th class="align-right">Patamar</th><th class="align-right">Resultado</th><th>Status</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody id="limits-list"></tbody></table><div id="limits-empty" class="empty-state" hidden>Nenhum limite encontrado.</div></div>
+          <nav class="pagination" aria-label="Paginação dos limites"><span class="pagination-controls"><button id="limit-pagination-prev" class="pagination-button" type="button">← Anterior</button><span id="limit-pagination-status" aria-live="polite"></span><button id="limit-pagination-next" class="pagination-button" type="button">Próxima →</button></span><label class="page-size">Por página <select id="limit-page-size" aria-label="Limites por página"><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label></nav>
         </section>
 
         <section id="cadastros" class="registries-section" data-page="cadastros">
@@ -190,6 +214,21 @@
         <div id="cash-closing-methods" class="cash-closing-methods"></div>
         <div class="cash-closing-total"><span>Total</span><strong id="cash-closing-sales-preview">0</strong><strong id="cash-closing-total-preview">R$ 0,00</strong></div>
         <div class="dialog-actions"><button class="secondary-button" id="cancel-cash-closing-dialog" type="button">Cancelar</button><button class="primary-button" type="submit">Salvar fechamento</button></div>
+      </form>
+    </dialog>
+    <dialog id="limit-dialog">
+      <form id="limit-form" method="dialog">
+        <div class="dialog-heading"><div><p class="eyebrow">Planejamento mensal</p><h2 id="limit-dialog-title">Novo limite</h2></div><button class="close-button" id="close-limit-dialog" type="button" aria-label="Fechar">×</button></div>
+        <input id="limit-id" type="hidden" />
+        <div class="form-row"><label>Mês<select id="limit-month" required></select></label><label>Ano<input id="limit-year" type="number" min="2000" max="9999" required /></label></div>
+        <div id="limit-values" class="limit-values">
+          <label>Meta (~ Receitas)<input id="limit-target" type="text" inputmode="decimal" dir="rtl" placeholder="R$ 0,00" /></label>
+          <label>Orçamento (~ Despesas Casa)<input id="limit-budget" type="text" inputmode="decimal" dir="rtl" placeholder="R$ 0,00" /></label>
+          <label>Previsão (~ Despesas Zanzibar)<input id="limit-forecast" type="text" inputmode="decimal" dir="rtl" placeholder="R$ 0,00" /></label>
+          <label>Patamar (~ Empréstimos)<input id="limit-patamar" type="text" inputmode="decimal" dir="rtl" placeholder="R$ 0,00" /></label>
+          <label>Resultado (~Saldo)<input id="limit-result" type="text" inputmode="decimal" dir="rtl" placeholder="R$ 0,00" readonly disabled /></label>
+        </div>
+        <div class="dialog-actions"><button class="secondary-button" id="cancel-limit-dialog" type="button">Cancelar</button><button class="primary-button" type="submit">Salvar limite</button></div>
       </form>
     </dialog>
     <dialog id="registry-dialog">

@@ -3,7 +3,7 @@ import test from "node:test";
 import { isDataPayload, normalizeDataPayload } from "../../src/shared/payload.js";
 
 test("aceita payload com transações, receitas, fechamentos e configurações", () => {
-  assert.equal(isDataPayload({ transactions: [], incomes: [], cashClosings: [], settings: {} }), true);
+  assert.equal(isDataPayload({ transactions: [], incomes: [], cashClosings: [], limits: [], settings: {} }), true);
 });
 
 test("aceita payload legado sem a lista separada de receitas", () => {
@@ -11,6 +11,7 @@ test("aceita payload legado sem a lista separada de receitas", () => {
     transactions: [],
     incomes: [],
     cashClosings: [],
+    limits: [],
     settings: {},
   });
 });
@@ -21,6 +22,7 @@ test("preserva fechamentos no payload normalizado", () => {
     transactions: [],
     incomes: [],
     cashClosings,
+    limits: [],
     settings: {},
   });
 });

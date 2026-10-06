@@ -11,6 +11,7 @@ export async function loadAppState(apiUrl, fallbackUrl, defaults) {
       transactions: [],
       incomes: [],
       cashClosings: [],
+      limits: [],
       catalogMetadata: {},
       expenseTypes: [...defaults.expenseTypes],
       takers: [...defaults.takers],
