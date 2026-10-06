@@ -394,7 +394,7 @@ $("#cash-closing-form").addEventListener("submit", (event) => {
   const amount = rows.reduce((sum, entry) => sum + entry.totalAmount, 0);
   if (!amount) return showFeedback("Informe um valor maior que zero.");
   cashClosings = cashClosings.filter((entry) => entry.date !== date).concat(rows);
-  const income = { id: `cash-closing-income-${date}`, description: `Vendas dia ${formatTransactionDate(date)}`, amount, type: "income", source: "Vendas", incomeSourceId: 5, date };
+  const income = { id: `cash-closing-income-${date}`, description: `Vendas dia ${formatTransactionDate(date)}`, amount, type: "income", source: "Vendas", date };
   incomes = incomes.filter((entry) => entry.id !== income.id).concat(income);
   save().then(() => { renderCashClosings(); render(); renderReports(); $("#cash-closing-dialog").close(); showFeedback(id ? "Fechamento atualizado." : "Fechamento adicionado."); }).catch(() => showFeedback("Não foi possível salvar o fechamento."));
 });

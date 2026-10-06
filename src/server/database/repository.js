@@ -192,7 +192,7 @@ export async function writeDatabase(payload) {
     }
     const closingIncomeEntries = [...new Set((payload.cashClosings || []).map((item) => item.date))].map((date) => {
       const rows = (payload.cashClosings || []).filter((item) => item.date === date);
-      return { id: `cash-closing-income-${date}`, description: `Vendas dia ${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)}`, amount: rows.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0), type: "income", date, incomeSourceId: 5 };
+      return { id: `cash-closing-income-${date}`, description: `Vendas dia ${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)}`, amount: rows.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0), type: "income", source: "Vendas", date };
     });
     const entries = mergeTransactions(payload.transactions, [...(payload.incomes || []), ...closingIncomeEntries]);
     const [paymentMethodRows] = await connection.query("SELECT id, name FROM payment_methods");
