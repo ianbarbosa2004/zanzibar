@@ -68,7 +68,6 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
   const appSettings = await readJson(settingsFile, defaultSettings);
   const incomes = await readJson(incomesFile, []);
   const cashClosings = await readJson(cashClosingsFile, []);
-  for (const name of [...new Set(["Salário", ...(appSettings.incomeSources || []), ...incomes.map((item) => item.source).filter(Boolean)])]) await dbPool.execute("INSERT IGNORE INTO income_sources (name) VALUES (?)", [name]);
   const [existingTransactions] = await dbPool.query("SELECT expense_type, taker, location, creditor FROM transactions");
   const catalogs = {
     expense_types: [...new Set([...(appSettings.expenseTypes || []), ...transactions.map((item) => item.expenseType || item.category || "Outros"), ...existingTransactions.map((item) => item.expense_type)])],
@@ -76,9 +75,21 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
     locations: [...new Set([...(appSettings.locations || []), ...transactions.map((item) => item.location || "Casa"), ...existingTransactions.map((item) => item.location)])],
     creditors: [...new Set([...(appSettings.creditors || []), ...transactions.map((item) => item.creditor || "Caixa"), ...existingTransactions.map((item) => item.creditor)])],
     payment_methods: [...new Set(["Dinheiro", "Pix", "Cartão de débito", "Cartão de crédito", "Boleto", "Transferência bancária", ...(appSettings.paymentMethods || [])])],
+    income_sources: [...new Set(["Salário", ...(appSettings.incomeSources || []), ...incomes.map((item) => item.source)])],
   };
-  for (const [table, names] of Object.entries(catalogs)) for (const name of names.filter(Boolean)) await dbPool.execute(`INSERT IGNORE INTO ${table} (name) VALUES (?)`, [name]);
-  await dbPool.execute("INSERT IGNORE INTO takers (name) VALUES ('Zanzibar')");
+  for (const [table, names] of Object.entries(catalogs)) {
+    const [[tableCount]] = await dbPool.query(`SELECT COUNT(*) AS total FROM ${table}`);
+    if (Number(tableCount.total) === 0) {
+      for (const name of names.filter(Boolean)) await dbPool.execute(`INSERT IGNORE INTO ${table} (name) VALUES (?)`, [name]);
+    } else {
+      const referencedNames = table === "income_sources"
+        ? incomes.map((item) => item.source)
+        : table === "payment_methods"
+          ? cashClosings.map((item) => item.paymentMethod)
+          : transactions.map((item) => item[table === "expense_types" ? "expenseType" : table === "takers" ? "taker" : table === "locations" ? "location" : "creditor"]);
+      for (const name of referencedNames.filter(Boolean)) await dbPool.execute(`INSERT IGNORE INTO ${table} (name) VALUES (?)`, [name]);
+    }
+  }
   for (const [column, definition] of Object.entries({ expense_type_id: "INT UNSIGNED NULL", taker_id: "INT UNSIGNED NULL", location_id: "INT UNSIGNED NULL", creditor_id: "INT UNSIGNED NULL", income_source_id: "INT UNSIGNED NULL" })) {
     const [[found]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'transactions' AND column_name = ?", [column]);
     if (!found.total) await dbPool.query(`ALTER TABLE transactions ADD COLUMN ${column} ${definition}`);
@@ -185,8 +196,13 @@ export async function writeDatabase(payload) {
       income_sources: { referenceTable: "transactions", referenceColumn: "income_source_id" },
     };
     for (const [table, { referenceTable, referenceColumn }] of Object.entries(deleteRules)) {
-      const submittedNames = (catalogMetadata[table] || []).map((entry) => entry.name);
-      if (!submittedNames.length) continue;
+      const submittedEntries = catalogMetadata[table];
+      if (!Array.isArray(submittedEntries)) continue;
+      const submittedNames = submittedEntries.map((entry) => entry.name);
+      if (!submittedNames.length) {
+        await connection.query(`DELETE FROM ${table} WHERE id NOT IN (SELECT ${referenceColumn} FROM ${referenceTable} WHERE ${referenceColumn} IS NOT NULL)`);
+        continue;
+      }
       const placeholders = submittedNames.map(() => "?").join(",");
       await connection.query(`DELETE c FROM ${table} c LEFT JOIN ${referenceTable} r ON r.${referenceColumn} = c.id WHERE c.name NOT IN (${placeholders}) AND r.id IS NULL`, submittedNames);
     }
