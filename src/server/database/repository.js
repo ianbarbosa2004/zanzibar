@@ -1,4 +1,5 @@
 import { mergeTransactions } from "../../shared/transactions.js";
+import { cashClosingMatchesExistingRow } from "../../shared/cash-closings.js";
 import { dbPool } from "./pool.js";
 import { databaseName, databaseUser } from "../config.js";
 export { dbPool };
@@ -240,9 +241,10 @@ export async function writeDatabase(payload) {
     const retainedClosingIds = new Set();
     const closingDates = [...new Set((payload.cashClosings || []).map((item) => item.date))];
     for (const date of closingDates) {
-      const submittedIds = (payload.cashClosings || []).filter((item) => item.date === date).map((item) => String(item.id));
-      const [duplicates] = await connection.query("SELECT id FROM cash_closings WHERE closing_date = ? AND (client_id IS NULL OR client_id NOT IN (?)) LIMIT 1", [date, submittedIds.length ? submittedIds : [""]]);
-      if (duplicates.length) throw new Error(`Já existe fechamento para ${date}.`);
+      const submittedItems = (payload.cashClosings || []).filter((item) => item.date === date);
+      const [existingForDate] = await connection.query("SELECT id, client_id AS clientId FROM cash_closings WHERE closing_date = ?", [date]);
+      const isExistingClosing = existingForDate.some((row) => submittedItems.some((item) => cashClosingMatchesExistingRow(item, row)));
+      if (existingForDate.length && !isExistingClosing) throw new Error(`Já existe fechamento para ${date}.`);
     }
     for (const item of payload.cashClosings || []) {
       const numericId = Number.isInteger(item.id) || /^\d+$/.test(String(item.id)) ? Number(item.id) : null;
