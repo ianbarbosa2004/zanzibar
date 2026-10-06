@@ -1,11 +1,12 @@
 import { existsSync, promises as fs } from "node:fs";
-import { extname, join, normalize } from "node:path";
+import { extname, join, normalize, sep } from "node:path";
 import { contentTypes, root } from "./config.js";
 
 export function publicFilePath(requestedPath) {
   const publicRoot = existsSync(join(root, "dist")) ? join(root, "dist") : root;
-  let file = normalize(join(publicRoot, requestedPath));
-  if (!file.startsWith(publicRoot)) return null;
+  const normalizedRequest = requestedPath.replace(/[\\/]+/g, sep);
+  let file = normalize(join(publicRoot, normalizedRequest));
+  if (file !== publicRoot && !file.startsWith(`${publicRoot}${sep}`)) return null;
   if (!existsSync(file)) {
     file = join(publicRoot, "index.html");
     if (!existsSync(file)) return null;

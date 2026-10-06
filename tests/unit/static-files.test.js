@@ -8,5 +8,6 @@ test("resolve arquivo existente dentro da raiz pública", () => {
 });
 
 test("rejeita tentativa de escapar da raiz pública", () => {
+  assert.equal(publicFilePath("../package.json"), null);
   assert.equal(publicFilePath("..\\package.json"), null);
 });
