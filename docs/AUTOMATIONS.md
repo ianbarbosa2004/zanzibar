@@ -25,7 +25,7 @@ Automação manual do projeto `zanzibar`. Trabalha em uma branch de automação,
 - `docs/AUTOMATIONS.md`
 - `docs/AUTOMATION-PROMPTS.md`
 
-Executa `npm run build`, depois `npm test`, `node --check app.js`, `node --check server.js` e `git diff --check`. Ao concluir, cria commit com o trailer `Co-authored-by` exigido, envia a branch para `origin`, abre um pull request com `gh pr create` e solicita merge automático com `gh pr merge --auto --squash`. Se houver aprovação humana, conflito ou check falho, interrompe e informa o bloqueio exato. Não deve incluir credenciais, chaves privadas, dados de produção, JSON de runtime, `dist/` ou `node_modules/`.
+Executa `npm run build`, depois `npm test`, `node --check app.js`, `node --check server.js` e `git diff --check`. No Windows, se a política de execução bloquear `npm.ps1`, repete o mesmo build com `npm.cmd run build` ou com `powershell.exe -NoProfile -ExecutionPolicy Bypass`; registra a ocorrência e o comando alternativo usado, sem tratar o bloqueio do shell como falha do projeto. Ao concluir, cria commit com o trailer `Co-authored-by` exigido, envia a branch para `origin`, abre um pull request com `gh pr create` e solicita merge automático com `gh pr merge --auto --squash`. Se houver aprovação humana, conflito ou check falho, interrompe e informa o bloqueio exato. Não deve incluir credenciais, chaves privadas, dados de produção, JSON de runtime, `dist/` ou `node_modules/`, nem executar ou disparar deploy.
 
 ## `atualizar online`
 
