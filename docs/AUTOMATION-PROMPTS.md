@@ -15,7 +15,7 @@ Ao ocorrer erro, exceção, bloqueio, divergência ou comportamento inesperado:
 5. atualizar a documentação afetada;
 6. somente então liberar nova tentativa ou próxima automação.
 
-Nunca versionar ou enviar `data.json`, `settings.json`, `incomes.json`, `cash-closings.json`, backups, `dist/`, `node_modules`, credenciais, chaves privadas ou `.htaccess`.
+Nunca versionar ou enviar `data.json`, `settings.json`, `incomes.json`, `cash-closings.json`, `limits.json`, backups, `dist/`, `node_modules`, credenciais, chaves privadas ou `.htaccess`.
 
 ## `atualizar repo`
 

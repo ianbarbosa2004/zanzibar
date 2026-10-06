@@ -8,7 +8,8 @@ Aplicação web para organização financeira pessoal e empresarial. O sistema r
 - Registro e edição de receitas com fonte e data.
 - Saldo mensal calculado como receitas menos despesas.
 - Categorias, tomadores, locais, credores e fontes de receita.
-- Interface organizada por resumo, movimentações, vendas, relatórios e cadastros.
+- Interface organizada por resumo, movimentações, vendas, relatórios e cadastros, incluindo a área de Empréstimos.
+- Limites e metas mensais com meta, orçamento, previsão, patamar, resultado e status de fechamento.
 - Persistência MySQL com migração da estrutura legada de receitas.
 - Fallback para JSON local quando o MySQL não está configurado.
 - Interface compilada pelo Vite e servida pelo Node.js.
@@ -104,6 +105,7 @@ Sem `CLAREZA_DB_PASSWORD`, o desenvolvimento usa estes arquivos na raiz:
 - `settings.json`
 - `incomes.json`
 - `cash-closings.json`
+- `limits.json`
 
 Eles são arquivos de runtime ignorados pelo Git. Os arquivos `*.example.json`, quando presentes, servem como referência de estrutura. Não coloque credenciais ou dados reais nesses arquivos.
 
