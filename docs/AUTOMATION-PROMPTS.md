@@ -25,7 +25,7 @@ Para arquivos estáticos, deve normalizar `/` e `\`, rejeitar caminhos que escap
 
 ## `atualizar readme`
 
-Analisa código, commits, PRs mesclados e o estado do repositório. Atualiza somente os Markdown afetados entre `README.md`, `CONTRIBUTING.md`, `docs/DEPLOYMENT.md`, `docs/CONTINUITY-PROMPT.md`, `docs/AUTOMATIONS.md` e `docs/AUTOMATION-PROMPTS.md`. Executa build, testes, verificações de sintaxe e `git diff --check`, cria PR, solicita merge automático e não executa nem dispara deploy.
+Analisa código, commits, PRs mesclados e o estado do repositório. Atualiza somente os Markdown afetados entre `README.md`, `CONTRIBUTING.md`, `docs/DEPLOYMENT.md`, `docs/CONTINUITY-PROMPT.md`, `docs/AUTOMATIONS.md` e `docs/AUTOMATION-PROMPTS.md`. Deve executar build, testes, verificações de sintaxe e `git diff --check`, criar PR e solicitar merge automático. No Windows, se `npm run build` falhar porque a política de execução bloqueou `npm.ps1`, deve repetir o mesmo comando como `npm.cmd run build` ou por `powershell.exe -NoProfile -ExecutionPolicy Bypass`; deve registrar a ocorrência e o comando alternativo usado, sem tratar o bloqueio do shell como falha do projeto. Não executa nem dispara deploy.
 
 ## `atualizar online`
 
