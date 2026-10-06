@@ -380,6 +380,8 @@ $("#cash-closing-form").addEventListener("submit", (event) => {
   const date = $("#cash-closing-date").value;
   const id = $("#cash-closing-id").value;
   if (!id && cashClosings.some((entry) => entry.date === date)) return showFeedback("Já existe fechamento para esta data.");
+  const previousCashClosings = cashClosings;
+  const previousIncomes = incomes;
   const rows = [...document.querySelectorAll(".cash-closing-method")].map((row, index) => ({
     id: id && index === 0 ? id : crypto.randomUUID(),
     date,
@@ -392,7 +394,14 @@ $("#cash-closing-form").addEventListener("submit", (event) => {
   cashClosings = cashClosings.filter((entry) => entry.date !== date).concat(rows);
   const income = { id: `cash-closing-income-${date}`, description: `Vendas dia ${formatTransactionDate(date)}`, amount, type: "income", source: "Vendas", date };
   incomes = incomes.filter((entry) => entry.id !== income.id).concat(income);
-  save().then(() => { renderCashClosings(); render(); renderReports(); $("#cash-closing-dialog").close(); showFeedback(id ? "Fechamento atualizado." : "Fechamento adicionado."); }).catch(() => showFeedback("Não foi possível salvar o fechamento."));
+  save().then(() => { renderCashClosings(); render(); renderReports(); $("#cash-closing-dialog").close(); showFeedback(id ? "Fechamento atualizado." : "Fechamento adicionado."); }).catch(() => {
+    cashClosings = previousCashClosings;
+    incomes = previousIncomes;
+    renderCashClosings();
+    render();
+    renderReports();
+    showFeedback("Não foi possível salvar o fechamento.");
+  });
 });
 $("#cash-closings-list").addEventListener("click", (event) => {
   const button = event.target.closest("[data-edit-cash-closing]");
