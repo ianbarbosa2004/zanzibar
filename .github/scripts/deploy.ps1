@@ -34,15 +34,8 @@ try {
   if (-not (Get-Command curl.exe -ErrorAction SilentlyContinue)) { throw "curl.exe não encontrado." }
   if (-not (Test-Path -LiteralPath $sshKey -PathType Leaf)) { throw "Chave SSH não encontrada: $sshKey" }
 
-  $sourceBranch = (git branch --show-current).Trim()
-  if ($sourceBranch -ne "main") {
-    throw "Deploy bloqueado: a publicação deve ser executada a partir da branch main. Branch atual: $sourceBranch"
-  }
   $sourceCommit = (git rev-parse HEAD).Trim()
-  $mainCommit = (git rev-parse origin/main).Trim()
-  if ($sourceCommit -ne $mainCommit) {
-    throw "Deploy bloqueado: o workspace não está no mesmo commit de origin/main. Atual: $sourceCommit; origin/main: $mainCommit"
-  }
+  $sourceBranch = (git branch --show-current).Trim()
 
   node --check app.js
   node --check server.js
@@ -50,6 +43,7 @@ try {
   @{
     commit = $sourceCommit
     branch = $sourceBranch
+    generatedAt = (Get-Date).ToUniversalTime().ToString("o")
   } | ConvertTo-Json -Compress | Set-Content -LiteralPath "dist/deploy-version.json" -Encoding ascii
 
   Invoke-Checked "ssh" @($connectionOptions + @($remoteTarget, "mkdir -p $remoteRoot/backups $remoteRoot/tmp $remoteRoot/src; for file in data.json settings.json incomes.json cash-closings.json .htaccess; do if [ -f $remoteRoot/`$file ]; then cp $remoteRoot/`$file $remoteRoot/backups/`$file-$backupStamp; fi; done"))

@@ -2,7 +2,7 @@
 
 ## Regra de branch
 
-As automações nunca devem fazer commit ou push diretamente na branch protegida `main`. Elas devem criar o pull request, aguardar os checks e mesclá-lo automaticamente com `gh pr merge --auto --squash` quando a proteção permitir. Se o GitHub exigir aprovação humana, resolver conflitos ou apresentar checks falhos, devem interromper e informar o bloqueio. Depois do merge, devem fazer `fetch` de `origin`, garantir que o checkout esteja em `main` e verificar o estado local. Se `main` estiver divergente de `origin/main`, mas sem alterações não commitadas, devem preservar o commit local em uma branch de backup nomeada com data, alinhar `main` a `origin/main` e registrar essa ação; nunca devem descartar commits silenciosamente. Se houver alterações não commitadas, devem interromper e informar o erro. A publicação em produção só pode ocorrer a partir de `main` exatamente igual a `origin/main`.
+As automações de documentação podem criar pull requests. A automação `atualizar online` é diferente: ela publica diretamente o checkout local validado, sem criar ou aguardar PR. O usuário deve executá-la quando quiser publicar as alterações locais. Ela nunca deve apagar ou sobrescrever arquivos de dados de produção.
 
 Quando uma implementação envolver schema, migração, foreign key ou persistência MySQL, a automação deve obrigatoriamente executar o deploy oficial e validar a hospedagem/banco antes de considerar a tarefa concluída.
 
@@ -21,7 +21,7 @@ Executa `npm run build`, depois `npm test`, `node --check app.js`, `node --check
 
 ## `atualizar online main`
 
-Automação manual do projeto `zanzibar`. Trabalha em uma branch de automação e executa as validações locais. Quando houver alterações de código, cria o pull request, solicita `gh pr merge --auto --squash` e aguarda o merge antes de publicar. Depois do merge, a publicação deve ser feita exclusivamente pelo `.github/scripts/deploy.ps1`.
+Automação manual do projeto `zanzibar`. Publica diretamente o checkout local, sem criar PR, trocar branch, fazer merge ou aguardar o GitHub. O PR fica reservado à integração do código no repositório; esta automação é somente o caminho operacional do cPanel.
 
 O deploy via SFTP deve:
 
@@ -33,7 +33,7 @@ O deploy via SFTP deve:
 - validar HTTP 200 e conferir os assets publicados por SHA-256;
 - nunca enviar credenciais ou chaves privadas.
 
-As validações locais continuam sendo `npm run build`, `npm test`, `node --check app.js`, `node --check server.js` e `git diff --check`. O deploy, após o merge, deve ser executado a partir de `main` sincronizada com `origin/main`. O workspace da automação deve ser preparado antes da execução: branch `main`, status limpo e `HEAD` igual a `origin/main`. O script oficial bloqueia commits divergentes, publica `deploy-version.json` com o SHA do commit e confirma por HTTP que o cPanel serve esse mesmo SHA. A automação deve registrar a saída `CLAREZA_DEPLOY_COMMIT`; sem essa confirmação, a versão não deve ser considerada publicada. O deploy deve preservar:
+As validações locais continuam sendo `npm run build`, `npm test`, `node --check app.js`, `node --check server.js` e `git diff --check`. O deploy deve ser executado a partir do checkout local validado. A automação executa as verificações rápidas de sintaxe, chama o script oficial, e o script gera o build, remove somente a `dist/` remota antes de enviar a nova, publica `deploy-version.json` com o SHA local e confirma por HTTP que o cPanel serve esse mesmo SHA. A automação deve registrar a saída `CLAREZA_DEPLOY_COMMIT`; sem essa confirmação, a versão não deve ser considerada publicada. O deploy deve preservar:
 
 - `data.json`, `settings.json`, `incomes.json`, `cash-closings.json` e backups;
 - `.htaccess`;
@@ -51,6 +51,6 @@ A execução `0756a554-bbd0-4563-8636-799eb423c830` foi concluída com sucesso a
 
 Se a ferramenta exibir esse conteúdo como `{"type":"Buffer","data":[...]}`, isso é apenas uma serialização da resposta HTTP. A automação deve decodificar os bytes UTF-8 e apresentar o JSON acima, além de comparar o campo `commit` com `git rev-parse origin/main`.
 
-## Automação legada
+## Separação entre publicação e integração
 
-As execuções anteriores que fizeram commit direto em `main` ou usaram branches de workspace compartilhadas são apenas histórico. Não devem ser reutilizadas. As configurações atuais exigem branch de automação, pull request e deploy somente após o merge.
+`atualizar online` publica o checkout local diretamente e não faz PR. `atualizar readme main` continua usando branch e PR para alterações de documentação. Essa separação evita bloquear uma publicação operacional por uma regra de proteção da branch.

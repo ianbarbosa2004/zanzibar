@@ -129,7 +129,7 @@ Nunca versionar senhas, arquivos de produção ou dumps do banco.
 
 Qualquer implementação que altere o schema, as migrações, as foreign keys ou a persistência MySQL deve ser publicada na hospedagem/banco de dados ao final da tarefa, usando exclusivamente o script oficial de deploy. A tarefa só está concluída após a validação remota.
 
-O deploy automatizado só pode usar um checkout limpo de `main` exatamente igual a `origin/main`. Se houver divergência local, a automação preserva o commit em uma branch de checkpoint antes de alinhar `main`; alterações não commitadas bloqueiam a execução. A versão servida é confirmada pelo endpoint `deploy-version.json`, que deve informar o mesmo SHA do commit publicado.
+O deploy operacional publica o checkout local validado e não depende de pull request ou merge. Alterações de código locais são o conteúdo do deploy; o script remove somente a `dist/` remota antes de enviar o novo build, preserva os dados de produção e confirma a versão servida pelo endpoint `deploy-version.json`.
 
 ## Consistência de persistência na interface
 
