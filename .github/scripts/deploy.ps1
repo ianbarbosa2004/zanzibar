@@ -16,6 +16,17 @@ function Invoke-Checked {
   if ($LASTEXITCODE -ne 0) { throw "Comando falhou: $Command (exit code $LASTEXITCODE)" }
 }
 
+function Convert-ResponseContentToUtf8 {
+  param($Content)
+  if ($Content -is [byte[]]) {
+    return [Text.Encoding]::UTF8.GetString($Content)
+  }
+  if ($null -ne $Content -and $Content.PSObject.Properties.Name -contains "data") {
+    return [Text.Encoding]::UTF8.GetString([byte[]]$Content.data)
+  }
+  return [string]$Content
+}
+
 try {
   if (-not (Test-Path -LiteralPath "package.json")) { throw "package.json não encontrado." }
   if (-not (Get-Command ssh -ErrorAction SilentlyContinue)) { throw "ssh não encontrado." }
@@ -41,7 +52,7 @@ try {
     branch = $sourceBranch
   } | ConvertTo-Json -Compress | Set-Content -LiteralPath "dist/deploy-version.json" -Encoding ascii
 
-  Invoke-Checked "ssh" @($connectionOptions + @($remoteTarget, "mkdir -p $remoteRoot/backups $remoteRoot/tmp $remoteRoot/src; cp $remoteRoot/data.json $remoteRoot/backups/data-$backupStamp.json 2>/dev/null || true; cp $remoteRoot/settings.json $remoteRoot/backups/settings-$backupStamp.json 2>/dev/null || true"))
+  Invoke-Checked "ssh" @($connectionOptions + @($remoteTarget, "mkdir -p $remoteRoot/backups $remoteRoot/tmp $remoteRoot/src; for file in data.json settings.json incomes.json cash-closings.json .htaccess; do if [ -f $remoteRoot/`$file ]; then cp $remoteRoot/`$file $remoteRoot/backups/`$file-$backupStamp; fi; done"))
   Invoke-Checked "ssh" @($connectionOptions + @($remoteTarget, "rm -rf $remoteRoot/dist && mkdir -p $remoteRoot/dist"))
   New-Item -ItemType File -Path $restartPath -Force | Out-Null
   @"
@@ -63,10 +74,13 @@ bye
   if ($page.StatusCode -ne 200 -or $api.StatusCode -ne 200) { throw "Validação online retornou status inesperado." }
   $version = Invoke-WebRequest -Uri "https://itsites.com.br/clareza/deploy-version.json" -UseBasicParsing
   if ($version.StatusCode -ne 200) { throw "Não foi possível ler a versão publicada." }
-  $publishedCommit = ($version.Content | ConvertFrom-Json).commit
+  $versionJson = Convert-ResponseContentToUtf8 $version.Content
+  $versionObject = $versionJson | ConvertFrom-Json
+  $publishedCommit = $versionObject.commit
   if ($publishedCommit -ne $sourceCommit) {
     throw "A versão publicada diverge do commit validado. Esperado: $sourceCommit; publicado: $publishedCommit"
   }
+  Write-Output ($versionObject | ConvertTo-Json -Depth 5)
   Write-Output "CLAREZA_DEPLOY_COMMIT: $publishedCommit"
   $localAssets = [regex]::Matches((Get-Content -LiteralPath "dist/index.html" -Raw), "assets/[^""']+\.(js|css)") | ForEach-Object { $_.Value } | Sort-Object -Unique
   foreach ($asset in $localAssets) {
@@ -93,7 +107,7 @@ bye
     if (-not $assetValidated) {
       throw "O asset online diverge do build local após aguardar a propagação: $asset"
     }
-    Write-Output "CLAREZA_ASSET_VALIDATED: $asset"
+    Write-Output "CLAREZA_ASSET_HASH: $asset local=$localHash online=$onlineHash"
   }
   Write-Output "CLAREZA_DEPLOY_COMPLETED: Publicação concluída e endpoints online validados. A tarefa pode ser encerrada."
 }
