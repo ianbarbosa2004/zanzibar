@@ -234,6 +234,10 @@ label input, label select { display: block; width: 100%; margin-top: 6px; paddin
 .cash-closing-method { display: grid; grid-template-columns: minmax(0, 1fr) 92px 125px; align-items: center; gap: 9px; margin: 0; }
 .cash-closing-method > span { min-width: 0; overflow: hidden; color: #596862; font-size: 11px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
 .cash-closing-method input { min-width: 0; margin-top: 0; padding: 9px; background: #fff; font-size: 12px; }
+.cash-closing-summary { display: grid; gap: 7px; margin: 0 0 18px; }
+.cash-closing-sales-total { display: grid; grid-template-columns: minmax(0, 1fr) 92px 125px; align-items: center; gap: 9px; padding: 0 12px; }
+.cash-closing-sales-total span { color: #596862; font-size: 11px; font-weight: 650; }
+.cash-closing-sales-total strong { grid-column: 2; color: #248452; font-size: 16px; font-variant-numeric: tabular-nums; text-align: right; }
 .cash-closing-total { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 18px; padding: 12px 14px; border: 1px solid #cfe5d7; border-radius: 10px; background: #f3faf5; }
 .cash-closing-total span { color: #596862; font-size: 11px; font-weight: 650; }
 .cash-closing-total strong { color: #248452; font-size: 18px; font-variant-numeric: tabular-nums; }

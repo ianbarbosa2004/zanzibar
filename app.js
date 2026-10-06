@@ -367,7 +367,9 @@ $("#new-cash-closing").addEventListener("click", () => openCashClosingDialog());
 $("#close-cash-closing-dialog").addEventListener("click", () => $("#cash-closing-dialog").close());
 $("#cancel-cash-closing-dialog").addEventListener("click", () => $("#cash-closing-dialog").close());
 function updateCashClosingTotal() {
+  const salesTotal = [...document.querySelectorAll("[data-closing-sales]")].reduce((sum, input) => sum + Number(input.value || 0), 0);
   const total = [...document.querySelectorAll("[data-closing-amount]")].reduce((sum, input) => sum + parseInputAmount(input.value), 0);
+  $("#cash-closing-sales-preview").textContent = String(salesTotal);
   $("#cash-closing-total-preview").textContent = formatMoney(total);
 }
 $("#cash-closing-methods").addEventListener("input", (event) => {
@@ -398,9 +400,10 @@ $("#cash-closing-form").addEventListener("submit", (event) => {
     totalAmount: parseInputAmount(row.querySelector("[data-closing-amount]").value),
   })).filter((entry) => entry.saleCount || entry.totalAmount);
   const amount = rows.reduce((sum, entry) => sum + entry.totalAmount, 0);
+  const saleCount = rows.reduce((sum, entry) => sum + entry.saleCount, 0);
   if (!amount) return showFeedback("Informe um valor maior que zero.");
   cashClosings = cashClosings.filter((entry) => entry.date !== date).concat(rows);
-  const income = { id: `cash-closing-income-${date}`, description: `Vendas dia ${formatTransactionDate(date)}`, amount, type: "income", source: "Vendas", date };
+  const income = { id: `cash-closing-income-${date}`, description: `Vendas dia ${formatTransactionDate(date)} (${saleCount})`, amount, type: "income", source: "Vendas", date };
   incomes = incomes.filter((entry) => entry.id !== income.id).concat(income);
   save().then(() => { renderCashClosings(); render(); renderReports(); $("#cash-closing-dialog").close(); showFeedback(id ? "Fechamento atualizado." : "Fechamento adicionado."); }).catch(() => {
     cashClosings = previousCashClosings;
