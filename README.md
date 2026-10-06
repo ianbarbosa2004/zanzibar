@@ -10,7 +10,7 @@ Aplicação web para organização financeira pessoal e empresarial. O sistema r
 - Categorias, tomadores, locais, credores e fontes de receita.
 - Exportação das movimentações.
 - Persistência MySQL com migração da estrutura legada de receitas.
-- Fallback para JSON local quando o MySQL não está configurado.
+- Fallback para JSON local quando o MySQL não está configurado, incluindo fechamentos de caixa.
 - Interface compilada pelo Vite e servida pelo Node.js.
 
 ## Stack
@@ -98,14 +98,14 @@ A refatoração da aplicação é incremental. Regras de domínio devem ficar em
 
 ## Persistência local
 
-Sem `CLAREZA_DB_PASSWORD`, o desenvolvimento usa estes arquivos na raiz:
+Sem `CLAREZA_DB_PASSWORD`, o desenvolvimento usa estes arquivos de runtime na raiz:
 
 - `data.json`
 - `settings.json`
 - `incomes.json`
 - `cash-closings.json`
 
-Eles são arquivos de runtime ignorados pelo Git. Os arquivos `*.example.json`, quando presentes, servem como referência de estrutura. Não coloque credenciais ou dados reais nesses arquivos.
+Eles são ignorados pelo Git e não devem conter credenciais ou dados reais. Os arquivos `*.example.json`, quando presentes, servem como referência de estrutura. O arquivo `cash-closings.json` guarda os fechamentos de caixa separados das transações.
 
 ## Banco MySQL
 
@@ -119,10 +119,10 @@ CLAREZA_DB_USER=itsitescom_clareza_user
 CLAREZA_DB_PASSWORD=(senha somente no ambiente)
 ```
 
-Quando configurado, o servidor cria e migra as tabelas necessárias. O modelo consolidado usa uma única tabela `transactions`, com `id` numérico sequencial, `type` igual a `expense` ou `income` e `client_id` para manter a identidade do lançamento no navegador. Receitas usam `income_source_id`; os campos exclusivos de despesas aceitam `NULL` para receitas. A tabela legada `incomes` é migrada para `transactions` durante a inicialização. As tabelas possuem `created_at` e `updated_at`; a data efetiva informada pelo usuário fica em `transaction_date`.
+Quando `CLAREZA_DB_PASSWORD` está presente, o servidor seleciona o MySQL e exige também `CLAREZA_DB_USER` e `CLAREZA_DB_NAME`; host e porta usam `localhost` e `3306` como padrão. Na inicialização, ele cria e migra as tabelas necessárias. O modelo consolidado usa uma única tabela `transactions`, com `id` numérico sequencial, `type` igual a `expense` ou `income` e `client_id` para manter a identidade do lançamento no navegador. Receitas usam `income_source_id`; os campos exclusivos de despesas aceitam `NULL` para receitas. A tabela legada `incomes` é migrada para `transactions` durante a inicialização. As tabelas possuem `created_at` e `updated_at`; a data efetiva informada pelo usuário fica em `transaction_date`.
 
-O cadastro `payment_methods` mantém formas de pagamento comuns, como Dinheiro, Pix, cartões, boleto e transferência bancária, para uso futuro nos fechamentos de caixa diários. Ele não é vinculado à tabela `transactions` nem aos formulários de receitas e despesas.
-A tabela `cash_closings` registra os fechamentos diários com data, forma de recebimento, quantidade de vendas e valor total, vinculando cada registro ao catálogo `payment_methods`.
+O cadastro `payment_methods` mantém formas de pagamento comuns, como Dinheiro, Pix, cartões, boleto e transferência bancária, para os fechamentos de caixa diários. Ele não é vinculado à tabela `transactions` nem aos formulários de receitas e despesas.
+A tabela `cash_closings` registra os fechamentos diários com data, forma de recebimento, quantidade de vendas e valor total, vinculando cada registro ao catálogo `payment_methods`. Cada data aceita no máximo um fechamento; o total do fechamento também é refletido como uma receita consolidada do dia.
 Os cadastros auxiliares usam `display_order` e `is_active` quando aplicável. Registros inativos não aparecem em formulários ou filtros; a exclusão física só ocorre quando não há referência em `transactions` ou `cash_closings`.
 
 Nunca versionar senhas, arquivos de produção ou dumps do banco.
@@ -141,11 +141,11 @@ As principais rotas são:
 
 | Método | Rota | Descrição |
 | --- | --- | --- |
-| `GET` | `/clareza/api/data` | Lê transações, receitas derivadas e configurações |
-| `PUT` | `/clareza/api/data` | Valida e persiste o estado completo |
+| `GET` | `/clareza/api/data` | Lê transações, receitas, fechamentos de caixa e configurações |
+| `PUT` | `/clareza/api/data` | Valida e persiste transações, receitas, fechamentos e catálogos |
 | `GET` | `/clareza/` | Entrega a aplicação compilada |
 
-O caminho `/clareza` é o padrão e pode ser alterado por `CLAREZA_BASE_PATH`. O payload mantém compatibilidade com clientes antigos que enviam transações e receitas separadamente. Payloads inválidos retornam `400`; falhas internas retornam `500`.
+O caminho `/clareza` é o padrão e pode ser alterado por `CLAREZA_BASE_PATH`; uma requisição sem a barra final é redirecionada para o caminho correto. O payload mantém compatibilidade com clientes antigos que enviam transações e receitas separadamente. Payloads inválidos retornam `400`; falhas internas retornam `500`.
 
 ## Documentação operacional
 
