@@ -24,6 +24,7 @@ try {
   npm run build
 
   Invoke-Checked "ssh" @("-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new", $remoteTarget, "mkdir -p $remoteRoot/backups $remoteRoot/tmp $remoteRoot/src; cp $remoteRoot/data.json $remoteRoot/backups/data-$backupStamp.json 2>/dev/null || true; cp $remoteRoot/settings.json $remoteRoot/backups/settings-$backupStamp.json 2>/dev/null || true")
+  Invoke-Checked "ssh" @("-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new", $remoteTarget, "rm -rf $remoteRoot/dist && mkdir -p $remoteRoot/dist")
   New-Item -ItemType File -Path $restartPath -Force | Out-Null
   @"
 cd $remoteRoot
@@ -42,6 +43,22 @@ bye
   $page = Invoke-WebRequest -Uri "https://itsites.com.br/clareza/" -UseBasicParsing
   $api = Invoke-WebRequest -Uri "https://itsites.com.br/clareza/api/data" -UseBasicParsing
   if ($page.StatusCode -ne 200 -or $api.StatusCode -ne 200) { throw "Validação online retornou status inesperado." }
+  $localAssets = [regex]::Matches((Get-Content -LiteralPath "dist/index.html" -Raw), "assets/[^""']+\.(js|css)") | ForEach-Object { $_.Value } | Sort-Object -Unique
+  foreach ($asset in $localAssets) {
+    if ($page.Content -notlike "*$asset*") { throw "A página online não referencia o asset esperado: $asset" }
+    $localAsset = Get-Content -LiteralPath (Join-Path "dist" $asset) -Raw
+    $assetValidated = $false
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+      $onlineAsset = (Invoke-WebRequest -Uri "https://itsites.com.br/clareza/$asset" -UseBasicParsing).Content
+      if ($onlineAsset -eq $localAsset) {
+        $assetValidated = $true
+        break
+      }
+      if ($attempt -lt 3) { Start-Sleep -Seconds 5 }
+    }
+    if (-not $assetValidated) { throw "O asset online diverge do build local após aguardar a propagação: $asset" }
+    Write-Output "CLAREZA_ASSET_VALIDATED: $asset"
+  }
   Write-Output "CLAREZA_DEPLOY_COMPLETED: Publicação concluída e endpoints online validados. A tarefa pode ser encerrada."
 }
 finally {
