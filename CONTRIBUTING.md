@@ -12,8 +12,8 @@
 Execute os comandos abaixo antes de enviar a alteração:
 
 ```bash
-npm test
 npm run build
+npm test
 node --check app.js
 node --check server.js
 git diff --check

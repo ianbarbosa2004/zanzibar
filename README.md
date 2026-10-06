@@ -70,8 +70,8 @@ npm run dev
 Antes de abrir uma alteração, execute:
 
 ```bash
-npm test
 npm run build
+npm test
 node --check app.js
 node --check server.js
 git diff --check
@@ -129,7 +129,7 @@ Nunca versionar senhas, arquivos de produção ou dumps do banco.
 
 Qualquer implementação que altere o schema, as migrações, as foreign keys ou a persistência MySQL deve ser publicada na hospedagem/banco de dados ao final da tarefa, usando exclusivamente o script oficial de deploy. A tarefa só está concluída após a validação remota.
 
-O deploy operacional publica o checkout local validado e não depende de pull request ou merge. Alterações de código locais são o conteúdo do deploy; o script remove somente a `dist/` remota antes de enviar o novo build, preserva os dados de produção e confirma a versão servida pelo endpoint `deploy-version.json`.
+O deploy operacional publica o checkout local validado e não depende de pull request ou merge. A proteção de `main` se aplica à integração no GitHub; a publicação operacional não cria, mescla ou aguarda PR. Alterações de código locais são o conteúdo do deploy; o script remove somente a `dist/` remota antes de enviar o novo build, preserva os dados de produção e confirma a versão servida pelo endpoint `deploy-version.json`.
 
 ## Consistência de persistência na interface
 
