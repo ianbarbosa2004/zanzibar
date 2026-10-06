@@ -11,14 +11,17 @@ O `.htaccess` é administrado pelo cPanel e não deve ser sobrescrito. Dados de 
 Execute a partir do checkout local que contém a versão que deve ser publicada. Não é necessário criar, mesclar ou aguardar um pull request para executar o deploy operacional. O PR é usado somente para integrar código no repositório. Antes de publicar, confirme que o código foi validado e que o checkout não contém arquivos de runtime ou credenciais destinados ao upload:
 
 ```powershell
+npm run build
+npm test
 node --check app.js
 node --check server.js
+git diff --check
 powershell -NoProfile -ExecutionPolicy Bypass -File .github\scripts\deploy.ps1
 ```
 
 Alterações de código locais são permitidas e são justamente o conteúdo a ser publicado. O script gera `dist/` localmente, remove somente a pasta `dist/` remota e envia o novo build. `data.json`, `settings.json`, `incomes.json`, `cash-closings.json`, backups e `.htaccess` são preservados no servidor.
 
-O script bloqueia a publicação se `HEAD` não for exatamente igual a `origin/main`. Depois do upload, ele publica `deploy-version.json` com o SHA do commit e confirma por HTTP que o cPanel está servindo esse mesmo SHA. A saída `CLAREZA_DEPLOY_COMMIT` é a referência da versão efetivamente publicada.
+A proteção de `main` exige que a integração no GitHub passe pelo pull request e pelos checks configurados; ela não é substituída pelo deploy operacional. O script publica o checkout local escolhido, sem criar, mesclar ou aguardar PR. Depois do upload, ele publica `deploy-version.json` com o SHA do commit e confirma por HTTP que o cPanel está servindo esse mesmo SHA. A saída `CLAREZA_DEPLOY_COMMIT` é a referência da versão efetivamente publicada.
 
 O script oficial:
 
@@ -28,7 +31,7 @@ O script oficial:
 - reinstala dependências no ambiente Node do cPanel;
 - reinicia o Passenger;
 - valida a aplicação e a API online.
-- confirma que o commit publicado é o mesmo commit de `origin/main`.
+- confirma que o commit publicado é o mesmo commit usado pelo checkout local validado.
 
 ### Autenticação SFTP
 
@@ -70,4 +73,4 @@ Para conferir rapidamente a versão servida:
 Invoke-WebRequest -UseBasicParsing https://itsites.com.br/clareza/deploy-version.json
 ```
 
-O resultado esperado é JSON UTF-8 com `branch` e `commit`. Algumas interfaces podem representar a resposta como um objeto `Buffer`; nesse caso, decodifique os bytes com UTF-8 antes de avaliar o SHA. Não considere a publicação inválida por causa desse formato de apresentação: compare o campo `commit` com `git rev-parse origin/main`.
+O resultado esperado é JSON UTF-8 com `branch` e `commit`. Algumas interfaces podem representar a resposta como um objeto `Buffer`; nesse caso, decodifique os bytes com UTF-8 antes de avaliar o SHA. Não considere a publicação inválida por causa desse formato de apresentação: compare o campo `commit` com o SHA do `git rev-parse HEAD` do checkout validado.
