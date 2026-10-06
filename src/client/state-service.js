@@ -25,10 +25,6 @@ export async function loadAppState(apiUrl, fallbackUrl, defaults) {
 }
 
 export async function persistAppState(apiUrl, state) {
+  await saveData(apiUrl, dataPayload(state));
   writeLocalState(state);
-  try {
-    await saveData(apiUrl, dataPayload(state));
-  } catch {
-    // O modo local continua disponível quando a API de escrita não está acessível.
-  }
 }

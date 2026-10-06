@@ -33,6 +33,7 @@ const paginationState = {
   Casa: { page: 1, pageSize: 5 },
   Zanzibar: { page: 1, pageSize: 5 },
   Receitas: { page: 1, pageSize: 5 },
+  Fechamentos: { page: 1, pageSize: 5 },
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -153,7 +154,7 @@ function renderLocationTransactions(location) {
 }
 
 function renderTransactions() {
-  Object.keys(paginationState).filter((location) => location !== "Receitas").forEach(renderLocationTransactions);
+  ["Casa", "Zanzibar"].forEach(renderLocationTransactions);
   renderIncomeTransactions();
 }
 
@@ -212,8 +213,22 @@ function renderRegistries() {
 function renderCashClosings() {
   const total = cashClosings.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0);
   $("#cash-closing-total").textContent = `(${formatMoney(total)})`;
-  $("#cash-closings-list").innerHTML = cashClosings.map((item) => `<tr><td>${escapeHtml(formatTransactionDate(item.date))}</td><td>${escapeHtml(item.paymentMethod)}</td><td>${item.saleCount}</td><td class="align-right income-text">+ ${formatMoney(item.totalAmount)}</td><td class="align-right"><button class="action-button" data-edit-cash-closing="${item.id}" aria-label="Editar fechamento">•••</button></td></tr>`).join("");
+  const grouped = [...new Map([...cashClosings].sort((a, b) => b.date.localeCompare(a.date)).map((item) => [item.date, cashClosings.filter((entry) => entry.date === item.date)])).entries()];
+  const state = paginationState.Fechamentos;
+  const paged = paginate(grouped, state.page, state.pageSize);
+  state.page = paged.page;
+  $("#cash-closings-list").innerHTML = paged.items.map(([date, rows]) => {
+    const paymentMethods = rows.map((item) => `<div>${escapeHtml(item.paymentMethod)}</div>`).join("");
+    const sales = rows.map((item) => `<div>${item.saleCount}</div>`).join("");
+    const amounts = rows.map((item) => `<div>${formatMoney(item.totalAmount)}</div>`).join("");
+    const totalAmount = rows.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0);
+    const totalSales = rows.reduce((sum, item) => sum + Number(item.saleCount || 0), 0);
+    return `<tr><td>${escapeHtml(formatTransactionDate(date))}</td><td><div class="cash-closing-stack">${paymentMethods}</div></td><td><div class="cash-closing-stack">${sales}</div></td><td class="align-right"><div class="cash-closing-stack cash-closing-stack-total">${amounts}</div></td><td class="align-right income-text"><div class="cash-closing-stack cash-closing-stack-total"><strong>${formatMoney(totalAmount)}</strong><strong>${totalSales} vendas</strong></div></td><td class="align-right"><button class="action-button" data-edit-cash-closing="${rows[0].id}" aria-label="Editar fechamento">•••</button></td></tr>`;
+  }).join("");
   $("#cash-closings-empty").hidden = cashClosings.length > 0;
+  $("#cash-closing-pagination-status").textContent = `Página ${state.page} de ${paged.totalPages}`;
+  $("#cash-closing-pagination-prev").disabled = state.page === 1;
+  $("#cash-closing-pagination-next").disabled = state.page === paged.totalPages;
 }
 
 function activeCatalog(table, values) {
@@ -405,7 +420,8 @@ $("#cash-closing-form").addEventListener("submit", (event) => {
   cashClosings = cashClosings.filter((entry) => entry.date !== date).concat(rows);
   const income = { id: `cash-closing-income-${date}`, description: `Vendas dia ${formatTransactionDate(date)} (${saleCount})`, amount, type: "income", source: "Vendas", date };
   incomes = incomes.filter((entry) => entry.id !== income.id).concat(income);
-  save().then(() => { renderCashClosings(); render(); renderReports(); $("#cash-closing-dialog").close(); showFeedback(id ? "Fechamento atualizado." : "Fechamento adicionado."); }).catch(() => {
+  save().then(() => { renderCashClosings(); render(); renderReports(); $("#cash-closing-dialog").close(); showFeedback(id ? "Fechamento atualizado." : "Fechamento adicionado."); }).catch((error) => {
+    console.error("Falha ao concluir fechamento após persistência.", error);
     cashClosings = previousCashClosings;
     incomes = previousIncomes;
     renderCashClosings();
@@ -417,6 +433,21 @@ $("#cash-closing-form").addEventListener("submit", (event) => {
 $("#cash-closings-list").addEventListener("click", (event) => {
   const button = event.target.closest("[data-edit-cash-closing]");
   if (button) openCashClosingDialog(cashClosings.find((item) => String(item.id) === button.dataset.editCashClosing));
+});
+$("#cash-closing-pagination-prev").addEventListener("click", () => {
+  if (paginationState.Fechamentos.page > 1) {
+    paginationState.Fechamentos.page -= 1;
+    renderCashClosings();
+  }
+});
+$("#cash-closing-pagination-next").addEventListener("click", () => {
+  paginationState.Fechamentos.page += 1;
+  renderCashClosings();
+});
+$("#cash-closing-page-size").addEventListener("change", (event) => {
+  paginationState.Fechamentos.pageSize = Number(event.target.value);
+  paginationState.Fechamentos.page = 1;
+  renderCashClosings();
 });
 $("#amount").addEventListener("input", (event) => {
   const amount = parseInputAmount(event.target.value);
@@ -632,8 +663,6 @@ $("#registry-lists").addEventListener("change", (event) => {
   if (statusInput) entry.isActive = statusInput.checked;
   save().then(() => { setupFormOptions(); renderRegistries(); showFeedback("Cadastro atualizado."); }).catch(() => { restoreState(previous); setupFormOptions(); renderRegistries(); showFeedback("Não foi possível atualizar o cadastro."); });
 });
-$("#export-button").addEventListener("click", () => { const blob = new Blob([JSON.stringify([...transactions, ...incomes], null, 2)], { type: "application/json" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "clareza-transacoes.json"; link.click(); URL.revokeObjectURL(link.href); showFeedback("Dados exportados."); });
-
 const pages = ["resumo", "lancamentos", "vendas", "relatorios", "cadastros"];
 function renderPage() {
   const page = pages.includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : "resumo";
@@ -644,4 +673,4 @@ function renderPage() {
 window.addEventListener("hashchange", renderPage);
 
 renderPage();
-loadData().then(() => { transactions = transactions.map((item) => ({ ...item, expenseType: item.expenseType || item.category || "Outros", taker: item.taker || "Pessoal", location: item.location || "Casa", creditor: item.creditor || "Caixa" })); $("#today-label").textContent = todayLabel(); setupFormOptions(); render(); renderReports(); renderRegistries(); renderCashClosings(); renderPage(); }).catch(() => { showFeedback("Não foi possível carregar os dados iniciais."); });
+loadData().then(() => { transactions = transactions.map((item) => ({ ...item, expenseType: item.expenseType || item.category || "Outros", taker: item.taker || "Pessoal", location: item.location || "Casa", creditor: item.creditor || "Caixa" })); $("#today-label").textContent = todayLabel(); setupFormOptions(); render(); renderReports(); renderRegistries(); renderCashClosings(); renderPage(); }).catch((error) => { console.error("Falha ao inicializar a aplicação.", error); showFeedback("Não foi possível carregar os dados iniciais."); });

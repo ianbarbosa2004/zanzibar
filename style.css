@@ -29,7 +29,8 @@ a { color: inherit; text-decoration: none; }
 .sidebar { width: 248px; flex-shrink: 0; display: flex; flex-direction: column; padding: 30px 20px 22px; color: #fff; background: var(--sidebar); }
 .brand { display: flex; align-items: center; gap: 10px; margin: 0 10px 62px; font-size: 22px; font-weight: 800; letter-spacing: -.8px; }
 .brand small { display: block; margin-top: 1px; color: var(--sidebar-muted); font-size: 9px; font-weight: 500; letter-spacing: .03em; }
-.brand-mark { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 10px; color: var(--sidebar); background: #b9ebce; font-size: 17px; }
+.brand-mark { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 5px; border-radius: 10px; color: var(--sidebar); background: #b9ebce; }
+.brand-mark svg { display: block; width: 100%; height: 100%; }
 .nav-label { margin: 0 12px 10px; color: #70978d; font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 .nav-link { display: flex; align-items: center; gap: 13px; margin: 3px 0; padding: 13px 12px; border-radius: 10px; color: var(--sidebar-muted); font-size: 13px; }
 .nav-link span { width: 18px; color: #7da99a; font-size: 19px; text-align: center; }
@@ -148,8 +149,8 @@ td:first-child { color: var(--ink); font-weight: 650; }
 .location-panel-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
 .location-panel-heading h3 { margin: 0; font-size: 16px; }
 .location-panel-heading span, .page-size { color: var(--muted); font-size: 10px; }
-.page-size { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
-.page-size select { padding: 8px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: #fff; font-size: 10px; }
+.page-size { display: flex; align-items: center; gap: 6px; margin-bottom: 0; white-space: nowrap; }
+.page-size select { margin-top: 0; padding: 8px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: #fff; font-size: 10px; }
 .location-panel .search-box { flex: 1 1 260px; width: auto; }
 .location-panel .table-wrap { overflow-x: auto; }
 .transactions-section { margin-bottom: 28px; padding: 26px; border: 1px solid var(--line); border-radius: 18px; background: #fff; box-shadow: var(--shadow-card); }
@@ -234,13 +235,14 @@ label input, label select { display: block; width: 100%; margin-top: 6px; paddin
 .cash-closing-method { display: grid; grid-template-columns: minmax(0, 1fr) 92px 125px; align-items: center; gap: 9px; margin: 0; }
 .cash-closing-method > span { min-width: 0; overflow: hidden; color: #596862; font-size: 11px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
 .cash-closing-method input { min-width: 0; margin-top: 0; padding: 9px; background: #fff; font-size: 12px; }
-.cash-closing-summary { display: grid; gap: 7px; margin: 0 0 18px; }
-.cash-closing-sales-total { display: grid; grid-template-columns: minmax(0, 1fr) 92px 125px; align-items: center; gap: 9px; padding: 0 12px; }
-.cash-closing-sales-total span { color: #596862; font-size: 11px; font-weight: 650; }
-.cash-closing-sales-total strong { grid-column: 2; color: #248452; font-size: 16px; font-variant-numeric: tabular-nums; text-align: right; }
-.cash-closing-total { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 18px; padding: 12px 14px; border: 1px solid #cfe5d7; border-radius: 10px; background: #f3faf5; }
-.cash-closing-total span { color: #596862; font-size: 11px; font-weight: 650; }
-.cash-closing-total strong { color: #248452; font-size: 18px; font-variant-numeric: tabular-nums; }
+.cash-closing-total { display: grid; grid-template-columns: minmax(0, 1fr) 92px 125px; align-items: center; gap: 9px; margin: 0 0 18px; padding: 12px 14px; border: 1px solid #cfe5d7; border-radius: 10px; background: #f3faf5; }
+.cash-closing-total span { color: #248452; font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.cash-closing-total strong { color: #248452; font-size: 18px; font-variant-numeric: tabular-nums; text-align: left; }
+.cash-closing-total strong:last-child { font-size: 18px; text-align: right; }
+.cash-closing-stack { display: grid; gap: 4px; line-height: 1.25; }
+.cash-closing-stack-total { justify-items: end; }
+.cash-closing-stack strong { color: #248452; font-size: 12px; font-variant-numeric: tabular-nums; }
+.cash-closing-stack-sales strong { text-align: left; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
 .secondary-button { padding: 11px 15px; border-radius: 8px; color: #52625b; background: #edf1ed; font-size: 13px; }
 label input:focus-visible, label select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
