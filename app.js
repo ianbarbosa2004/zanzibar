@@ -1,6 +1,6 @@
 import { inMonth, groupTotals, summarize } from "./src/shared/finance.js";
 import { currentMonth, localDate, todayLabel } from "./src/shared/dates.js";
-import { formatDate, formatInputAmount, formatMoney, formatTransactionDate, parseInputAmount } from "./src/shared/formatters.js";
+import { formatDate, formatInputAmount, formatLastTransactionUpdate, formatMoney, formatTransactionDate, parseInputAmount } from "./src/shared/formatters.js";
 import { canDeleteRegistry, hasRegistryName, registryDefinition, renameRegistry } from "./src/shared/registries.js";
 import { defaultAppState } from "./src/client/state-persistence.js";
 import { createExpenseEntry, createIncomeEntry, upsertEntry } from "./src/shared/entry-factories.js";
@@ -19,6 +19,7 @@ let paymentMethods = [...defaultPaymentMethods];
 let incomes = [];
 let incomeSources = [...defaultIncomeSources];
 let catalogMetadata = {};
+let lastTransactionUpdate = null;
 const pendingRegistryOrderSaves = new Set();
 let cashClosings = [];
 const initialState = defaultAppState({
@@ -41,8 +42,16 @@ const selectedMonth = () => $("#month-filter").value || currentMonth();
 
 async function loadData() {
   ({ transactions, incomes, cashClosings, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources, catalogMetadata } = await loadAppState(API_URL, "./data.json", initialState));
+  lastTransactionUpdate = transactions.reduce((latest, item) => {
+    const value = item.updatedAt || item.createdAt;
+    return value && (!latest || new Date(String(value).replace(" ", "T")) > new Date(String(latest).replace(" ", "T"))) ? value : latest;
+  }, null);
   const catalogs = { type: ["expense_types", expenseTypes], taker: ["takers", takers], location: ["locations", locations], creditor: ["creditors", creditors], paymentMethod: ["payment_methods", paymentMethods], incomeSource: ["income_sources", incomeSources] };
   Object.values(catalogs).forEach(([key, values]) => { catalogMetadata[key] ||= values.map((name, displayOrder) => ({ name, displayOrder, isActive: true })); });
+}
+function markTransactionsUpdated() {
+  lastTransactionUpdate = new Date().toISOString();
+  $("#last-update").textContent = formatLastTransactionUpdate(lastTransactionUpdate);
 }
 
 async function save() {
@@ -57,7 +66,7 @@ function restoreState(previous) {
 }
 
 function setupFormOptions() {
-  const active = (kind, values) => values.filter((name) => catalogMetadata[kind]?.find((item) => item.name === name)?.isActive !== false).sort((a, b) => (catalogMetadata[kind]?.find((item) => item.name === a)?.displayOrder || 0) - (catalogMetadata[kind]?.find((item) => item.name === b)?.displayOrder || 0) || a.localeCompare(b, "pt-BR"));
+  const active = (kind, values) => values.filter((name) => catalogMetadata[kind]?.find((item) => item.name === name)?.isActive !== false).sort((a, b) => kind === "expense_types" ? a.localeCompare(b, "pt-BR") : (catalogMetadata[kind]?.find((item) => item.name === a)?.displayOrder || 0) - (catalogMetadata[kind]?.find((item) => item.name === b)?.displayOrder || 0) || a.localeCompare(b, "pt-BR"));
   if (!takers.some((taker) => taker.toLowerCase() === "zanzibar")) takers.push("Zanzibar");
   const available = { expenseTypes: active("expense_types", expenseTypes), takers: active("takers", takers), locations: active("locations", locations), creditors: active("creditors", creditors), paymentMethods: active("payment_methods", paymentMethods), incomeSources: active("income_sources", incomeSources) };
   $("#expense-type").innerHTML = available.expenseTypes.map((type) => `<option>${escapeHtml(type)}</option>`).join("");
@@ -291,7 +300,7 @@ $("#transaction-form").addEventListener("submit", (event) => {
   }, id);
   const previous = captureState();
   transactions = upsertEntry(transactions, item);
-  save().then(() => { setupFormOptions(); render(); renderReports(); renderRegistries(); $("#transaction-dialog").close(); showFeedback(id ? "Despesa atualizada." : "Despesa adicionada."); }).catch(() => { restoreState(previous); setupFormOptions(); render(); renderReports(); renderRegistries(); showFeedback("Não foi possível salvar a despesa."); });
+  save().then(() => { markTransactionsUpdated(); setupFormOptions(); render(); renderReports(); renderRegistries(); $("#transaction-dialog").close(); showFeedback(id ? "Despesa atualizada." : "Despesa adicionada."); }).catch(() => { restoreState(previous); setupFormOptions(); render(); renderReports(); renderRegistries(); showFeedback("Não foi possível salvar a despesa."); });
 });
 $("#income-form").addEventListener("submit", (event) => {
   event.preventDefault();
@@ -306,7 +315,7 @@ $("#income-form").addEventListener("submit", (event) => {
   }, id);
   const previous = captureState();
   incomes = upsertEntry(incomes, item);
-  save().then(() => { setupFormOptions(); render(); renderReports(); renderRegistries(); $("#income-dialog").close(); showFeedback(id ? "Receita atualizada." : "Receita adicionada."); }).catch((error) => { console.error(error); restoreState(previous); setupFormOptions(); render(); renderReports(); renderRegistries(); showFeedback("Não foi possível salvar a receita."); });
+  save().then(() => { markTransactionsUpdated(); setupFormOptions(); render(); renderReports(); renderRegistries(); $("#income-dialog").close(); showFeedback(id ? "Receita atualizada." : "Receita adicionada."); }).catch((error) => { console.error(error); restoreState(previous); setupFormOptions(); render(); renderReports(); renderRegistries(); showFeedback("Não foi possível salvar a receita."); });
 });
 function renderLocationOptions() {
   const selected = $("#location-options").dataset.value || "Casa";
@@ -420,7 +429,7 @@ $("#cash-closing-form").addEventListener("submit", (event) => {
   cashClosings = cashClosings.filter((entry) => entry.date !== date).concat(rows);
   const income = { id: `cash-closing-income-${date}`, description: `Vendas dia ${formatTransactionDate(date)} (${saleCount})`, amount, type: "income", source: "Vendas", date };
   incomes = incomes.filter((entry) => entry.id !== income.id).concat(income);
-  save().then(() => { renderCashClosings(); render(); renderReports(); $("#cash-closing-dialog").close(); showFeedback(id ? "Fechamento atualizado." : "Fechamento adicionado."); }).catch((error) => {
+  save().then(() => { markTransactionsUpdated(); renderCashClosings(); render(); renderReports(); $("#cash-closing-dialog").close(); showFeedback(id ? "Fechamento atualizado." : "Fechamento adicionado."); }).catch((error) => {
     console.error("Falha ao concluir fechamento após persistência.", error);
     cashClosings = previousCashClosings;
     incomes = previousIncomes;
@@ -473,7 +482,7 @@ document.querySelectorAll("[data-location-panel]").forEach((panel) => {
   incomePanel.querySelector("[data-income-page-size]").addEventListener("change", (event) => { paginationState.Receitas.pageSize = Number(event.target.value); paginationState.Receitas.page = 1; renderIncomeTransactions(); });
   incomePanel.querySelector("[data-income-pagination-prev]").addEventListener("click", () => { if (paginationState.Receitas.page > 1) { paginationState.Receitas.page--; renderIncomeTransactions(); } });
   incomePanel.querySelector("[data-income-pagination-next]").addEventListener("click", () => { paginationState.Receitas.page++; renderIncomeTransactions(); });
-  incomePanel.addEventListener("click", (event) => { const button = event.target.closest("[data-edit-income]"); if (button) openIncomeDialog(incomes.find((item) => item.id === button.dataset.editIncome)); });
+  incomePanel.addEventListener("click", (event) => { const button = event.target.closest("[data-edit-income]");   if (button) openIncomeDialog(incomes.find((item) => String(item.id) === button.dataset.editIncome)); });
   panel.querySelector("[data-pagination-prev]").addEventListener("click", () => {
     const state = paginationState[panel.dataset.locationPanel];
     if (state.page > 1) { state.page -= 1; renderLocationTransactions(panel.dataset.locationPanel); }
@@ -485,7 +494,7 @@ document.querySelectorAll("[data-location-panel]").forEach((panel) => {
   });
   panel.addEventListener("click", (event) => {
     const button = event.target.closest("[data-edit]");
-    if (button) openDialog(transactions.find((item) => item.id === button.dataset.edit));
+    if (button) openDialog(transactions.find((item) => String(item.id) === button.dataset.edit));
   });
 });
 document.querySelectorAll("[data-month-select], #month-filter").forEach((select) => select.addEventListener("change", (event) => {
@@ -673,4 +682,4 @@ function renderPage() {
 window.addEventListener("hashchange", renderPage);
 
 renderPage();
-loadData().then(() => { transactions = transactions.map((item) => ({ ...item, expenseType: item.expenseType || item.category || "Outros", taker: item.taker || "Pessoal", location: item.location || "Casa", creditor: item.creditor || "Caixa" })); $("#today-label").textContent = todayLabel(); setupFormOptions(); render(); renderReports(); renderRegistries(); renderCashClosings(); renderPage(); }).catch((error) => { console.error("Falha ao inicializar a aplicação.", error); showFeedback("Não foi possível carregar os dados iniciais."); });
+loadData().then(() => { transactions = transactions.map((item) => ({ ...item, expenseType: item.expenseType || item.category || "Outros", taker: item.taker || "Pessoal", location: item.location || "Casa", creditor: item.creditor || "Caixa" })); $("#today-label").textContent = todayLabel(); $("#last-update").textContent = formatLastTransactionUpdate(lastTransactionUpdate); setupFormOptions(); render(); renderReports(); renderRegistries(); renderCashClosings(); renderPage(); }).catch((error) => { console.error("Falha ao inicializar a aplicação.", error); showFeedback("Não foi possível carregar os dados iniciais."); });

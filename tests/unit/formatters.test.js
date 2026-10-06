@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { formatMoney, formatTransactionDate, parseInputAmount } from "../../src/shared/formatters.js";
+import { formatLastTransactionUpdate, formatMoney, formatTransactionDate, parseInputAmount } from "../../src/shared/formatters.js";
 
 test("formata valores monetários em reais", () => {
   assert.equal(formatMoney(1234.5), "R$ 1.234,50");
@@ -12,4 +12,8 @@ test("formata data ISO para exibição brasileira", () => {
 
 test("converte valor digitado em centavos", () => {
   assert.equal(parseInputAmount("R$ 1.234,50"), 1234.5);
+});
+
+test("formata a última atualização da tabela de transações", () => {
+  assert.match(formatLastTransactionUpdate("2026-10-06 14:23:00"), /^Última atualização em 06\/10\/2026 - 14:23$/);
 });
