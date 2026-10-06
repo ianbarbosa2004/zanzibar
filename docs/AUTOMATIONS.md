@@ -2,7 +2,7 @@
 
 ## Regra de branch
 
-As automações devem rodar uma por vez. As automações de documentação podem criar pull requests. A automação `atualizar online` é diferente: ela publica diretamente o checkout local validado, sem criar ou aguardar PR. O usuário deve executá-la quando quiser publicar as alterações locais. Ela nunca deve apagar ou sobrescrever arquivos de dados de produção.
+As automações devem rodar uma por vez. As automações de documentação podem criar pull requests. A automação `atualizar online` é diferente: ela publica diretamente o checkout local validado, sem criar ou aguardar PR. O usuário deve executá-la quando quiser publicar as alterações locais. Ela nunca deve apagar ou sobrescrever arquivos de dados de produção, incluindo os JSON de runtime `data.json`, `settings.json`, `incomes.json`, `cash-closings.json` e `limits.json`.
 
 Quando uma implementação envolver schema, migração, foreign key ou persistência MySQL, a automação deve obrigatoriamente executar o deploy oficial e validar a hospedagem/banco antes de considerar a tarefa concluída.
 
@@ -33,7 +33,7 @@ Automação manual do projeto `zanzibar`. Publica diretamente o checkout local, 
 
 O deploy via SFTP deve:
 
-- preservar `data.json`, `settings.json`, `incomes.json` e `cash-closings.json`;
+- preservar `data.json`, `settings.json`, `incomes.json`, `cash-closings.json` e `limits.json`;
 - criar backups remotos dos dados existentes;
 - preservar `.htaccess`;
 - substituir `dist/`, `server.js`, `src/` e os manifestos npm;
@@ -43,7 +43,7 @@ O deploy via SFTP deve:
 
 As validações locais continuam sendo `npm run build`, `npm test`, `node --check app.js`, `node --check server.js` e `git diff --check`. O deploy deve ser executado a partir do checkout local validado. A proteção de `main` governa a integração por PR; esta automação não cria, troca branch, faz merge ou aguarda o GitHub. O script gera o build, remove somente a `dist/` remota antes de enviar a nova, publica `deploy-version.json` com o SHA local e confirma por HTTP que o cPanel serve esse mesmo SHA. A automação deve registrar a saída `CLAREZA_DEPLOY_COMMIT`; sem essa confirmação, a versão não deve ser considerada publicada. O deploy deve preservar:
 
-- `data.json`, `settings.json`, `incomes.json`, `cash-closings.json` e backups;
+- `data.json`, `settings.json`, `incomes.json`, `cash-closings.json`, `limits.json` e backups;
 - `.htaccess`;
 - credenciais e chaves privadas, que nunca podem ser enviadas.
 
