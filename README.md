@@ -129,6 +129,10 @@ Nunca versionar senhas, arquivos de produção ou dumps do banco.
 
 Qualquer implementação que altere o schema, as migrações, as foreign keys ou a persistência MySQL deve ser publicada na hospedagem/banco de dados ao final da tarefa, usando exclusivamente o script oficial de deploy. A tarefa só está concluída após a validação remota.
 
+## Consistência de persistência na interface
+
+Inclusões, edições, exclusões, alterações de ordem e ativações ou desativações de cadastros só podem ser confirmadas visualmente depois que o `PUT /api/data` retornar sucesso. Antes de alterar o estado exibido, o frontend deve preservar uma cópia independente do estado anterior; se a persistência falhar, deve restaurar essa cópia, atualizar a interface e informar o erro. Esse rollback visual evita que um registro não salvo no MySQL permaneça aparentando estar salvo.
+
 ## Prompt inicial para continuidade
 
 O Clareza é uma aplicação de organização financeira pessoal e empresarial: registra despesas, receitas e fechamentos de caixa, com Node.js em módulos ES, JavaScript puro, Vite, MySQL e Passenger. A API HTTP usa MySQL quando configurado e fallback para os arquivos JSON locais no desenvolvimento.

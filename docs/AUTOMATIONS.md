@@ -6,6 +6,8 @@ As duas automações utilizam diretamente a branch `main`. Antes de trabalhar, d
 
 Quando uma implementação envolver schema, migração, foreign key ou persistência MySQL, a automação deve obrigatoriamente executar o deploy oficial e validar a hospedagem/banco antes de considerar a tarefa concluída.
 
+As automações também devem verificar a consistência visual das escritas: formulários de despesas, receitas e cadastros auxiliares só podem confirmar o sucesso depois do `PUT /api/data`; em caso de falha, o estado anterior deve ser restaurado. A verificação inclui inclusão, edição, exclusão, ordenação e ativação ou desativação.
+
 ## `atualizar readme main`
 
 Automação manual do projeto `zanzibar`. Trabalha diretamente em `main`, analisa as implementações recentes e atualiza:
