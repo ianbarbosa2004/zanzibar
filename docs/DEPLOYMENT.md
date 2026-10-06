@@ -8,7 +8,7 @@ O `.htaccess` é administrado pelo cPanel e não deve ser sobrescrito. Dados de 
 
 ## Procedimento oficial
 
-Execute somente a partir de uma cópia limpa do branch `main`, depois que o pull request tiver sido mesclado. Se o checkout local estiver divergente, não use `pull --ff-only` repetidamente nem descarte commits sem registro: crie primeiro uma branch de backup para o commit local e só então alinhe `main` à origem:
+Execute somente a partir de uma cópia limpa do branch `main`, depois que o pull request tiver sido mesclado. As automações devem abrir o PR e solicitar o merge automático; se a proteção exigir aprovação humana, o deploy deve aguardar. Se o checkout local estiver divergente, não use `pull --ff-only` repetidamente nem descarte commits sem registro: crie primeiro uma branch de backup para o commit local e só então alinhe `main` à origem:
 
 ```powershell
 git fetch origin main

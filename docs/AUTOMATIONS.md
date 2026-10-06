@@ -2,7 +2,7 @@
 
 ## Regra de branch
 
-As automações nunca devem fazer commit, push ou deploy diretamente na branch protegida `main`. Antes de trabalhar, devem fazer `fetch` de `origin`, garantir que o checkout esteja em `main` e verificar o estado local. Se `main` estiver divergente de `origin/main`, mas sem alterações não commitadas, devem preservar o commit local em uma branch de backup nomeada com data, alinhar `main` a `origin/main` e registrar essa ação; nunca devem descartar commits silenciosamente. Se houver alterações não commitadas, devem interromper e informar o erro. A publicação em produção só pode ocorrer a partir de `main` exatamente igual a `origin/main`, depois que o pull request tiver sido mesclado.
+As automações nunca devem fazer commit ou push diretamente na branch protegida `main`. Elas devem criar o pull request, aguardar os checks e mesclá-lo automaticamente com `gh pr merge --auto --squash` quando a proteção permitir. Se o GitHub exigir aprovação humana, resolver conflitos ou apresentar checks falhos, devem interromper e informar o bloqueio. Depois do merge, devem fazer `fetch` de `origin`, garantir que o checkout esteja em `main` e verificar o estado local. Se `main` estiver divergente de `origin/main`, mas sem alterações não commitadas, devem preservar o commit local em uma branch de backup nomeada com data, alinhar `main` a `origin/main` e registrar essa ação; nunca devem descartar commits silenciosamente. Se houver alterações não commitadas, devem interromper e informar o erro. A publicação em produção só pode ocorrer a partir de `main` exatamente igual a `origin/main`.
 
 Quando uma implementação envolver schema, migração, foreign key ou persistência MySQL, a automação deve obrigatoriamente executar o deploy oficial e validar a hospedagem/banco antes de considerar a tarefa concluída.
 
@@ -17,11 +17,11 @@ Automação manual do projeto `zanzibar`. Trabalha em uma branch de automação,
 - `docs/DEPLOYMENT.md`
 - `docs/CONTINUITY-PROMPT.md`
 
-Executa `npm run build`, depois `npm test`, `node --check app.js`, `node --check server.js` e `git diff --check`. Ao concluir, cria commit com o trailer `Co-authored-by` exigido, envia a branch para `origin` e abre um pull request contra `main` com `gh pr create`. Não executa deploy: alterações de documentação devem ser revisadas e mescladas pelo pull request. Não deve incluir credenciais, chaves privadas, dados de produção, JSON de runtime, `dist/` ou `node_modules/`.
+Executa `npm run build`, depois `npm test`, `node --check app.js`, `node --check server.js` e `git diff --check`. Ao concluir, cria commit com o trailer `Co-authored-by` exigido, envia a branch para `origin`, abre um pull request com `gh pr create` e solicita merge automático com `gh pr merge --auto --squash`. Não deve incluir credenciais, chaves privadas, dados de produção, JSON de runtime, `dist/` ou `node_modules/`.
 
 ## `atualizar online main`
 
-Automação manual do projeto `zanzibar`. Trabalha em uma branch de automação e executa as validações locais. Ela não publica a partir da branch: cria um pull request contra `main`. Depois do merge, a publicação deve ser feita pela automação de deploy, exclusivamente pelo `.github/scripts/deploy.ps1`.
+Automação manual do projeto `zanzibar`. Trabalha em uma branch de automação e executa as validações locais. Quando houver alterações de código, cria o pull request, solicita `gh pr merge --auto --squash` e aguarda o merge antes de publicar. Depois do merge, a publicação deve ser feita exclusivamente pelo `.github/scripts/deploy.ps1`.
 
 O deploy via SFTP deve:
 
