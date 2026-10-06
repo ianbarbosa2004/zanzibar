@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Controle simples das suas finanças pessoais." />
     <title>Clareza | Financeiro pessoal</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23b9ebce'/%3E%3Cpath d='M13 50V35h8v15h6V27h8v23h6V19h8v31' fill='none' stroke='%23173d36' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='m11 43 13-8 9 5 15-15' fill='none' stroke='%23368967' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -14,20 +15,22 @@
     <main class="app-shell">
       <aside class="sidebar">
         <a class="brand" href="#resumo" aria-label="Clareza início">
-          <span class="brand-mark">C</span>
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 64 64" role="img" aria-label="Marca Clareza">
+              <path d="M13 50V35h8v15h6V27h8v23h6V19h8v31" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="m11 43 13-8 9 5 15-15" fill="none" stroke="#368967" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </span>
           <span>clareza<small>finanças pessoais</small></span>
         </a>
         <nav class="main-nav" aria-label="Navegação principal">
           <p class="nav-label">Menu</p>
-          <a class="nav-link" href="#lancamentos"><span>↔</span> Saídas</a>
-          <a class="nav-link" href="#vendas"><span>▣</span> Vendas</a>
           <a class="nav-link active" href="#resumo"><span>⌂</span> Resumo</a>
+          <a class="nav-link" href="#lancamentos"><span>↔</span> Movimentação</a>
+          <a class="nav-link" href="#vendas"><span>▣</span> Vendas</a>
           <a class="nav-link" href="#relatorios"><span>▥</span> Relatórios</a>
           <a class="nav-link" href="#cadastros"><span>⚙</span> Cadastros</a>
         </nav>
-        <div class="sidebar-bottom">
-          <button class="sidebar-footer" id="export-button" type="button"><span>↓</span> Exportar dados</button>
-        </div>
       </aside>
 
       <section class="content">
@@ -135,7 +138,8 @@
 
         <section id="vendas" class="transactions-section" data-page="vendas">
           <div class="section-heading"><div><p class="eyebrow">Operação</p><h2>Fechamentos de caixa <span id="cash-closing-total" class="section-total">(R$ 0,00)</span></h2></div><button class="primary-button" id="new-cash-closing" type="button"><span>＋</span> Fechamento de caixa</button></div>
-          <div class="table-wrap"><table><thead><tr><th>Data</th><th>Forma de recebimento</th><th>Vendas</th><th class="align-right">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody id="cash-closings-list"></tbody></table><div id="cash-closings-empty" class="empty-state" hidden>Nenhum fechamento de caixa encontrado.</div></div>
+          <div class="table-wrap"><table><thead><tr><th>Data</th><th>Forma de recebimento</th><th>Vendas</th><th class="align-right">Valor</th><th class="align-right">Total</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody id="cash-closings-list"></tbody></table><div id="cash-closings-empty" class="empty-state" hidden>Nenhum fechamento de caixa encontrado.</div></div>
+          <nav class="pagination" aria-label="Paginação dos fechamentos de caixa"><span class="pagination-controls"><button id="cash-closing-pagination-prev" class="pagination-button" type="button">← Anterior</button><span id="cash-closing-pagination-status" aria-live="polite"></span><button id="cash-closing-pagination-next" class="pagination-button" type="button">Próxima →</button></span><label class="page-size">Por página <select id="cash-closing-page-size" aria-label="Fechamentos por página"><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label></nav>
         </section>
 
         <section id="cadastros" class="registries-section" data-page="cadastros">
@@ -184,7 +188,7 @@
         <input id="cash-closing-id" type="hidden" />
         <label>Data<input id="cash-closing-date" type="date" required /></label>
         <div id="cash-closing-methods" class="cash-closing-methods"></div>
-        <div class="cash-closing-summary"><div class="cash-closing-sales-total"><span>Total de vendas</span><strong id="cash-closing-sales-preview">0</strong></div><div class="cash-closing-total"><span>Total do fechamento</span><strong id="cash-closing-total-preview">R$ 0,00</strong></div></div>
+        <div class="cash-closing-total"><span>Total</span><strong id="cash-closing-sales-preview">0</strong><strong id="cash-closing-total-preview">R$ 0,00</strong></div>
         <div class="dialog-actions"><button class="secondary-button" id="cancel-cash-closing-dialog" type="button">Cancelar</button><button class="primary-button" type="submit">Salvar fechamento</button></div>
       </form>
     </dialog>

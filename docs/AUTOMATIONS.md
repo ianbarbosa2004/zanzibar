@@ -2,7 +2,7 @@
 
 ## Regra de branch
 
-As duas automações utilizam diretamente a branch `main`. Antes de trabalhar, devem fazer `fetch` e `pull --ff-only origin main`. Elas não devem criar, usar ou publicar em branches separadas.
+As automações nunca devem fazer commit, push ou deploy diretamente na branch protegida `main`. Antes de trabalhar, devem fazer `fetch` e `pull --ff-only origin main`, criar uma branch de automação a partir da `origin/main`, executar as validações e abrir um pull request contra `main`. A publicação em produção só pode ocorrer depois que o pull request for mesclado.
 
 Quando uma implementação envolver schema, migração, foreign key ou persistência MySQL, a automação deve obrigatoriamente executar o deploy oficial e validar a hospedagem/banco antes de considerar a tarefa concluída.
 
@@ -10,26 +10,18 @@ As automações também devem verificar a consistência visual das escritas: for
 
 ## `atualizar readme main`
 
-Automação manual do projeto `zanzibar`. Trabalha diretamente em `main`, analisa as implementações recentes e atualiza:
+Automação manual do projeto `zanzibar`. Trabalha em uma branch de automação, analisa as implementações recentes e atualiza:
 
 - `README.md`
 - `CONTRIBUTING.md`
 - `docs/DEPLOYMENT.md`
 - `docs/CONTINUITY-PROMPT.md`
 
-Antes de publicar, executa `npm test`, `npm run build`, `node --check app.js`, `node --check server.js` e `git diff --check`. Se a alteração envolver MySQL, deve executar também `.github/scripts/deploy.ps1` e validar a hospedagem/banco. Não deve incluir credenciais, chaves privadas, dados de produção, JSON de runtime, `dist/` ou `node_modules/`.
-
-### Teste realizado
-
-- Execução: `d7917be5-de6d-468a-bed5-2d1a663dcd25`
-- Resultado: concluída
-- Commit gerado: `b292620` (`docs: alinhar documentação ao fluxo atual`)
-- Branch: `main` (regra atual; o teste original usou uma branch separada antes desta correção)
-- Validações: concluídas pela automação
+Executa `npm run build`, depois `npm test`, `node --check app.js`, `node --check server.js` e `git diff --check`. Ao concluir, cria commit com o trailer `Co-authored-by` exigido, envia a branch para `origin` e abre um pull request contra `main` com `gh pr create`. Não executa deploy: alterações de documentação devem ser revisadas e mescladas pelo pull request. Não deve incluir credenciais, chaves privadas, dados de produção, JSON de runtime, `dist/` ou `node_modules/`.
 
 ## `atualizar online main`
 
-Automação manual do projeto `zanzibar`. Trabalha diretamente em `main`, executa as validações locais e publica somente pelo `.github/scripts/deploy.ps1`.
+Automação manual do projeto `zanzibar`. Trabalha em uma branch de automação e executa as validações locais. Ela não publica a partir da branch: cria um pull request contra `main`. Depois do merge, a publicação deve ser feita pela automação de deploy, exclusivamente pelo `.github/scripts/deploy.ps1`.
 
 O deploy via SFTP deve:
 
@@ -41,16 +33,14 @@ O deploy via SFTP deve:
 - validar HTTP 200 e conferir os assets publicados por SHA-256;
 - nunca enviar credenciais ou chaves privadas.
 
-### Teste realizado
+As validações locais continuam sendo `npm run build`, `npm test`, `node --check app.js`, `node --check server.js` e `git diff --check`. O deploy, após o merge, deve ser executado a partir de `main` sincronizada com `origin/main`. O script oficial bloqueia commits divergentes, publica `deploy-version.json` com o SHA do commit e confirma por HTTP que o cPanel serve esse mesmo SHA. A automação deve registrar a saída `CLAREZA_DEPLOY_COMMIT`; sem essa confirmação, a versão não deve ser considerada publicada. O deploy deve preservar:
 
-- Execução: `24591c94-661a-411a-93be-35d0c9c9a708`
-- Resultado: concluída
-- Branch de execução do teste original: `ianbarbosa2004-atualizar-clareza`
-- Validação posterior: `https://itsites.com.br/clareza/` e `/clareza/api/data` retornaram HTTP 200.
-- Os hashes SHA-256 dos assets locais e remotos foram iguais:
-  - `assets/index-Cw99lKRh.css`
-  - `assets/index-O30-vBSe.js`
+- `data.json`, `settings.json`, `incomes.json`, `cash-closings.json` e backups;
+- `.htaccess`;
+- credenciais e chaves privadas, que nunca podem ser enviadas.
 
-## Observação de manutenção
+O script deve validar HTTP 200 e comparar os assets remotos por SHA-256. Alterações de schema, migração, foreign key ou persistência MySQL exigem validação remota após o merge; não devem ser consideradas concluídas apenas com o pull request aberto.
 
-A execução original ocorreu a partir de `main`, mas foi materializada em uma branch de workspace separada e usou a versão anterior do script de deploy. As automações corrigidas (`atualizar readme main` e `atualizar online main`) usam `workspace_type: branch` e trabalham diretamente em `main`. As automações antigas devem ser consideradas legadas e não devem ser executadas.
+## Automação legada
+
+As execuções anteriores que fizeram commit direto em `main` ou usaram branches de workspace compartilhadas são apenas histórico. Não devem ser reutilizadas. As configurações atuais exigem branch de automação, pull request e deploy somente após o merge.
