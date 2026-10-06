@@ -74,3 +74,5 @@ Para conferir rapidamente a versão servida:
 ```powershell
 Invoke-WebRequest -UseBasicParsing https://itsites.com.br/clareza/deploy-version.json
 ```
+
+O resultado esperado é JSON UTF-8 com `branch` e `commit`. Algumas interfaces podem representar a resposta como um objeto `Buffer`; nesse caso, decodifique os bytes com UTF-8 antes de avaliar o SHA. Não considere a publicação inválida por causa desse formato de apresentação: compare o campo `commit` com `git rev-parse origin/main`.

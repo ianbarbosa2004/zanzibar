@@ -41,6 +41,16 @@ As validações locais continuam sendo `npm run build`, `npm test`, `node --chec
 
 O script deve validar HTTP 200 e comparar os assets remotos por SHA-256. Alterações de schema, migração, foreign key ou persistência MySQL exigem validação remota após o merge; não devem ser consideradas concluídas apenas com o pull request aberto.
 
+### Resultado da execução mais recente
+
+A execução `0756a554-bbd0-4563-8636-799eb423c830` foi concluída com sucesso após o merge do PR #32. O cPanel confirmou:
+
+```json
+{"branch":"main","commit":"3f800abf97b83609d33c29a98a3df9c9226e2da9"}
+```
+
+Se a ferramenta exibir esse conteúdo como `{"type":"Buffer","data":[...]}`, isso é apenas uma serialização da resposta HTTP. A automação deve decodificar os bytes UTF-8 e apresentar o JSON acima, além de comparar o campo `commit` com `git rev-parse origin/main`.
+
 ## Automação legada
 
 As execuções anteriores que fizeram commit direto em `main` ou usaram branches de workspace compartilhadas são apenas histórico. Não devem ser reutilizadas. As configurações atuais exigem branch de automação, pull request e deploy somente após o merge.
