@@ -67,7 +67,7 @@ npm run dev
 | `npm run test:unit` | Executa testes de funções e adaptadores isolados |
 | `npm run test:integration` | Executa testes HTTP com servidor efêmero |
 
-Antes de publicar, execute:
+Antes de abrir uma alteração, execute:
 
 ```bash
 npm test
@@ -138,33 +138,8 @@ As principais rotas são:
 
 O caminho `/clareza` é o padrão e pode ser alterado por `CLAREZA_BASE_PATH`. O payload mantém compatibilidade com clientes antigos que enviam transações e receitas separadamente. Payloads inválidos retornam `400`; falhas internas retornam `500`.
 
-## Publicação no cPanel
+## Documentação operacional
 
-O entrypoint do Passenger é `server.js`. O diretório remoto usado pelo projeto é:
-
-```text
-/home1/itsitescom/public_html/clareza
-```
-
-O script oficial de publicação é:
-
-```powershell
-.\.github\scripts\deploy.ps1
-```
-
-Ele valida `app.js` e `server.js`, executa o build, faz backup de `data.json` e `settings.json`, envia `dist/`, `server.js`, `src/` e os manifestos npm, remove os arquivos legados da raiz, reinicia o Passenger e valida:
-
-```text
-https://itsites.com.br/clareza/
-https://itsites.com.br/clareza/api/data
-```
-
-No cPanel, configure a aplicação Node.js para iniciar `server.js`, use a versão Node compatível e mantenha as variáveis MySQL no Application Manager. O `.htaccess` existente não deve ser sobrescrito pelo deploy.
-
-## Contribuição
-
-1. Faça uma alteração pequena e focada.
-2. Reutilize módulos existentes antes de duplicar regras.
-3. Adicione ou atualize testes.
-4. Execute `npm test`, `npm run build` e `git diff --check`.
-5. Não inclua runtime, credenciais ou artefatos gerados no commit.
+- [Contribuição e validação](CONTRIBUTING.md)
+- [Publicação no cPanel](docs/DEPLOYMENT.md)
+- [Prompt de continuidade para novas sessões](docs/CONTINUITY-PROMPT.md)
