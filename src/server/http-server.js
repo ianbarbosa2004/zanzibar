@@ -15,7 +15,12 @@ async function readBody(request) {
 
 function send(response, status, payload, contentType = "application/json") {
   response.writeHead(status, { "Content-Type": contentType, "Cache-Control": "no-store" });
-  response.end(contentType === "application/json" ? JSON.stringify(payload) : payload);
+  const body = Buffer.isBuffer(payload) || payload instanceof Uint8Array
+    ? payload
+    : contentType === "application/json"
+      ? JSON.stringify(payload)
+      : payload;
+  response.end(body);
 }
 
 export function createHttpServer({ basePath, readData, writeData, readStaticFile, logger = console }) {
