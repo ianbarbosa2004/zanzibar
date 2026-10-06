@@ -6,13 +6,9 @@ import { defaultAppState } from "./src/client/state-persistence.js";
 import { createExpenseEntry, createIncomeEntry, upsertEntry } from "./src/shared/entry-factories.js";
 import { filterEntries, paginate, sortByDateDescending } from "./src/shared/collections.js";
 import { loadAppState, persistAppState } from "./src/client/state-service.js";
+import { catalogDefaults } from "./src/shared/catalog-defaults.js";
 
-const defaultExpenseTypes = ["Moradia", "Alimentação", "Contas", "Transporte", "Lazer", "Saúde", "Educação", "Outros"];
-const defaultTakers = ["Pessoal", "Zanzibar"];
-const defaultLocations = ["Casa", "Zanzibar"];
-const defaultCreditors = ["Caixa"];
-const defaultPaymentMethods = ["Dinheiro", "Pix", "Cartão de débito", "Cartão de crédito", "Boleto", "Transferência bancária"];
-const defaultIncomeSources = ["Salário"];
+const { expenseTypes: defaultExpenseTypes, takers: defaultTakers, locations: defaultLocations, creditors: defaultCreditors, paymentMethods: defaultPaymentMethods, incomeSources: defaultIncomeSources } = catalogDefaults;
 const API_URL = new URL("api/data", document.baseURI).pathname;
 let transactions = [];
 let expenseTypes = [...defaultExpenseTypes];

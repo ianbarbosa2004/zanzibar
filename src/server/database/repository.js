@@ -70,12 +70,12 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
   const cashClosings = await readJson(cashClosingsFile, []);
   const [existingTransactions] = await dbPool.query("SELECT expense_type, taker, location, creditor FROM transactions");
   const catalogs = {
-    expense_types: [...new Set([...(appSettings.expenseTypes || []), ...transactions.map((item) => item.expenseType || item.category || "Outros"), ...existingTransactions.map((item) => item.expense_type)])],
-    takers: [...new Set([...(appSettings.takers || []), ...transactions.map((item) => item.taker || "Pessoal"), ...existingTransactions.map((item) => item.taker)])],
-    locations: [...new Set([...(appSettings.locations || []), ...transactions.map((item) => item.location || "Casa"), ...existingTransactions.map((item) => item.location)])],
-    creditors: [...new Set([...(appSettings.creditors || []), ...transactions.map((item) => item.creditor || "Caixa"), ...existingTransactions.map((item) => item.creditor)])],
-    payment_methods: [...new Set(["Dinheiro", "Pix", "Cartão de débito", "Cartão de crédito", "Boleto", "Transferência bancária", ...(appSettings.paymentMethods || [])])],
-    income_sources: [...new Set(["Salário", ...(appSettings.incomeSources || []), ...incomes.map((item) => item.source)])],
+    expense_types: [...new Set([...(defaultSettings.expenseTypes || []), ...(appSettings.expenseTypes || []), ...transactions.map((item) => item.expenseType || item.category || "Outros"), ...existingTransactions.map((item) => item.expense_type)])],
+    takers: [...new Set([...(defaultSettings.takers || []), ...(appSettings.takers || []), ...transactions.map((item) => item.taker || "Pessoal"), ...existingTransactions.map((item) => item.taker)])],
+    locations: [...new Set([...(defaultSettings.locations || []), ...(appSettings.locations || []), ...transactions.map((item) => item.location || "Casa"), ...existingTransactions.map((item) => item.location)])],
+    creditors: [...new Set([...(defaultSettings.creditors || []), ...(appSettings.creditors || []), ...transactions.map((item) => item.creditor || "Caixa"), ...existingTransactions.map((item) => item.creditor)])],
+    payment_methods: [...new Set([...(defaultSettings.paymentMethods || []), ...(appSettings.paymentMethods || []), ...cashClosings.map((item) => item.paymentMethod)])],
+    income_sources: [...new Set([...(defaultSettings.incomeSources || []), ...(appSettings.incomeSources || []), ...incomes.map((item) => item.source)])],
   };
   for (const [table, names] of Object.entries(catalogs)) {
     const [[tableCount]] = await dbPool.query(`SELECT COUNT(*) AS total FROM ${table}`);

@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { catalogDefaults } from "../shared/catalog-defaults.js";
 
 export const root = fileURLToPath(new URL("../../", import.meta.url));
 export const dataFile = join(root, "data.json");
@@ -20,9 +21,5 @@ export const databaseUser = process.env.CLAREZA_DB_USER?.trim();
 export const databaseConfigured = Boolean(process.env.CLAREZA_DB_PASSWORD);
 
 export const defaultSettings = {
-  expenseTypes: [],
-  takers: [],
-  locations: [],
-  creditors: [],
-  incomeSources: [],
+  ...catalogDefaults,
 };
