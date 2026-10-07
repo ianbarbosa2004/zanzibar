@@ -21,7 +21,7 @@ Nunca versionar ou enviar `data.json`, `settings.json`, `incomes.json`, `cash-cl
 
 Integra o desenvolvimento e mantém uma única versão oficial em `main`. Deve inspecionar o checkout, `origin/main` e o histórico local/remoto; preservar alterações locais seguras; interromper diante de arquivos ambíguos, dados de produção ou segredos; incorporar somente commits relevantes; executar `npm run build`, `npm test`, `node --check app.js`, `node --check server.js` e `git diff --check`; criar PR protegido contra `main`, solicitar merge automático e aguardar a confirmação. Depois do merge, deve confirmar que `origin/main` é a versão oficial. Não executa deploy no cPanel.
 
-Para arquivos estáticos, deve normalizar `/` e `\`, rejeitar caminhos que escapem da raiz pública, incluindo `../package.json` e `..\package.json`, preservar os testes de arquivo existente e de tentativa de escape e não recriar o workflow obsoleto do GitHub Pages.
+Para arquivos estáticos, deve normalizar `/` e `\`, rejeitar caminhos que escapem da raiz pública, incluindo `../package.json` e `..\package.json`, preservar os testes de arquivo existente e de tentativa de escape e não recriar o workflow obsoleto do GitHub Pages. O CRUD de produção permanece no MySQL; JSON, backups, `dist/`, `node_modules`, credenciais, chaves privadas e `.htaccess` ficam fora do fluxo de integração.
 
 ## `atualizar readme`
 
@@ -29,7 +29,7 @@ Analisa código, commits, PRs mesclados e o estado do repositório. Atualiza som
 
 ## `atualizar online`
 
-Publica diretamente no cPanel o checkout local validado. Não cria, inspeciona, aguarda ou mescla PR; também não faz pull, push, switch de branch ou reset Git. Executa as validações prévias e somente o script oficial `.github/scripts/deploy.ps1`.
+Publica diretamente no cPanel o checkout local validado. Não cria, inspeciona, aguarda ou mescla PR; também não faz pull, push, switch de branch ou reset Git. Executa as validações prévias e somente o script oficial `.github/scripts/deploy.ps1`. A proteção de `main` continua valendo apenas para a integração no GitHub.
 
 O script gera o build local, remove e recria somente `dist/` remoto, substitui o conteúdo de `src/`, `server.js` e os manifestos npm, preserva dados, backups e `.htaccess`, reinstala dependências, reinicia o Passenger, valida HTTP, API, SHA-256 dos assets e `deploy-version.json` e emite `CLAREZA_DEPLOY_COMMIT`. Qualquer falha interrompe o deploy; a correção deve ser incorporada e documentada antes de nova tentativa.
 
