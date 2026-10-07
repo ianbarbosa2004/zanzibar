@@ -1,6 +1,6 @@
 # Clareza
 
-Aplicação web para organização financeira pessoal e empresarial. O sistema registra despesas e receitas, calcula o saldo mensal, permite administrar cadastros auxiliares e persiste os dados em MySQL no ambiente de produção ou em arquivos JSON durante o desenvolvimento local.
+Aplicação web para organização financeira pessoal e empresarial. O sistema registra despesas e receitas, calcula o saldo mensal, permite administrar cadastros auxiliares e executa o CRUD diretamente no MySQL em produção. Arquivos JSON são somente fallback de desenvolvimento local.
 
 ## Funcionalidades
 
@@ -93,7 +93,7 @@ tests/
 dist/                     # Saída gerada pelo Vite, não versionada
 ```
 
-`src/server/http-server.js` é uma fábrica testável do servidor HTTP. `server.js` permanece pequeno para manter a compatibilidade com o Passenger. O armazenamento é selecionado por `src/server/data-store.js`: MySQL quando configurado e JSON local caso contrário.
+`src/server/http-server.js` é uma fábrica testável do servidor HTTP. `server.js` permanece pequeno para manter a compatibilidade com o Passenger. O armazenamento é selecionado por `src/server/data-store.js`: CRUD direto no MySQL quando configurado e JSON local somente como fallback quando `CLAREZA_DB_PASSWORD` não existe.
 
 A refatoração da aplicação é incremental. Regras de domínio devem ficar em `src/shared`, integrações de navegador em `src/client` e integrações de servidor em `src/server`. Novas funcionalidades devem preservar o contrato da API e incluir testes na camada adequada.
 
@@ -133,7 +133,7 @@ Nunca versionar senhas, arquivos de produção ou dumps do banco.
 
 Qualquer implementação que altere o schema, as migrações, as foreign keys ou a persistência MySQL deve ser publicada na hospedagem/banco de dados ao final da tarefa, usando exclusivamente o script oficial de deploy. A tarefa só está concluída após a validação remota.
 
-O deploy operacional publica o checkout local validado e não depende de pull request ou merge. A proteção de `main` se aplica à integração no GitHub; a publicação operacional não cria, mescla ou aguarda PR. Alterações de código locais são o conteúdo do deploy; o script remove somente a `dist/` remota antes de enviar o novo build, preserva os dados de produção e confirma a versão servida pelo endpoint `deploy-version.json`.
+O deploy operacional publica diretamente o checkout local validado no cPanel e não depende de pull request ou merge. A proteção de `main` se aplica à integração no GitHub; a publicação operacional não cria, mescla ou aguarda PR. Alterações de código locais são o conteúdo do deploy; o script remove somente a `dist/` remota antes de enviar o novo build, preserva os arquivos de runtime, os backups e `.htaccess`, e confirma a versão servida pelo endpoint `deploy-version.json`.
 
 ## Consistência de persistência na interface
 
@@ -143,11 +143,11 @@ Os estados auxiliares de paginação devem ser consumidos somente pelo renderer 
 
 ## Prompt inicial para continuidade
 
-O Clareza é uma aplicação de organização financeira pessoal e empresarial: registra despesas, receitas e fechamentos de caixa, com Node.js em módulos ES, JavaScript puro, Vite, MySQL e Passenger. A API HTTP usa MySQL quando configurado e fallback para os arquivos JSON locais no desenvolvimento.
+O Clareza é uma aplicação de organização financeira pessoal e empresarial: registra despesas, receitas e fechamentos de caixa, com Node.js em módulos ES, JavaScript puro, Vite, MySQL e Passenger. A API HTTP faz CRUD diretamente no MySQL quando configurado e usa arquivos JSON somente no desenvolvimento local sem banco configurado.
 
 O modelo MySQL principal é formado por `transactions`, `cash_closings` e pelos catálogos `expense_types`, `takers`, `locations`, `creditors`, `payment_methods` e `income_sources`, além de `app_settings`. `transactions` mantém foreign keys para os catálogos de lançamento; `cash_closings.payment_method_id` referencia `payment_methods.id`. Ao persistir, insira primeiro os nomes novos dos catálogos, depois atualize `display_order` e `is_active`. Registros inativos não aparecem nos formulários; não exclua fisicamente um cadastro referenciado por `transactions` ou `cash_closings`. O contrato do `PUT /api/data` deve preservar `transactions`, `incomes`, `cashClosings` e `settings` até o repositório.
 
-O Fechamento de Caixa registra data, forma de recebimento, quantidade de vendas e total, e também compõe a receita do dia. A ordenação dos catálogos compatíveis pode ser alterada por arraste e deve ser confirmada pelo botão **Salvar Ordem**. Em investigações, siga o fluxo ponta a ponta (interface, estado, API, persistência e retorno), acrescente testes unitários e de integração, proteja dados de produção e nunca exponha credenciais ou arquivos de runtime. O deploy deve ocorrer somente pelo script oficial `.github/scripts/deploy.ps1`.
+O Fechamento de Caixa registra data, forma de recebimento, quantidade de vendas e total, e também compõe a receita do dia. A ordenação dos catálogos compatíveis pode ser alterada por arraste e deve ser confirmada pelo botão **Salvar Ordem**. Em investigações, siga o fluxo ponta a ponta (interface, estado, API, persistência e retorno), acrescente testes unitários e de integração, proteja dados de produção e nunca exponha credenciais ou arquivos de runtime. O deploy deve ocorrer somente pelo script oficial `.github/scripts/deploy.ps1`, executado a partir do checkout local validado; não faça deploy no fluxo de documentação.
 
 ## API HTTP
 
