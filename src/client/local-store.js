@@ -8,6 +8,7 @@ const keys = {
   paymentMethods: "clareza-payment-methods",
   incomeSources: "clareza-income-sources",
   cashClosings: "clareza-cash-closings",
+  monthlyCashClosings: "clareza-monthly-cash-closings",
   limits: "clareza-limits",
   catalogMetadata: "clareza-catalog-metadata",
 };
@@ -29,13 +30,8 @@ export function readLocalState(defaults) {
   };
   if (defaults.paymentMethods !== undefined) state.paymentMethods = read("paymentMethods", defaults.paymentMethods);
   state.cashClosings = read("cashClosings", defaults.cashClosings || []);
+  if (defaults.monthlyCashClosings !== undefined) state.monthlyCashClosings = read("monthlyCashClosings", defaults.monthlyCashClosings);
   state.limits = read("limits", defaults.limits || []);
   state.catalogMetadata = read("catalogMetadata", defaults.catalogMetadata || {});
   return state;
-}
-
-export function writeLocalState(state) {
-  Object.entries(state).forEach(([key, value]) => {
-    localStorage.setItem(keys[key], JSON.stringify(value));
-  });
 }

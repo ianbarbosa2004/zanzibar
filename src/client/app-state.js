@@ -10,6 +10,13 @@ export function createAppState(data, defaults) {
     saleCount: Number(item.saleCount || 0),
     totalAmount: Number(item.totalAmount || 0),
   }));
+  const monthlyCashClosings = (data.monthlyCashClosings || []).map((item) => ({
+    ...item,
+    month: Number(item.month),
+    year: Number(item.year),
+    saleCount: Number(item.saleCount || 0),
+    totalAmount: Number(item.totalAmount || 0),
+  }));
   const limits = (data.limits || []).map((item) => ({
     ...item,
     month: Number(item.month),
@@ -31,6 +38,15 @@ export function createAppState(data, defaults) {
     })),
     incomes,
     cashClosings,
+    monthlyCashClosings,
+    billings: (data.billings || []).map((item) => ({
+      ...item,
+      month: Number(item.month),
+      year: Number(item.year),
+      saleCount: Number(item.saleCount || 0),
+      averageTicket: Number(item.averageTicket || 0),
+      amount: Number(item.amount || 0),
+    })),
     limits,
     expenseTypes: settings.expenseTypes?.length ? settings.expenseTypes : [...defaults.expenseTypes],
     takers: settings.takers?.length ? settings.takers : [...defaults.takers],

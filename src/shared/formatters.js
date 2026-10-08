@@ -29,6 +29,7 @@ export function formatLastTransactionUpdate(value) {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
+    timeZone: "America/Sao_Paulo",
   }).format(date).replace(",", " -");
   return `Última atualização em ${formatted}`;
 }

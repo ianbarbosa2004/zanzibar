@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node server.js",
+    "dev:local-snapshot": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File .github\\scripts\\start-local-snapshot.ps1",
     "start": "node server.js",
     "build": "vite build",
     "preview": "node server.js",

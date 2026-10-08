@@ -34,6 +34,16 @@ Ao adicionar paginação a uma nova listagem, mantenha seu estado separado dos e
 
 ## Persistência e produção
 
-O banco de produção é MySQL. O fallback local usa `data.json`, `settings.json`, `incomes.json` e `cash-closings.json`; esses arquivos são runtime e não devem ser commitados. Alterações de schema, foreign keys, exclusão ou migração devem preservar dados existentes, ser integradas em `main` e obrigatoriamente publicadas na hospedagem/banco de dados ao concluir a tarefa. Não considere a implementação concluída enquanto o deploy e a validação remota não terminarem.
+O banco de produção é MySQL. O fallback local usa `data.json`, `settings.json`, `incomes.json` e `cash-closings.json`; esses arquivos são runtime e não devem ser commitados. Alterações de schema, foreign keys, exclusão ou migração devem preservar dados existentes, ser integradas em `main` e disparar automaticamente o deploy oficial assim que a implementação e os testes terminarem. Não considere a implementação concluída enquanto o deploy e a validação remota não terminarem; se o deploy falhar, informe o bloqueio e não trate a migração como concluída.
 
 O procedimento de publicação está em [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+Antes de executar o deploy no Windows, carregue a chave autorizada no
+`ssh-agent` com o procedimento documentado. O script valida essa condição
+antes do build e falha de forma explícita quando a identidade não está
+disponível; nunca registre ou automatize a passphrase.
+
+Para testar dados reais localmente, use somente o snapshot descartável
+documentado em [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), com
+`CLAREZA_LOCAL_SNAPSHOT=1`. Esse modo não pode ser usado em produção e
+bloqueia gravações.

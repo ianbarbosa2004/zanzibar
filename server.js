@@ -1,9 +1,9 @@
 import { basePath, port } from "./src/server/config.js";
-import { dbPool, initializeDataStore, readData, writeData } from "./src/server/data-store.js";
+import { dbPool, initializeDataStore, readData, writeBillings, writeCashClosing, writeCatalog, writeLimit, writeMonthlyCashClosings, writeTransaction } from "./src/server/data-store.js";
 import { createHttpServer } from "./src/server/http-server.js";
 import { readStaticFile } from "./src/server/static-files.js";
 
-const server = createHttpServer({ basePath, readData, writeData, readStaticFile });
+const server = createHttpServer({ basePath, readData, writeBillings, writeCashClosing, writeCatalog, writeLimit, writeMonthlyCashClosings, writeTransaction, readStaticFile });
 
 initializeDataStore().then(() => {
   server.listen(port, () => console.log(`Clareza disponível em http://localhost:${port}${dbPool ? " (MySQL)" : ""}`));

@@ -1,0 +1,3 @@
+﻿id;descricao;valor;tipo;tipo_de_despesa;tipo_de_despesa_slug;tomador;tomador_slug;local;local_slug;credor;credor_slug;fonte;fonte_slug;data
+;Mercado do mês;125,90;despesa;Alimentação;alimentacao;Pessoal;pessoal;Casa;casa;Caixa;caixa;;;06/10/2026
+;Salário;5000,00;receita;;;;;;;;;Salário;salario;05/10/2026

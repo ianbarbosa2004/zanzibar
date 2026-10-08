@@ -31,7 +31,23 @@ Analisa código, commits, PRs mesclados e o estado do repositório. Atualiza som
 
 Publica diretamente no cPanel o checkout local validado. Não cria, inspeciona, aguarda ou mescla PR; também não faz pull, push, switch de branch ou reset Git. Executa as validações prévias e somente o script oficial `.github/scripts/deploy.ps1`.
 
+Antes do build, deve confirmar que a chave protegida
+`~/.ssh/clareza_cpanel_deploy` está carregada no `ssh-agent`. Se `ssh-agent`
+estiver parado ou `ssh-add -l` não retornar uma identidade, interromper e
+orientar o usuário a executar `Start-Service ssh-agent` e
+`ssh-add "$HOME\.ssh\clareza_cpanel_deploy"` em um PowerShell apropriado.
+Nunca solicitar, registrar, armazenar ou passar a passphrase por argumento,
+variável de ambiente, log ou automação agendada.
+
 O script gera o build local, remove e recria somente `dist/` remoto, substitui o conteúdo de `src/`, `server.js` e os manifestos npm, preserva dados, backups e `.htaccess`, reinstala dependências, reinicia o Passenger, valida HTTP, API, SHA-256 dos assets e `deploy-version.json` e emite `CLAREZA_DEPLOY_COMMIT`. Qualquer falha interrompe o deploy; a correção deve ser incorporada e documentada antes de nova tentativa.
+
+A automação deve considerar que o Passenger pode retornar `503 Service
+Unavailable` por alguns segundos após o reinício. O script oficial já repete
+as consultas HTTP até cinco vezes, com intervalo de cinco segundos. Não iniciar
+uma segunda execução enquanto a primeira ainda estiver validando e não
+classificar um `503` isolado como falha definitiva. A confirmação obrigatória é
+`CLAREZA_DEPLOY_COMPLETED`; sem esse marcador, preservar a saída e investigar
+antes de liberar nova tentativa.
 
 ## Relação entre os documentos
 

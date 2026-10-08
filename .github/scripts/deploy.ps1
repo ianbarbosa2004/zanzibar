@@ -2,6 +2,9 @@ $ErrorActionPreference = "Stop"
 
 $remoteHost = if ($env:CLAREZA_SFTP_HOST) { $env:CLAREZA_SFTP_HOST } else { "itsites.com.br" }
 $remoteUser = if ($env:CLAREZA_SFTP_USER) { $env:CLAREZA_SFTP_USER } else { "itsitescom" }
+if ($remoteUser -like "*@*") {
+  $remoteUser = ($remoteUser -split "@", 2)[0]
+}
 $remoteRoot = if ($env:CLAREZA_SFTP_ROOT) { $env:CLAREZA_SFTP_ROOT } else { "/home1/itsitescom/public_html/clareza" }
 $sshKey = if ($env:CLAREZA_SSH_KEY) { $env:CLAREZA_SSH_KEY } else { Join-Path $HOME ".ssh\clareza_cpanel_deploy" }
 $remoteTarget = "$remoteUser@$remoteHost"
@@ -16,6 +19,17 @@ function Invoke-Checked {
   if ($LASTEXITCODE -ne 0) { throw "Comando falhou: $Command (exit code $LASTEXITCODE)" }
 }
 
+function Assert-SshAgentIdentity {
+  if (-not (Get-Command ssh-add -ErrorAction SilentlyContinue)) {
+    throw "ssh-add não encontrado. Instale o OpenSSH Client antes do deploy."
+  }
+
+  & ssh-add -l *> $null
+  if ($LASTEXITCODE -ne 0) {
+    throw "Nenhuma chave SSH está carregada no ssh-agent. Em um PowerShell como Administrador, execute: Start-Service ssh-agent; ssh-add `"$sshKey`""
+  }
+}
+
 function Convert-ResponseContentToUtf8 {
   param($Content)
   if ($Content -is [byte[]]) {
@@ -27,12 +41,30 @@ function Convert-ResponseContentToUtf8 {
   return [string]$Content
 }
 
+function Invoke-OnlineRequest {
+  param(
+    [string]$Uri,
+    [int]$Attempts = 5,
+    [int]$DelaySeconds = 5
+  )
+  for ($attempt = 1; $attempt -le $Attempts; $attempt++) {
+    try {
+      return Invoke-WebRequest -Uri $Uri -UseBasicParsing -TimeoutSec 30 -ErrorAction Stop
+    }
+    catch {
+      if ($attempt -eq $Attempts) { throw }
+      Start-Sleep -Seconds $DelaySeconds
+    }
+  }
+}
+
 try {
   if (-not (Test-Path -LiteralPath "package.json")) { throw "package.json não encontrado." }
   if (-not (Get-Command ssh -ErrorAction SilentlyContinue)) { throw "ssh não encontrado." }
   if (-not (Get-Command sftp -ErrorAction SilentlyContinue)) { throw "sftp não encontrado." }
   if (-not (Get-Command curl.exe -ErrorAction SilentlyContinue)) { throw "curl.exe não encontrado." }
   if (-not (Test-Path -LiteralPath $sshKey -PathType Leaf)) { throw "Chave SSH não encontrada: $sshKey" }
+  Assert-SshAgentIdentity
 
   $sourceCommit = (git rev-parse HEAD).Trim()
   $sourceBranch = (git branch --show-current).Trim()
@@ -60,13 +92,13 @@ put $restartPath tmp/restart.txt
 bye
 "@ | Set-Content -LiteralPath $tempBatch -Encoding ascii
   Invoke-Checked "sftp" @($connectionOptions + @("-b", $tempBatch, $remoteTarget))
-  Invoke-Checked "ssh" @($connectionOptions + @($remoteTarget, "rm -f $remoteRoot/index.html $remoteRoot/app.js $remoteRoot/style.css"))
+  Invoke-Checked "ssh" @($connectionOptions + @($remoteTarget, "rm -f $remoteRoot/index.html $remoteRoot/app.js $remoteRoot/style.css $remoteRoot/src/shared/payload.js"))
   Invoke-Checked "ssh" @($connectionOptions + @($remoteTarget, "cd $remoteRoot && /home1/itsitescom/nodevenv/public_html/clareza/22/bin/npm ci --omit=dev && touch tmp/restart.txt"))
 
-  $page = Invoke-WebRequest -Uri "https://itsites.com.br/clareza/" -UseBasicParsing
-  $api = Invoke-WebRequest -Uri "https://itsites.com.br/clareza/api/data" -UseBasicParsing
+  $page = Invoke-OnlineRequest "https://itsites.com.br/clareza/"
+  $api = Invoke-OnlineRequest "https://itsites.com.br/clareza/api/data"
   if ($page.StatusCode -ne 200 -or $api.StatusCode -ne 200) { throw "Validação online retornou status inesperado." }
-  $version = Invoke-WebRequest -Uri "https://itsites.com.br/clareza/deploy-version.json" -UseBasicParsing
+  $version = Invoke-OnlineRequest "https://itsites.com.br/clareza/deploy-version.json"
   if ($version.StatusCode -ne 200) { throw "Não foi possível ler a versão publicada." }
   $versionJson = Convert-ResponseContentToUtf8 $version.Content
   $versionObject = $versionJson | ConvertFrom-Json
