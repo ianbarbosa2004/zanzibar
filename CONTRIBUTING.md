@@ -5,7 +5,7 @@
 1. Faça uma alteração pequena e focada, preservando o contrato da API.
 2. Leia os módulos existentes antes de duplicar regras. Regras compartilhadas ficam em `src/shared`, integrações do navegador em `src/client` e integrações do servidor em `src/server`.
 3. Atualize ou crie testes para o comportamento alterado.
-4. Não inclua credenciais, dados de produção, arquivos JSON de runtime, `node_modules/` ou `dist/`.
+4. Não inclua credenciais, dados de produção, arquivos JSON de runtime (`data.json`, `settings.json`, `incomes.json`, `cash-closings.json` e `limits.json`), `node_modules/` ou `dist/`.
 
 ## Validação local
 

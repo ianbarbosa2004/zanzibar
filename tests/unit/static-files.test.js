@@ -4,7 +4,7 @@ import { publicFilePath } from "../../src/server/static-files.js";
 
 test("resolve arquivo existente dentro da raiz pública", () => {
   const file = publicFilePath("index.html");
-  assert.ok(file.endsWith("\\dist\\index.html") || file.endsWith("/dist/index.html"));
+  assert.ok(file.endsWith("\\index.html") || file.endsWith("/index.html"));
 });
 
 test("rejeita tentativa de escapar da raiz pública", () => {

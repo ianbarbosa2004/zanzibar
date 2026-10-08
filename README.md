@@ -10,7 +10,8 @@ Aplicação web para organização financeira pessoal e empresarial. O sistema r
 - Slugs técnicos, sem acentos, para identificar cadastros auxiliares sem substituir os nomes exibidos.
 - Saldo mensal calculado como receitas menos despesas.
 - Categorias, tomadores, locais, credores e fontes de receita.
-- Interface organizada por resumo, movimentações, vendas, relatórios e cadastros.
+- Interface organizada por resumo, movimentações, vendas, relatórios e cadastros, incluindo a área de Empréstimos.
+- Limites e metas mensais com meta, orçamento, previsão, patamar, resultado e status de fechamento.
 - Persistência MySQL com migração da estrutura legada de receitas.
 - Leitura de fallback JSON para desenvolvimento local, sem gravação CRUD quando o MySQL está indisponível.
 - Interface compilada pelo Vite e servida pelo Node.js.
@@ -129,6 +130,7 @@ Sem `CLAREZA_DB_PASSWORD`, o desenvolvimento usa estes arquivos na raiz:
 - `settings.json`
 - `incomes.json`
 - `cash-closings.json`
+- `limits.json`
 
 Eles são arquivos de runtime ignorados pelo Git. Os arquivos `*.example.json`, quando presentes, servem como referência de estrutura. Não coloque credenciais ou dados reais nesses arquivos.
 
@@ -157,7 +159,7 @@ Nunca versionar senhas, arquivos de produção ou dumps do banco.
 
 Qualquer implementação que altere o schema, as migrações, as foreign keys ou a persistência MySQL deve ser publicada na hospedagem/banco de dados ao final da tarefa, usando exclusivamente o script oficial de deploy. A tarefa só está concluída após a validação remota.
 
-O deploy operacional publica o checkout local validado e não depende de pull request ou merge. A proteção de `main` se aplica à integração no GitHub; a publicação operacional não cria, mescla ou aguarda PR. Alterações de código locais são o conteúdo do deploy; o script remove somente a `dist/` remota antes de enviar o novo build, preserva os dados de produção e confirma a versão servida pelo endpoint `deploy-version.json`.
+O deploy operacional publica diretamente o checkout local validado no cPanel e não depende de pull request ou merge. A proteção de `main` se aplica à integração no GitHub; a publicação operacional não cria, mescla ou aguarda PR. Alterações de código locais são o conteúdo do deploy; o script remove somente a `dist/` remota antes de enviar o novo build, preserva os arquivos de runtime, os backups e `.htaccess`, e confirma a versão servida pelo endpoint `deploy-version.json`.
 
 ### Teste local com snapshot do MySQL
 

@@ -23,7 +23,7 @@ git diff --check
 powershell -NoProfile -ExecutionPolicy Bypass -File .github\scripts\deploy.ps1
 ```
 
-Alterações de código locais são permitidas e são justamente o conteúdo a ser publicado. O script gera `dist/` localmente, remove somente a pasta `dist/` remota e envia o novo build. `data.json`, `settings.json`, `incomes.json`, `cash-closings.json`, backups e `.htaccess` são preservados no servidor.
+Alterações de código locais são permitidas e são justamente o conteúdo a ser publicado diretamente. O script gera `dist/` localmente, remove somente a pasta `dist/` remota e envia o novo build. `data.json`, `settings.json`, `incomes.json`, `cash-closings.json`, `limits.json`, backups e `.htaccess` são preservados no servidor; nenhum desses arquivos deve ser incluído no upload como parte do build.
 
 A proteção de `main` exige que a integração no GitHub passe pelo pull request e pelos checks configurados; ela não é substituída pelo deploy operacional. O script publica o checkout local escolhido, sem criar, mesclar ou aguardar PR. Depois do upload, ele publica `deploy-version.json` com o SHA do commit e confirma por HTTP que o cPanel está servindo esse mesmo SHA. A saída `CLAREZA_DEPLOY_COMMIT` é a referência da versão efetivamente publicada.
 
