@@ -24,7 +24,7 @@ export function createIncomeEntry(form, id, cryptoApi = globalThis.crypto) {
 }
 
 export function upsertEntry(entries, entry) {
-  return entry.id && entries.some((item) => item.id === entry.id)
-    ? entries.map((item) => item.id === entry.id ? entry : item)
+  return entry.id && entries.some((item) => String(item.id) === String(entry.id))
+    ? entries.map((item) => String(item.id) === String(entry.id) ? entry : item)
     : [entry, ...entries];
 }

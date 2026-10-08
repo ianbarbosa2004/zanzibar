@@ -1,7 +1,6 @@
-import { fetchData, saveData } from "./data-api.js";
+import { fetchData } from "./data-api.js";
 import { createAppState } from "./app-state.js";
-import { readLocalState, writeLocalState } from "./local-store.js";
-import { dataPayload } from "./state-persistence.js";
+import { readLocalState } from "./local-store.js";
 
 export async function loadAppState(apiUrl, fallbackUrl, defaults) {
   try {
@@ -11,6 +10,8 @@ export async function loadAppState(apiUrl, fallbackUrl, defaults) {
       transactions: [],
       incomes: [],
       cashClosings: [],
+      monthlyCashClosings: [],
+      billings: [],
       limits: [],
       catalogMetadata: {},
       expenseTypes: [...defaults.expenseTypes],
@@ -23,9 +24,4 @@ export async function loadAppState(apiUrl, fallbackUrl, defaults) {
     if (localState.transactions.length) return localState;
     return createAppState({ transactions: await fetchData(fallbackUrl), incomes: [], settings: {} }, defaults);
   }
-}
-
-export async function persistAppState(apiUrl, state) {
-  await saveData(apiUrl, dataPayload(state));
-  writeLocalState(state);
 }

@@ -4,24 +4,33 @@ import test from "node:test";
 import { createHttpServer } from "../../src/server/http-server.js";
 
 function startServer() {
-  let writes = [];
   const server = createHttpServer({
     basePath: "/clareza",
     readData: async () => ({ transactions: [], incomes: [], settings: {} }),
-    writeData: async (payload) => writes.push(payload),
+    writeCashClosing: async () => {},
+    writeMonthlyCashClosings: async () => {},
+    writeTransaction: async () => {},
+    writeLimit: async () => {},
+    writeCatalog: async () => {},
+    writeBillings: async () => [],
     readStaticFile: async (file) => file === "index.html"
       ? { body: Buffer.from("<main>ok</main>"), contentType: "text/html" }
       : null,
     logger: { error: () => {} },
   });
-  return { server, writes };
+  return { server };
 }
 
 test("serve arquivos JSON estáticos sem serializar o buffer", async (t) => {
   const staticServer = createHttpServer({
     basePath: "/clareza",
     readData: async () => ({}),
-    writeData: async () => {},
+    writeCashClosing: async () => {},
+    writeMonthlyCashClosings: async () => {},
+    writeTransaction: async () => {},
+    writeLimit: async () => {},
+    writeCatalog: async () => {},
+    writeBillings: async () => [],
     readStaticFile: async (file) => file === "deploy-version.json"
       ? { body: Buffer.from('{"commit":"abc"}'), contentType: "application/json" }
       : null,
@@ -36,27 +45,35 @@ test("serve arquivos JSON estáticos sem serializar o buffer", async (t) => {
   assert.deepEqual(await staticResponse.json(), { commit: "abc" });
 });
 
-test("serve dados e rejeita payload inválido pela API", async (t) => {
+test("serve dados pela API", async (t) => {
   const { server } = startServer();
   t.after(() => server.close());
   server.listen(0);
   await once(server, "listening");
   const { port } = server.address();
-  const response = await fetch(`http://localhost:${port}/clareza/api/data`, { method: "PUT", body: "{}" });
-  assert.equal(response.status, 400);
+  const response = await fetch(`http://localhost:${port}/clareza/api/data`);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { transactions: [], incomes: [], settings: {} });
 });
 
-test("aceita payload válido e encaminha para persistência", async (t) => {
-  const { server, writes } = startServer();
+test("atualiza billings pela API", async (t) => {
+  const server = createHttpServer({
+    basePath: "/clareza",
+    readData: async () => ({}),
+    writeCashClosing: async () => {},
+    writeMonthlyCashClosings: async () => {},
+    writeTransaction: async () => {},
+    writeLimit: async () => {},
+    writeCatalog: async () => {},
+    writeBillings: async () => [{ month: 10, year: 2026, saleCount: 4, averageTicket: 25, amount: 100 }],
+    readStaticFile: async () => null,
+    logger: { error: () => {} },
+  });
   t.after(() => server.close());
   server.listen(0);
   await once(server, "listening");
   const { port } = server.address();
-  const response = await fetch(`http://localhost:${port}/clareza/api/data`, {
-    method: "PUT",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ transactions: [], incomes: [], settings: {} }),
-  });
+  const response = await fetch(`http://localhost:${port}/clareza/api/billings`, { method: "PUT" });
   assert.equal(response.status, 200);
-  assert.equal(writes.length, 1);
+  assert.deepEqual(await response.json(), { ok: true, billings: [{ month: 10, year: 2026, saleCount: 4, averageTicket: 25, amount: 100 }] });
 });

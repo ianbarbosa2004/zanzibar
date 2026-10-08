@@ -3,6 +3,9 @@ dist/
 
 # Runtime data is local and must survive repository updates.
 data.json
+local-snapshot.json
 incomes.json
 settings.json
 limits.json
+cash-closings.json
+monthly-cash-closings.json

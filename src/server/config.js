@@ -7,7 +7,9 @@ export const dataFile = join(root, "data.json");
 export const settingsFile = join(root, "settings.json");
 export const incomesFile = join(root, "incomes.json");
 export const cashClosingsFile = join(root, "cash-closings.json");
+export const monthlyCashClosingsFile = join(root, "monthly-cash-closings.json");
 export const limitsFile = join(root, "limits.json");
+export const localSnapshotFile = join(root, "local-snapshot.json");
 export const port = Number(process.env.PORT) || 4173;
 export const contentTypes = {
   ".css": "text/css",
@@ -19,7 +21,8 @@ export const basePath = process.env.CLAREZA_BASE_PATH || "/clareza";
 export const databaseHost = process.env.CLAREZA_DB_HOST?.trim() || "localhost";
 export const databaseName = process.env.CLAREZA_DB_NAME?.trim();
 export const databaseUser = process.env.CLAREZA_DB_USER?.trim();
-export const databaseConfigured = Boolean(process.env.CLAREZA_DB_PASSWORD);
+export const localSnapshotMode = process.env.CLAREZA_LOCAL_SNAPSHOT === "1" || process.env.CLAREZA_LOCAL_SNAPSHOT === "true";
+export const databaseConfigured = !localSnapshotMode && Boolean(process.env.CLAREZA_DB_PASSWORD);
 
 export const defaultSettings = {
   ...catalogDefaults,

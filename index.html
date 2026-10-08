@@ -28,8 +28,10 @@
           <a class="nav-link active" href="#resumo"><span>⌂</span> Resumo</a>
           <a class="nav-link" href="#lancamentos"><span>↔</span> Movimentação</a>
           <a class="nav-link" href="#vendas"><span>▣</span> Vendas</a>
+          <a class="nav-link" href="#faturamento"><span>▤</span> Faturamento</a>
           <a class="nav-link" href="#relatorios"><span>▥</span> Relatórios</a>
           <a class="nav-link" href="#cadastros"><span>⚙</span> Cadastros</a>
+          <a class="nav-link" href="#ferramentas"><span>⚒</span> Ferramentas</a>
         </nav>
       </aside>
 
@@ -51,7 +53,8 @@
                 <h2>Resumo do mês</h2>
               </div>
               <div class="summary-heading-actions">
-                <label class="month-picker"><span class="sr-only">Mês e ano</span><select id="month-filter" aria-label="Selecionar mês e ano"></select></label>
+                <label class="month-picker"><span>Mês</span><select id="month-filter-month" aria-label="Selecionar mês"></select></label>
+                <label class="month-picker"><span>Ano</span><select id="month-filter-year" aria-label="Selecionar ano"></select></label>
               </div>
             </div>
             <div class="summary-grid">
@@ -86,6 +89,21 @@
             <button class="primary-button" id="home-new-income" type="button"><span>＋</span> Incluir receita</button>
             <button class="primary-button" id="home-new-transaction" type="button"><span>＋</span> Incluir despesa</button>
           </div>
+        </section>
+
+        <section class="report-period-banner panel" data-page="relatorios" aria-labelledby="report-period-title">
+          <div>
+            <h2 id="report-period-title">Informações do período</h2>
+          </div>
+          <label for="report-period-select">Mês e ano<select id="report-period-select" aria-label="Selecionar período dos relatórios e calendário"></select></label>
+        </section>
+
+        <section id="calendario-financeiro" class="calendar-section panel" data-page="relatorios">
+          <div class="section-heading">
+            <div><p class="eyebrow">Visão diária</p><h2>Calendário financeiro</h2></div>
+            <span id="calendar-period" class="section-total"></span>
+          </div>
+          <div id="financial-calendar" class="financial-calendar" aria-label="Calendário financeiro do mês selecionado"></div>
         </section>
 
         <section id="receitas" class="transactions-section income-section" data-page="lancamentos">
@@ -136,31 +154,72 @@
           </div>
         </section>
 
-        <section class="dashboard-grid" data-page="lancamentos">
-          <article id="planejamento" class="panel spending-panel">
-            <div class="panel-header">
-              <div><p class="eyebrow">Comportamento</p><h2>Despesas por dia</h2></div>
+        <section class="transactions-section import-transactions-panel" data-page="ferramentas">
+          <div class="section-heading">
+            <div><p class="eyebrow">Utilitários</p><h2>Importar transações</h2><p class="section-description">Carregue várias despesas e receitas de uma só vez ou baixe um modelo válido para preencher.</p></div>
+            <div class="section-actions">
+              <a class="secondary-button csv-download-button" href="./modelo-transacoes.csv" download="modelo-transacoes.csv">⇩ Baixar modelo CSV</a>
+              <button class="primary-button" id="import-transactions" type="button">⇧ Importar transações</button>
             </div>
-            <div id="chart" class="chart" aria-label="Gráfico de despesas por dia"></div>
-            <div class="chart-legend"><span><i class="dot expense-dot"></i> Despesas</span></div>
-          </article>
+          </div>
+        </section>
+        <section class="transactions-section import-transactions-panel" data-page="ferramentas">
+          <div class="section-heading">
+            <div><p class="eyebrow">Entrada em lote</p><h2>Importar fechamentos de caixa</h2><p class="section-description">Inclua vários fechamentos por data e forma de recebimento usando um arquivo CSV.</p></div>
+            <div class="section-actions">
+              <a class="secondary-button csv-download-button" href="./modelo-fechamentos-caixa.csv" download="modelo-fechamentos-caixa.csv">⇩ Baixar modelo CSV</a>
+              <button class="primary-button" id="import-cash-closings" type="button">⇧ Importar fechamentos</button>
+            </div>
+          </div>
+        </section>
+        <section class="transactions-section import-transactions-panel auxiliary-tables-panel" data-page="ferramentas">
+          <div class="section-heading">
+            <div><p class="eyebrow">Referência para importações</p><h2>Tabelas auxiliares</h2><p class="section-description">Consulte os nomes dos cadastros, os slugs e as colunas aceitas nas importações.</p></div>
+            <div class="section-actions"><button class="primary-button" id="download-auxiliary-tables" type="button">⇩ Baixar documentação MD</button></div>
+          </div>
+        </section>
+        <section id="faturamento" class="transactions-section" data-page="faturamento">
+          <div class="section-heading">
+            <div><p class="eyebrow">Indicador comercial</p><h2>Faturamento</h2><p class="section-description">Totalização mensal dos fechamentos, com cálculo do ticket médio.</p></div>
+            <button class="primary-button" id="refresh-billings" type="button">↻ Atualizar faturamento</button>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Período</th><th>Vendas</th><th class="align-right">Ticket médio</th><th class="align-right">Faturamento</th></tr></thead><tbody id="billings-list"></tbody></table><div id="billings-empty" class="empty-state" hidden>Nenhum faturamento calculado.</div></div>
+        </section>
+
+        <section id="relatorios-receitas" class="reports-section reports-income-section" data-page="relatorios">
+          <div class="section-heading">
+            <div><h2>Relatórios de receitas</h2></div>
+            <strong id="income-report-total" class="report-total">R$ 0,00</strong>
+          </div>
+          <div class="reports-grid income-reports-grid">
+            <article class="panel report-panel"><div class="panel-header"><div><p class="eyebrow">Linha do tempo</p><h3>Por dia</h3></div><span class="report-icon">◷</span></div><div class="report-controls"><label>Ordenar por<select data-report-sort="income-daily"><option value="date">Data</option><option value="value">Valor</option></select></label><label>Ordem<select data-report-direction="income-daily"><option value="desc">Decrescente</option><option value="asc">Crescente</option></select></label></div><div id="income-daily-report" class="report-list"></div></article>
+            <article class="panel report-panel"><div class="panel-header"><div><p class="eyebrow">Origem</p><h3>Por fonte de receita</h3></div><span class="report-icon">↗</span></div><div class="report-controls"><label>Ordenar por<select data-report-sort="income-source"><option value="value">Valor</option><option value="label">Fonte</option></select></label><label>Ordem<select data-report-direction="income-source"><option value="desc">Decrescente</option><option value="asc">Crescente</option></select></label></div><div id="income-source-report" class="report-list"></div></article>
+          </div>
         </section>
 
         <section id="relatorios" class="reports-section" data-page="relatorios">
-          <div class="section-heading"><div><p class="eyebrow">Análise do período</p><h2>Relatórios de despesas</h2></div><strong id="report-total" class="report-total">R$ 0,00</strong></div>
+          <div class="section-heading">
+            <div><h2>Relatórios de despesas</h2></div>
+            <strong id="report-total" class="report-total">R$ 0,00</strong>
+          </div>
           <div class="reports-grid">
-            <article class="panel report-panel"><div class="panel-header"><div><p class="eyebrow">Linha do tempo</p><h3>Por dia</h3></div><span class="report-icon">◷</span></div><div id="daily-report" class="report-list"></div></article>
-            <article class="panel report-panel"><div class="panel-header"><div><p class="eyebrow">Classificação</p><h3>Por tipo de despesa</h3></div><span class="report-icon">◌</span></div><div id="type-report" class="report-list"></div></article>
-            <article class="panel report-panel"><div class="panel-header"><div><p class="eyebrow">Responsabilidade</p><h3>Por tomador</h3></div><span class="report-icon">◎</span></div><div id="taker-report" class="report-list"></div></article>
+            <article class="panel report-panel"><div class="panel-header"><div><p class="eyebrow">Linha do tempo</p><h3>Por dia</h3></div><span class="report-icon">◷</span></div><div class="report-controls"><label>Ordenar por<select data-report-sort="daily"><option value="date">Data</option><option value="value">Valor</option></select></label><label>Ordem<select data-report-direction="daily"><option value="desc">Decrescente</option><option value="asc">Crescente</option></select></label></div><div id="daily-report" class="report-list"></div></article>
+            <article class="panel report-panel"><div class="panel-header"><div><p class="eyebrow">Classificação</p><h3>Por tipo de despesa</h3></div><span class="report-icon">◌</span></div><div class="report-controls"><label>Ordenar por<select data-report-sort="type"><option value="value">Valor</option><option value="label">Tipo</option></select></label><label>Ordem<select data-report-direction="type"><option value="desc">Decrescente</option><option value="asc">Crescente</option></select></label></div><div id="type-report" class="report-list"></div></article>
+            <article class="panel report-panel"><div class="panel-header"><div><p class="eyebrow">Responsabilidade</p><h3>Por tomador</h3></div><span class="report-icon">◎</span></div><div class="report-controls"><label>Ordenar por<select data-report-sort="taker"><option value="value">Valor</option><option value="label">Tomador</option></select></label><label>Ordem<select data-report-direction="taker"><option value="desc">Decrescente</option><option value="asc">Crescente</option></select></label></div><div id="taker-report" class="report-list"></div></article>
           </div>
         </section>
 
         <section id="vendas" class="transactions-section" data-page="vendas">
-          <div class="section-heading"><div><p class="eyebrow">Operação</p><h2>Fechamentos de caixa <span id="cash-closing-total" class="section-total">(R$ 0,00)</span></h2></div><button class="primary-button" id="new-cash-closing" type="button"><span>＋</span> Fechamento de caixa</button></div>
-          <div class="table-wrap"><table><thead><tr><th>Data</th><th>Forma de recebimento</th><th>Vendas</th><th class="align-right">Valor</th><th class="align-right">Total</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody id="cash-closings-list"></tbody></table><div id="cash-closings-empty" class="empty-state" hidden>Nenhum fechamento de caixa encontrado.</div></div>
-          <nav class="pagination" aria-label="Paginação dos fechamentos de caixa"><span class="pagination-controls"><button id="cash-closing-pagination-prev" class="pagination-button" type="button">← Anterior</button><span id="cash-closing-pagination-status" aria-live="polite"></span><button id="cash-closing-pagination-next" class="pagination-button" type="button">Próxima →</button></span><label class="page-size">Por página <select id="cash-closing-page-size" aria-label="Fechamentos por página"><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label></nav>
+          <div class="section-heading"><div><p class="eyebrow">Operação</p><h2>Fechamentos diários <span id="cash-closing-total" class="section-total">(R$ 0,00)</span></h2></div><button class="primary-button" id="new-cash-closing" type="button"><span>＋</span> Fechamento diário</button></div>
+          <div class="table-wrap"><table><thead><tr><th>Data</th><th>Forma de recebimento</th><th>Vendas</th><th class="align-right">Valor</th><th class="align-right">Total</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody id="cash-closings-list"></tbody></table><div id="cash-closings-empty" class="empty-state" hidden>Nenhum fechamento diário encontrado.</div></div>
+          <nav class="pagination" aria-label="Paginação dos fechamentos diários"><span class="pagination-controls"><button id="cash-closing-pagination-prev" class="pagination-button" type="button">← Anterior</button><span id="cash-closing-pagination-status" aria-live="polite"></span><button id="cash-closing-pagination-next" class="pagination-button" type="button">Próxima →</button></span><label class="page-size">Por página <select id="cash-closing-page-size" aria-label="Fechamentos diários por página"><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label></nav>
         </section>
-        <section class="transactions-section limits-section" data-page="vendas">
+        <section class="transactions-section" data-page="vendas">
+          <div class="section-heading"><div><p class="eyebrow">Registro mensal</p><h2>Fechamentos mensais <span id="monthly-cash-closing-total" class="section-total">(R$ 0,00)</span></h2></div><button class="primary-button" id="new-monthly-cash-closing" type="button"><span>＋</span> Fechamento mensal</button></div>
+          <div class="table-wrap"><table><thead><tr><th>Mês</th><th>Forma de recebimento</th><th>Vendas</th><th class="align-right">Valor</th><th class="align-right">Total</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody id="monthly-cash-closings-list"></tbody></table><div id="monthly-cash-closings-empty" class="empty-state" hidden>Nenhum fechamento mensal encontrado.</div></div>
+          <nav class="pagination" aria-label="Paginação dos fechamentos mensais"><span class="pagination-controls"><button id="monthly-cash-closing-pagination-prev" class="pagination-button" type="button">← Anterior</button><span id="monthly-cash-closing-pagination-status" aria-live="polite"></span><button id="monthly-cash-closing-pagination-next" class="pagination-button" type="button">Próxima →</button></span><label class="page-size">Por página <select id="monthly-cash-closing-page-size" aria-label="Fechamentos mensais por página"><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label></nav>
+        </section>
+        <section class="transactions-section limits-section" data-page="ferramentas">
           <div class="section-heading limits-heading"><div><p class="eyebrow">Planejamento</p><h2>Limites e Metas</h2></div><button class="primary-button" id="new-limit" type="button"><span>＋</span> Limite</button></div>
           <div class="table-wrap"><table><thead><tr><th>Período</th><th class="align-right">Meta</th><th class="align-right">Orçamento</th><th class="align-right">Previsão</th><th class="align-right">Patamar</th><th class="align-right">Resultado</th><th>Status</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody id="limits-list"></tbody></table><div id="limits-empty" class="empty-state" hidden>Nenhum limite encontrado.</div></div>
           <nav class="pagination" aria-label="Paginação dos limites"><span class="pagination-controls"><button id="limit-pagination-prev" class="pagination-button" type="button">← Anterior</button><span id="limit-pagination-status" aria-live="polite"></span><button id="limit-pagination-next" class="pagination-button" type="button">Próxima →</button></span><label class="page-size">Por página <select id="limit-page-size" aria-label="Limites por página"><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label></nav>
@@ -195,6 +254,76 @@
         <div class="dialog-actions"><button class="secondary-button" id="cancel-dialog" type="button">Cancelar</button><button class="primary-button" type="submit">Salvar despesa</button></div>
       </form>
     </dialog>
+    <dialog id="import-dialog">
+      <form id="import-form" method="dialog">
+        <div class="dialog-heading"><div><p class="eyebrow">Entrada em lote</p><h2>Importar transações</h2></div><button class="close-button" id="close-import-dialog" type="button" aria-label="Fechar">×</button></div>
+        <label class="import-form-file">Arquivo CSV<input id="transactions-csv" type="file" accept=".csv" /></label>
+        <p id="import-summary" class="import-summary" aria-live="polite" hidden></p>
+        <div id="import-errors" class="import-errors" hidden></div>
+        <div class="dialog-actions"><button class="secondary-button" id="cancel-import-dialog" type="button">Cancelar</button><button class="primary-button" id="confirm-import" type="submit" disabled>Importar</button></div>
+      </form>
+    </dialog>
+    <dialog id="import-result-dialog" aria-labelledby="import-result-title">
+      <form method="dialog" class="import-result-form">
+        <div class="import-result-icon" aria-hidden="true">✓</div>
+        <div class="dialog-heading import-result-heading">
+          <div><p class="eyebrow">Importação concluída</p><h2 id="import-result-title">Dados adicionados</h2></div>
+          <button class="close-button" type="submit" aria-label="Fechar">×</button>
+        </div>
+        <div class="import-result-summary">
+          <strong id="import-result-count">0</strong>
+          <span>transações importadas com sucesso</span>
+        </div>
+        <p id="import-result-skipped" class="import-result-skipped" hidden></p>
+        <div class="dialog-actions"><button class="primary-button" type="submit">Concluir</button></div>
+      </form>
+    </dialog>
+    <dialog id="import-confirm-dialog" aria-labelledby="import-confirm-title">
+      <form id="import-confirm-form" method="dialog" class="import-confirm-form">
+        <div class="dialog-heading"><div><p class="eyebrow">Confirme a operação</p><h2 id="import-confirm-title">Importar dados?</h2></div><button class="close-button" id="close-import-confirm-dialog" type="button" aria-label="Fechar">×</button></div>
+        <p class="import-confirm-message">Confira o resumo antes de gravar as transações no sistema.</p>
+        <div class="import-confirm-grid">
+          <div><strong id="import-confirm-count">0</strong><span>transações</span></div>
+          <div><strong id="import-confirm-expenses">0</strong><span>despesas</span></div>
+          <div><strong id="import-confirm-incomes">0</strong><span>receitas</span></div>
+          <div><strong id="import-confirm-errors">0</strong><span>linhas ignoradas</span></div>
+        </div>
+        <p id="import-confirm-period" class="import-confirm-period"></p>
+        <div class="dialog-actions"><button class="secondary-button" id="cancel-import-confirm-dialog" type="button">Voltar</button><button class="primary-button" id="confirm-import-submit" type="submit">Confirmar importação</button></div>
+      </form>
+    </dialog>
+    <dialog id="cash-import-dialog">
+      <form id="cash-import-form" method="dialog">
+        <div class="dialog-heading"><div><p class="eyebrow">Entrada em lote</p><h2>Importar fechamentos</h2></div><button class="close-button" id="close-cash-import-dialog" type="button" aria-label="Fechar">×</button></div>
+        <label class="import-form-file">Arquivo CSV<input id="cash-closings-csv" type="file" accept=".csv" /></label>
+        <p id="cash-import-summary" class="import-summary" aria-live="polite" hidden></p>
+        <div id="cash-import-errors" class="import-errors" hidden></div>
+        <div class="dialog-actions"><button class="secondary-button" id="cancel-cash-import-dialog" type="button">Cancelar</button><button class="primary-button" id="confirm-cash-import" type="submit" disabled>Importar</button></div>
+      </form>
+    </dialog>
+    <dialog id="cash-import-confirm-dialog" aria-labelledby="cash-import-confirm-title">
+      <form id="cash-import-confirm-form" method="dialog" class="import-confirm-form">
+        <div class="dialog-heading"><div><p class="eyebrow">Confirme a operação</p><h2 id="cash-import-confirm-title">Importar fechamentos?</h2></div><button class="close-button" id="close-cash-import-confirm-dialog" type="button" aria-label="Fechar">×</button></div>
+        <p class="import-confirm-message">Confira o resumo antes de gravar os fechamentos no sistema.</p>
+        <div class="import-confirm-grid">
+          <div><strong id="cash-import-confirm-count">0</strong><span>linhas</span></div>
+          <div><strong id="cash-import-confirm-dates">0</strong><span>datas</span></div>
+          <div><strong id="cash-import-confirm-sales">0</strong><span>vendas</span></div>
+          <div><strong id="cash-import-confirm-errors">0</strong><span>linhas ignoradas</span></div>
+        </div>
+        <p id="cash-import-confirm-period" class="import-confirm-period"></p>
+        <div class="dialog-actions"><button class="secondary-button" id="cancel-cash-import-confirm-dialog" type="button">Voltar</button><button class="primary-button" type="submit">Confirmar importação</button></div>
+      </form>
+    </dialog>
+    <dialog id="cash-import-result-dialog" aria-labelledby="cash-import-result-title">
+      <form method="dialog" class="import-result-form">
+        <div class="import-result-icon" aria-hidden="true">✓</div>
+        <div class="dialog-heading import-result-heading"><div><p class="eyebrow">Importação concluída</p><h2 id="cash-import-result-title">Fechamentos adicionados</h2></div><button class="close-button" type="submit" aria-label="Fechar">×</button></div>
+        <div class="import-result-summary"><strong id="cash-import-result-count">0</strong><span>fechamentos importados com sucesso</span></div>
+        <p id="cash-import-result-skipped" class="import-result-skipped" hidden></p>
+        <div class="dialog-actions"><button class="primary-button" type="submit">Concluir</button></div>
+      </form>
+    </dialog>
     <dialog id="income-dialog">
       <form id="income-form" method="dialog">
         <div class="dialog-heading"><div><p class="eyebrow">Nova movimentação</p><h2 id="income-dialog-title">Nova receita</h2></div><button class="close-button" id="close-income-dialog" type="button" aria-label="Fechar">×</button></div>
@@ -208,12 +337,23 @@
     </dialog>
     <dialog id="cash-closing-dialog">
       <form id="cash-closing-form" method="dialog">
-        <div class="dialog-heading"><div><p class="eyebrow">Nova venda</p><h2 id="cash-closing-dialog-title">Fechamento de Caixa</h2></div><button class="close-button" id="close-cash-closing-dialog" type="button" aria-label="Fechar">×</button></div>
+        <div class="dialog-heading"><div><p class="eyebrow">Nova venda</p><h2 id="cash-closing-dialog-title">Fechamento diário</h2></div><button class="close-button" id="close-cash-closing-dialog" type="button" aria-label="Fechar">×</button></div>
         <input id="cash-closing-id" type="hidden" />
         <label>Data<input id="cash-closing-date" type="date" required /></label>
         <div id="cash-closing-methods" class="cash-closing-methods"></div>
         <div class="cash-closing-total"><span>Total</span><strong id="cash-closing-sales-preview">0</strong><strong id="cash-closing-total-preview">R$ 0,00</strong></div>
+        <p id="cash-closing-error" class="dialog-error" role="alert" hidden></p>
         <div class="dialog-actions"><button class="secondary-button" id="cancel-cash-closing-dialog" type="button">Cancelar</button><button class="primary-button" type="submit">Salvar fechamento</button></div>
+      </form>
+    </dialog>
+    <dialog id="monthly-cash-closing-dialog">
+      <form id="monthly-cash-closing-form" method="dialog">
+        <div class="dialog-heading"><div><p class="eyebrow">Registro mensal</p><h2>Fechamento mensal</h2></div><button class="close-button" id="close-monthly-cash-closing-dialog" type="button" aria-label="Fechar">×</button></div>
+        <input id="monthly-cash-closing-id" type="hidden" />
+        <div class="form-row"><label>Mês<select id="monthly-cash-closing-month" required></select></label><label>Ano<input id="monthly-cash-closing-year" type="number" min="2000" max="9999" required /></label></div>
+        <div id="monthly-cash-closing-methods" class="cash-closing-methods"></div>
+        <div class="cash-closing-total"><span>Total</span><strong id="monthly-cash-closing-sales-preview">0</strong><strong id="monthly-cash-closing-total-preview">R$ 0,00</strong></div>
+        <div class="dialog-actions"><button class="secondary-button" id="cancel-monthly-cash-closing-dialog" type="button">Cancelar</button><button class="primary-button" type="submit">Salvar fechamento</button></div>
       </form>
     </dialog>
     <dialog id="limit-dialog">
@@ -251,6 +391,6 @@
         <div class="dialog-actions"><button class="primary-button" type="submit">Entendi</button></div>
       </form>
     </dialog>
-    <script type="module" src="./app.js?v=79107fe"></script>
+    <script type="module" src="./app.js?v=202610061915"></script>
   </body>
 </html>

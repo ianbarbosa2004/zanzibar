@@ -24,4 +24,5 @@ test("insere ou atualiza lançamento pelo id", () => {
   const original = [{ id: "1", amount: 10 }];
   assert.deepEqual(upsertEntry(original, { id: "2", amount: 20 }), [{ id: "2", amount: 20 }, ...original]);
   assert.deepEqual(upsertEntry(original, { id: "1", amount: 30 }), [{ id: "1", amount: 30 }]);
+  assert.deepEqual(upsertEntry([{ id: 1, amount: 10 }], { id: "1", amount: 30 }), [{ id: "1", amount: 30 }]);
 });
