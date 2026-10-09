@@ -10,9 +10,9 @@ permanecer coerente com este documento e com o contrato em
 
 | Nome | Modo | Workspace | Fonte | Responsabilidade |
 | --- | --- | --- | --- | --- |
-| `atualizar readme desenvolvimento` | `autopilot` | `branch` | `main` | Atualizar Markdown afetado e enviar diretamente para `main` |
-| `atualizar repositorio desenvolvimento` | `autopilot` | `branch` | `main` | Integrar código, testes, configuração e documentação diretamente em `main` |
-| `publicar online desenvolvimento` | `autopilot` | `branch` | `main` | Publicar no cPanel, sem PR ou merge |
+| `atualizar readme` | `autopilot` | `branch` | `main` | Atualizar Markdown afetado e enviar diretamente para `main` |
+| `atualizar repositorio` | `autopilot` | `branch` | `main` | Integrar código, testes, configuração e documentação diretamente em `main` |
+| `publicar online` | `autopilot` | `branch` | `main` | Publicar no cPanel, sem PR ou merge |
 
 Todas são do projeto `zanzibar`, têm intervalo `manual`, ambiente local e
 devem operar no checkout de desenvolvimento. Para preservar a fonte única,
@@ -26,9 +26,10 @@ Os IDs atuais nesta máquina são apenas referências e não devem ser copiados
 como identidade em outro computador:
 
 ```text
-atualizar readme desenvolvimento       f7019883-139f-4da0-9a81-86b4d1ac8209
-atualizar repositorio desenvolvimento  969bb8c6-f0ea-4a36-9b0e-3a63013e49e0
-publicar online desenvolvimento        04efbea0-6c86-41b6-aeb2-40a8af6d2afb
+atualizar readme                      44b14191-be48-4dae-ae7a-e1eb6f724ad4
+atualizar repositorio                 969bb8c6-f0ea-4a36-9b0e-3a63013e49e0
+publicar online                       04efbea0-6c86-41b6-aeb2-40a8af6d2afb
+DESATIVADA - atualizar readme         f7019883-139f-4da0-9a81-86b4d1ac8209
 ```
 
 Ao configurar outro computador, crie as automações pelos nomes e parâmetros
@@ -38,18 +39,11 @@ execuções podem ser diferentes; o comportamento e o texto dos prompts não.
 
 ## Migração de automações antigas
 
-As automações antigas abaixo não fazem parte da configuração canônica:
-
-- `atualizar readme corrigido`;
-- `atualizar repo corrigido`;
-- `atualizar online corrigido`.
-
-Elas foram criadas como `worktree` e podem usar uma cópia sem as dependências
-do desenvolvimento. Não as execute. Renomeá-las com o prefixo
-`DESATIVADA -` é somente uma identificação visual; confirme no painel de
-automações que estão desabilitadas. Se a plataforma não aceitar a alteração
-de `enabled` ou não permitir removê-las, mantenha-as sem execução e use apenas
-as três automações canônicas.
+`DESATIVADA - atualizar readme` não faz parte da configuração canônica. Ela é
+uma duplicata antiga da automação de documentação e deve ser excluída no
+painel. Não execute essa automação. O prefixo `DESATIVADA -` é uma marcação
+visual para facilitar a identificação até a exclusão manual. Use somente as
+três automações sem esse prefixo.
 
 ## Regras comuns
 
@@ -83,7 +77,7 @@ Alterações visuais, correções de código e mudanças de documentação não 
 deploy automaticamente. PR, merge e deploy dependem de solicitação explícita
 do usuário, respeitando a responsabilidade de cada automação abaixo.
 
-## `atualizar readme desenvolvimento`
+## `atualizar readme`
 
 Analisa as implementações recentes, commits, PRs mesclados e o estado do
 repositório. Atualiza somente os Markdown afetados, principalmente
@@ -92,7 +86,7 @@ verificações de sintaxe e `git diff --check`. Quando houver documentação rea
 cria commit com o trailer exigido e faz push direto para `origin/main`.
 Não cria PR, não faz merge e não executa deploy.
 
-## `atualizar repositorio desenvolvimento`
+## `atualizar repositorio`
 
 Analisa o checkout e o histórico, integra somente alterações pertencentes ao
 projeto e executa as validações obrigatórias. Quando houver mudanças reais,
@@ -100,7 +94,7 @@ cria commit com o trailer exigido e faz push direto para `origin/main`.
 Confirma que `origin/main` é a versão oficial. Não cria PR, não faz merge e
 não executa deploy.
 
-## `publicar online desenvolvimento`
+## `publicar online`
 
 Publica somente o estado validado de `main` usando o script oficial
 `.github/scripts/deploy.ps1`. Não cria PR, não faz merge, não troca branch e
@@ -113,9 +107,9 @@ credenciais, chaves privadas ou `node_modules`.
 
 Quando o usuário solicitar integração e publicação, a ordem é:
 
-1. `atualizar readme desenvolvimento`, se houver documentação a atualizar;
-2. `atualizar repositorio desenvolvimento`, para enviar alterações a `main`;
-3. `publicar online desenvolvimento`, somente após autorização explícita.
+1. `atualizar readme`, se houver documentação a atualizar;
+2. `atualizar repositorio`, para enviar alterações a `main`;
+3. `publicar online`, somente após autorização explícita.
 
 O resultado de uma automação deve ser analisado antes da próxima. Mudanças de
 schema, migração, foreign key ou persistência MySQL exigem validação remota

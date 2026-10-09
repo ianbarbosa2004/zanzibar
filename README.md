@@ -93,7 +93,8 @@ git diff --check
 - A publicação usa exclusivamente `.github/scripts/deploy.ps1`, preserva
   dados MySQL, arquivos de runtime, backups e `.htaccess`, e nunca envia
   `data.json`, `settings.json`, `node_modules`, credenciais ou chaves privadas.
-- A configuração reproduzível das automações está em
+- As automações oficiais são `atualizar readme`, `atualizar repositorio` e
+  `publicar online`; a configuração reproduzível está em
   [`docs/AUTOMATIONS.md`](docs/AUTOMATIONS.md) e
   [`docs/AUTOMATION-PROMPTS.md`](docs/AUTOMATION-PROMPTS.md).
 

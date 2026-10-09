@@ -31,7 +31,7 @@ intenção ou segurança de qualquer arquivo for ambígua, pare e informe o
 caminho exato. Nunca use `git reset --hard`, `git checkout --`, `git clean`
 ou equivalente para apagar alterações.
 
-## `atualizar readme desenvolvimento`
+## `atualizar readme`
 
 ```text
 Use somente o checkout de desenvolvimento do projeto zanzibar, em branch main,
@@ -53,7 +53,7 @@ Antes do commit, confirme que não restam staged inesperados. Alterações
 seguras da própria documentação deixadas por execução anterior devem ser
 incorporadas no mesmo commit, nunca descartadas silenciosamente.
 
-## `atualizar repositorio desenvolvimento`
+## `atualizar repositorio`
 
 ```text
 Use somente o checkout de desenvolvimento do projeto zanzibar, em branch main,
@@ -73,7 +73,7 @@ Antes do commit, confirme que não restam staged inesperados. Alterações
 seguras do próprio desenvolvimento deixadas por execução anterior devem ser
 incorporadas no commit, nunca descartadas silenciosamente.
 
-## `publicar online desenvolvimento`
+## `publicar online`
 
 ```text
 Use somente o checkout de desenvolvimento do projeto zanzibar, em branch main,
