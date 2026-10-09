@@ -22,9 +22,6 @@ node --check server.js
 git diff --check
 ```
 
-No Windows, prefira `npm.cmd run build` e `npm.cmd test` quando a política de
-execução bloquear `npm.ps1`.
-
 Para mudanças específicas, os testes também podem ser executados por camada:
 
 ```bash

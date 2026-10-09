@@ -57,12 +57,10 @@ As automações devem:
 - iniciar com `git status --short`, `git diff --cached` e `git diff`, para
   identificar alterações staged ou não staged deixadas por uma execução
   anterior;
-- tratar o checkout local como fonte prioritária: classificar staged, não
-  staged e não rastreados antes de consultar ou aplicar o remoto; incorporar
-  alterações locais seguras, inclusive staged deixado por outra sessão,
-  preservando seu conteúdo; retirar do escopo arquivos de runtime, segredos,
-  `dist/`, `node_modules/` e `.htaccess`; interromper se a origem ou a
-  intenção forem ambíguas;
+- classificar todo staged antes de validar: incorporar somente arquivos
+  seguros pertencentes à alteração atual, preservando o conteúdo; retirar do
+  escopo arquivos de runtime, segredos, `dist/`, `node_modules/` e
+  `.htaccess`; interromper se a origem ou a intenção forem ambíguas;
 - executar as validações previstas no prompt antes de declarar sucesso;
 - interromper em caso de erro, divergência, segredo ou arquivo de runtime
   inesperado, preservando a saída completa;
@@ -84,13 +82,12 @@ do usuário, respeitando a responsabilidade de cada automação abaixo.
 
 É a primeira automação a executar ao trocar de computador, recuperar uma
 sessão/worktree perdida ou suspeitar que o checkout local está desatualizado.
-Ela trata o checkout local como fonte prioritária: consulta `origin/main`,
-verifica a identidade do repositório, branch, remoto e estado do índice,
-analisa as diferenças e incorpora alterações locais seguras antes de buscar
-conteúdo remoto. Nunca sobrescreve, reseta ou remove arquivos locais.
-Alterações seguras podem ser validadas, commitadas e enviadas diretamente para
-`origin/main`; alterações ambíguas permanecem preservadas e bloqueiam a
-execução.
+Ela consulta `origin/main`, verifica a identidade do repositório, branch,
+remoto e estado do índice, e só aplica uma atualização fast-forward quando não
+há alterações locais ambíguas. Nunca sobrescreve, reseta ou remove arquivos
+locais. Alterações locais seguras devem ser preservadas e alterações
+staged/não staged que possam ser trabalho do usuário interrompem a
+sincronização para análise explícita.
 
 Depois de alinhar o código, ela lê `README.md`, `CONTRIBUTING.md`,
 `docs/CONTINUITY-PROMPT.md`, `docs/AUTOMATIONS.md`,
@@ -102,11 +99,9 @@ com esses parâmetros; caso contrário, deve produzir um relatório preciso para
 recriação manual, sem criar duplicatas. Ela também instala dependências apenas
 se necessário, valida o projeto e registra divergências que exigem decisão.
 
-Essa automação pode fazer commit e push direto somente das alterações locais
-seguras que foram analisadas. Ela nunca cria PR, faz merge ou deploy. A
-atualização a partir do GitHub usa `git pull --ff-only` somente quando o
-checkout está limpo; a publicação online continua exigindo autorização
-explícita.
+Essa automação não faz commit, push, PR, merge ou deploy. A atualização de
+`main` é feita apenas quando o checkout está seguro e por `git pull --ff-only`;
+a publicação online continua exigindo autorização explícita.
 
 ## `atualizar readme`
 

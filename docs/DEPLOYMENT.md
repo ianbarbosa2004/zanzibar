@@ -23,9 +23,6 @@ git diff --check
 powershell -NoProfile -ExecutionPolicy Bypass -File .github\scripts\deploy.ps1
 ```
 
-No Windows, se `npm.ps1` for bloqueado pela política de execução, use
-`npm.cmd run build` e `npm.cmd test`.
-
 Alterações de código locais são permitidas e são justamente o conteúdo a ser publicado diretamente. O script gera `dist/` localmente, remove somente a pasta `dist/` remota e envia o novo build. `data.json`, `settings.json`, `incomes.json`, `cash-closings.json`, `limits.json`, backups e `.htaccess` são preservados no servidor; nenhum desses arquivos deve ser incluído no upload como parte do build.
 
 A proteção de `main` permite push direto autorizado, mas continua bloqueando
