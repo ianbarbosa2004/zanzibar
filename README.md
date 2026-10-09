@@ -109,8 +109,10 @@ npm.cmd test
 - Ao trocar de computador ou recuperar uma sessão perdida, execute primeiro
   `sincronizar desenvolvimento`. Para pausar, ela cria um checkpoint, valida
   e envia o trabalho para `origin/main`; para retomar, exige checkout limpo,
-  baixa com `git pull --ff-only` e valida o mesmo SHA. Ela nunca sobrescreve
-  trabalho local, usa force push ou faz deploy.
+  baixa com `git pull --ff-only`, lê os Markdown operacionais e incorpora suas
+  diretrizes à sessão antes de continuar. Ela nunca sobrescreve trabalho local,
+  usa force push ou faz deploy; incorporar diretrizes não altera os arquivos
+  Markdown.
 
 ## Arquitetura
 

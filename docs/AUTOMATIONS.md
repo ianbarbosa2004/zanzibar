@@ -83,7 +83,11 @@ do usuário, respeitando a responsabilidade de cada automação abaixo.
 ## `sincronizar desenvolvimento`
 
 Esta é uma automação de **duas operações simples**, executada manualmente.
-Ela não revisa documentação nem recria automações durante a sincronização.
+Ela não atualiza a documentação nem recria automações durante a sincronização.
+Depois de sincronizar, porém, ela lê os Markdown operacionais recém obtidos e
+assume suas diretrizes como contexto da sessão/worktree. Ler e incorporar
+diretrizes significa aplicar o conteúdo às decisões da execução; não significa
+editar, reformatar ou substituir esses arquivos.
 
 **Para interromper o trabalho neste computador:** execute-a enquanto houver
 alterações do desenvolvimento. Ela verifica os arquivos, executa build/testes,
@@ -95,7 +99,11 @@ nunca entram no checkpoint.
 **Para continuar o trabalho em outro computador:** execute-a com o checkout
 limpo. Ela verifica remoto e branch, executa `git fetch origin main` e usa
 somente `git pull --ff-only origin main` quando o computador local estiver
-atrás. Depois roda as validações e informa o SHA sincronizado. Se houver
+atrás. Depois lê `README.md`, `CONTRIBUTING.md`, `docs/CONTINUITY-PROMPT.md`,
+`docs/AUTOMATIONS.md`, `docs/AUTOMATION-PROMPTS.md` e `docs/DEPLOYMENT.md`,
+resume as regras novas ou alteradas e passa a obedecê-las no restante da
+sessão. Não modifica esses arquivos como parte da sincronização. Em seguida
+roda as validações e informa o SHA sincronizado. Se houver
 qualquer alteração local, ela não faz pull nem sobrescreve arquivos: informa
 os caminhos para que o usuário execute primeiro a operação de interrupção.
 

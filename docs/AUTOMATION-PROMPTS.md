@@ -59,15 +59,27 @@ e o remoto ianbarbosa2004/zanzibar. Execute git fetch origin main, compare
 git rev-parse HEAD com git rev-parse origin/main e, se estiver atrás, execute
 somente git pull --ff-only origin main. Depois execute npm.cmd run build,
 npm.cmd test, node --check app.js, node --check server.js e git diff --check.
-Informe o SHA sincronizado. Se houver qualquer alteração local, não faça pull:
-informe os caminhos e instrua o usuário a executar a operação 1 primeiro.
+Após o pull (ou após confirmar que HEAD já está atualizado), leia integralmente
+README.md, CONTRIBUTING.md, docs/CONTINUITY-PROMPT.md, docs/AUTOMATIONS.md,
+docs/AUTOMATION-PROMPTS.md e docs/DEPLOYMENT.md. Extraia as diretrizes,
+restrições, prompts, decisões de arquitetura e procedimentos recém baixados e
+assuma esse conteúdo como o contexto operacional vigente desta sessão/worktree.
+Se houver mudança de diretriz, obedeça à versão baixada a partir desse ponto e
+registre no relatório quais regras foram incorporadas. Não edite, reescreva,
+reformate, reverta ou faça commit desses Markdown durante esta automação:
+incorporar o conteúdo é uma leitura operacional, não a tarefa de atualizar
+readme. Informe o SHA sincronizado. Se houver qualquer alteração local, não
+faça pull nem leia uma versão remota por cima: informe os caminhos e instrua o
+usuário a executar primeiro a operação 1.
 Se houver divergência de histórico, branch incorreta, remoto incorreto ou
 falha de rede, pare sem resolver destrutivamente.
 
 Em ambas as operações nunca use git reset --hard, git checkout --, git restore,
-git clean, force push, PR, merge ou deploy. Não leia nem reescreva os arquivos
-de automações para decidir a operação. A conferência ou recriação das quatro
-automações é uma tarefa separada e usa este arquivo como contrato.
+git clean, force push, PR, merge ou deploy. A leitura dos Markdown ocorre
+somente depois de o estado seguro ser confirmado; ela serve para incorporar
+diretrizes, não para decidir a operação nem para alterar a documentação. A
+conferência ou recriação das quatro automações é uma tarefa separada e usa
+este arquivo como contrato.
 ```
 
 ## `atualizar readme`
