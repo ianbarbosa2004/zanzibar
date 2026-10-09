@@ -2,9 +2,10 @@
 
 ## Fluxo de trabalho
 
-1. Ao iniciar em outro computador ou após perder uma sessão/worktree, execute
-   `sincronizar desenvolvimento` para alinhar com `origin/main` sem apagar
-   alterações locais e conferir as diretrizes operacionais.
+1. Ao pausar neste computador, execute `sincronizar desenvolvimento` para
+   validar, criar um checkpoint e enviar as alterações para `origin/main`. Ao
+   iniciar em outro computador, execute a mesma automação com checkout limpo
+   para baixar com `git pull --ff-only`; ela nunca apaga alterações locais.
 2. Faça uma alteração pequena e focada, preservando o contrato da API.
 3. Leia os módulos existentes antes de duplicar regras. Regras compartilhadas ficam em `src/shared`, integrações do navegador em `src/client` e integrações do servidor em `src/server`.
 4. Atualize ou crie testes para o comportamento alterado.
