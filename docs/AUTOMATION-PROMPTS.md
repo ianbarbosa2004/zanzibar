@@ -15,7 +15,9 @@ Ao ocorrer erro, exceção, bloqueio, divergência ou comportamento inesperado:
 5. atualizar a documentação afetada;
 6. somente então liberar nova tentativa ou próxima automação.
 
-Nunca versionar ou enviar `data.json`, `settings.json`, `incomes.json`, `cash-closings.json`, `limits.json`, backups, `dist/`, `node_modules`, credenciais, chaves privadas ou `.htaccess`.
+Nunca versionar ou enviar `data.json`, `settings.json`, `incomes.json`, `cash-closings.json`, `monthly-cash-closings.json`, `limits.json`, backups, `dist/`, `node_modules`, credenciais, chaves privadas ou `.htaccess`.
+
+O contrato dos fechamentos é por data para o fechamento diário: o endpoint substitui os itens da data e mantém uma única receita técnica com origem `Vendas`, inclusive ao editar por `id` ou `client_id`. O fechamento mensal é independente. A leitura deve manter compatibilidade com receitas técnicas antigas que ainda não tenham `income_source_id`.
 
 ## `atualizar repo`
 
