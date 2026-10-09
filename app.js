@@ -263,7 +263,7 @@ function renderIncomeTransactions() {
 }
 
 function escapeHtml(value) {
-  return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[character]));
+  return String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[character]));
 }
 function normalizeCatalogValue(value) {
   const text = String(value || "");
@@ -1320,4 +1320,4 @@ function renderPage() {
 window.addEventListener("hashchange", renderPage);
 
 renderPage();
-loadData().then(() => { transactions = transactions.map((item) => ({ ...item, expenseType: item.expenseType || item.category || "Outros", taker: item.taker || "Pessoal", location: item.location || "Casa", creditor: item.creditor || "Caixa" })); $("#today-label").textContent = todayLabel(); $("#last-update").textContent = formatLastTransactionUpdate(lastTransactionUpdate); setupFormOptions(); render(); renderReports(); renderRegistries(); renderCashClosings(); renderBillings(); renderLimits(); renderPage(); }).catch((error) => { console.error("Falha ao inicializar a aplicação.", error); showFeedback("Não foi possível carregar os dados iniciais."); });
+loadData().then(() => { transactions = transactions.map((item) => ({ ...item, expenseType: item.expenseType || item.category || "Outros", taker: item.taker || "Pessoal", location: item.location || "Casa", creditor: item.creditor || "Caixa" })); $("#today-label").textContent = todayLabel(); $("#last-update").textContent = formatLastTransactionUpdate(lastTransactionUpdate); setupFormOptions(); render(); renderReports(); renderRegistries(); renderCashClosings(); renderBillings(); renderLimits(); renderPage(); }).catch((error) => { console.error("Falha ao inicializar a aplicação.", error); showFeedback(`Não foi possível carregar os dados iniciais: ${error.message}`); });
