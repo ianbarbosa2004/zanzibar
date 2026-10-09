@@ -149,9 +149,13 @@ function renderBuffet() {
   $("#buffet-balance-total").textContent = formatMoney(incomeTotal - expenseTotal);
   $("#buffet-income-count").textContent = `${entries.filter(isBuffetIncome).length} entradas`;
   $("#buffet-expense-count").textContent = `${entries.filter(isBuffetExpense).length} saídas`;
-  const entryRows = entries.map((item) => `<tr><td>${escapeHtml(formatTransactionDate(item.date))}</td><td>${item.type === "income" ? "Receita" : "Despesa"}</td><td>${escapeHtml(item.description)}</td><td class="align-right ${item.type === "income" ? "income-text" : "expense-text"}">${item.type === "income" ? "+ " : "- "}${formatMoney(item.amount)}</td><td class="align-right"><button class="action-button" data-edit-buffet="${escapeHtml(String(item.id))}" aria-label="Editar ${escapeHtml(item.description)}">•••</button></td></tr>`).join("");
-  $("#buffet-entries-list").innerHTML = entryRows;
-  $("#buffet-entries-empty").hidden = entries.length > 0;
+  const entryRows = (items, kind) => items.map((item) => `<tr><td>${escapeHtml(formatTransactionDate(item.date))}</td><td>${escapeHtml(item.description)}</td><td class="align-right ${kind === "income" ? "income-text" : "expense-text"}">${kind === "income" ? "+ " : "- "}${formatMoney(item.amount)}</td><td class="align-right"><button class="action-button" data-edit-buffet="${escapeHtml(String(item.id))}" aria-label="Editar ${escapeHtml(item.description)}">•••</button></td></tr>`).join("");
+  const incomesForPeriod = entries.filter(isBuffetIncome);
+  const expensesForPeriod = entries.filter(isBuffetExpense);
+  $("#buffet-income-list").innerHTML = entryRows(incomesForPeriod, "income");
+  $("#buffet-income-empty").hidden = incomesForPeriod.length > 0;
+  $("#buffet-expense-list").innerHTML = entryRows(expensesForPeriod, "expense");
+  $("#buffet-expense-empty").hidden = expensesForPeriod.length > 0;
   const daily = buffetDailyClosings(entries);
   $("#buffet-daily-list").innerHTML = daily.map((item) => `<tr><td>${escapeHtml(formatTransactionDate(item.date))}</td><td class="align-right income-text">${formatMoney(item.income)}</td><td class="align-right expense-text">${formatMoney(-item.expense)}</td><td class="align-right ${item.balance >= 0 ? "income-text" : "expense-text"}">${formatMoney(item.balance)}</td></tr>`).join("");
   $("#buffet-daily-empty").hidden = daily.length > 0;
@@ -948,7 +952,7 @@ $("#buffet-expense-form").addEventListener("submit", (event) => {
   persistBuffetEntry(item, id, $("#buffet-expense-dialog"), "Despesa do Buffet");
 });
 $("#buffet-period-select").addEventListener("change", renderBuffet);
-$("#buffet-entries-list").addEventListener("click", (event) => {
+document.querySelector(".buffet-grid").addEventListener("click", (event) => {
   const button = event.target.closest("[data-edit-buffet]");
   if (!button) return;
   const item = buffetEntries(transactions, incomes).find((entry) => String(entry.id) === button.dataset.editBuffet);
