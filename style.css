@@ -348,6 +348,7 @@ dialog { overscroll-behavior: contain; }
   .overview { grid-template-columns: 1fr; }
   .balance-card { min-height: 150px; }
   .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .buffet-summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 850px) {
