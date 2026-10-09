@@ -19,6 +19,8 @@ devem operar no checkout de desenvolvimento. Para preservar a fonte única,
 não use `worktree`, cópia temporária, checkout alternativo ou outro projeto.
 Em ambiente local, não configure `remote_branch`: a plataforma rejeita esse
 campo; a instrução de usar `main` permanece no prompt da automação.
+O push direto é permitido apenas para `main`; nunca use `git push --force`,
+`--force-with-lease` ou exclusão da branch.
 
 Os IDs atuais nesta máquina são apenas referências e não devem ser copiados
 como identidade em outro computador:
@@ -61,7 +63,7 @@ As automações devem:
 - interromper em caso de erro, divergência, segredo ou arquivo de runtime
   inesperado, preservando a saída completa;
 - atualizar a documentação quando uma mudança alterar o contrato operacional;
-- não criar PR vazio.
+- não criar PR vazio nem executar push destrutivo.
 
 Alterações visuais, correções de código e mudanças de documentação não geram
 deploy automaticamente. PR, merge e deploy dependem de solicitação explícita

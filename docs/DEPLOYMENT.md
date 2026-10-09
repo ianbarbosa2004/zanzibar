@@ -12,7 +12,7 @@ O `.htaccess` é administrado pelo cPanel e não deve ser sobrescrito. Dados de 
 
 Qualquer alteração que crie ou modifique tabelas, colunas, índices, foreign keys, migrações de dados ou rotinas de persistência MySQL deve preservar os dados existentes e passar pelas validações locais antes do push direto para `main`. O deploy deve usar exclusivamente `.github/scripts/deploy.ps1` e validar a aplicação e o schema efetivamente disponíveis em produção. Commits locais não substituem a publicação; porém, a publicação não é automática. Após um deploy autorizado, a tarefa só pode ser considerada operacionalmente concluída depois de `CLAREZA_DEPLOY_COMPLETED`, HTTP/API `200`, confirmação de `deploy-version.json` e validação remota da funcionalidade migrada.
 
-Execute a partir do checkout local que contém a versão que deve ser publicada. Não é necessário criar, mesclar ou aguardar um pull request para executar o deploy operacional. O PR é usado somente para integrar código no repositório. Antes de publicar, confirme que o código foi validado e que o checkout não contém arquivos de runtime ou credenciais destinados ao upload:
+Execute a partir do checkout local que contém a versão que deve ser publicada. Não é necessário criar, mesclar ou aguardar um pull request para executar o deploy operacional. O fluxo normal do repositório usa push direto autorizado para `main`; PR não faz parte do fluxo obrigatório. Antes de publicar, confirme que o código foi validado e que o checkout não contém arquivos de runtime ou credenciais destinados ao upload:
 
 ```powershell
 npm run build

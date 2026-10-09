@@ -16,6 +16,7 @@ corrija a configuração antes da próxima execução.
 - Branch operacional: `main`
 - Fonte: somente o checkout de desenvolvimento
 - Proibido: `worktree`, cópia, checkout alternativo e outro projeto
+- Push: somente `git push origin main`, nunca force push ou exclusão da branch
 
 Em ambiente local, deixe `remote_branch` vazio. A plataforma rejeita esse
 campo para esse tipo de ambiente; o prompt é que determina o uso de `main`.
@@ -35,7 +36,8 @@ credenciais, chaves privadas e .htaccess. Execute npm.cmd run build, npm.cmd
 test, node --check app.js, node --check server.js e git diff --check. Quando
 houver mudanças, faça commit com Co-authored-by: Copilot App
 <223556219+Copilot@users.noreply.github.com> e faça push direto para
-origin/main. Não crie PR, não faça merge e não faça deploy.
+origin/main. Não use force push nem exclua a branch. Não crie PR, não faça
+merge e não faça deploy.
 ```
 
 ## `atualizar repositorio desenvolvimento`
@@ -50,7 +52,8 @@ build, npm.cmd test, node --check app.js, node --check server.js e git
 diff --check. Quando houver mudanças reais, faça commit com
 Co-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com> e faça
 push direto para origin/main. Se não houver mudanças, informe que main já está
-atualizado. Não crie PR, não faça merge e não faça deploy.
+atualizado. Não use force push nem exclua a branch. Não crie PR, não faça
+merge e não faça deploy.
 ```
 
 ## `publicar online desenvolvimento`

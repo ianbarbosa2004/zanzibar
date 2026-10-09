@@ -86,6 +86,8 @@ git diff --check
   automações; não use worktrees, cópias ou checkouts alternativos como fonte.
 - `main` é a versão oficial do repositório e recebe alterações por push
   direto autorizado. O force push e a exclusão da branch continuam bloqueados.
+- O push normal é `git push origin main`; não use `--force` nem
+  `--force-with-lease`.
 - Alterações visuais não exigem PR, merge ou deploy por padrão. PR, merge e
   publicação online somente devem ocorrer após solicitação explícita.
 - A publicação usa exclusivamente `.github/scripts/deploy.ps1`, preserva
