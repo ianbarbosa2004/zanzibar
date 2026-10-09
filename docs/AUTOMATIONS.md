@@ -84,6 +84,10 @@ do usuário, respeitando a responsabilidade de cada automação abaixo.
 
 Esta é uma automação de **duas operações simples**, executada manualmente.
 Ela não atualiza a documentação nem recria automações durante a sincronização.
+Antes de executar qualquer comando, pergunta qual operação o usuário deseja:
+**Finalizar trabalho neste computador** ou **Retomar/continuar trabalho neste
+computador**. O estado do Git é usado como trava de segurança, não para
+adivinhar a intenção do usuário.
 Depois de sincronizar, porém, ela lê os Markdown operacionais recém obtidos e
 assume suas diretrizes como contexto da sessão/worktree. Ler e incorporar
 diretrizes significa aplicar o conteúdo às decisões da execução; não significa

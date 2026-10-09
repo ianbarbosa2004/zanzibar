@@ -37,7 +37,13 @@ ou equivalente para apagar alterações.
 
 ```text
 Use somente o checkout local do projeto zanzibar, na branch main. Esta
-automação tem duas operações e deve escolher uma pelo estado do checkout.
+automação tem duas operações. Antes de executar qualquer comando, faça
+exatamente uma pergunta ao usuário:
+“Qual operação deseja executar: (1) Finalizar trabalho neste computador ou
+(2) Retomar/continuar trabalho neste computador?”
+Não escolha a operação automaticamente pelo estado do Git. Use a resposta do
+usuário. O estado do checkout será usado somente para bloquear uma operação
+incompatível e preservar o trabalho.
 
 OPERAÇÃO 1 — FECHAR TRABALHO NESTE COMPUTADOR
 Se houver arquivos staged, não staged ou novos que pertençam ao
@@ -73,6 +79,12 @@ faça pull nem leia uma versão remota por cima: informe os caminhos e instrua o
 usuário a executar primeiro a operação 1.
 Se houver divergência de histórico, branch incorreta, remoto incorreto ou
 falha de rede, pare sem resolver destrutivamente.
+
+Se o usuário escolher “Retomar/continuar” e houver qualquer alteração local,
+não faça pull nem sobrescreva arquivos; informe os caminhos e instrua o usuário
+a executar primeiro “Finalizar trabalho”. Se o usuário escolher “Finalizar” e
+não houver alterações de desenvolvimento, apenas confirme que não há
+checkpoint novo para publicar, sem criar commit vazio.
 
 Em ambas as operações nunca use git reset --hard, git checkout --, git restore,
 git clean, force push, PR, merge ou deploy. A leitura dos Markdown ocorre
