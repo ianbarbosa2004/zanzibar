@@ -892,6 +892,7 @@ $("#home-new-income").addEventListener("click", () => openIncomeDialog());
 function openBuffetIncomeDialog(item) {
   $("#buffet-income-dialog-title").textContent = item ? "Editar receita" : "Nova receita";
   $("#buffet-income-id").value = item?.id || "";
+  $("#buffet-income-client-id").value = item?.clientId || "";
   $("#buffet-income-description").value = item?.description || "";
   $("#buffet-income-amount").value = item ? formatInputAmount(item.amount) : "";
   $("#buffet-income-date").value = item?.date || localDate();
@@ -900,6 +901,7 @@ function openBuffetIncomeDialog(item) {
 function openBuffetExpenseDialog(item) {
   $("#buffet-expense-dialog-title").textContent = item ? "Editar despesa" : "Nova despesa";
   $("#buffet-expense-id").value = item?.id || "";
+  $("#buffet-expense-client-id").value = item?.clientId || "";
   $("#buffet-expense-description").value = item?.description || "";
   $("#buffet-expense-amount").value = item ? formatInputAmount(item.amount) : "";
   $("#buffet-expense-date").value = item?.date || localDate();
@@ -940,14 +942,14 @@ $("#buffet-expense-amount").addEventListener("input", (event) => {
 $("#buffet-income-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const id = $("#buffet-income-id").value;
-  const item = { id: id || `buffet-income-${crypto.randomUUID()}`, description: $("#buffet-income-description").value.trim(), amount: parseInputAmount($("#buffet-income-amount").value), type: "income", source: "Buffet", product: "buffet", date: $("#buffet-income-date").value };
+  const item = { id: id || `buffet-income-${crypto.randomUUID()}`, clientId: $("#buffet-income-client-id").value || undefined, description: $("#buffet-income-description").value.trim(), amount: parseInputAmount($("#buffet-income-amount").value), type: "income", source: "Buffet", product: "buffet", date: $("#buffet-income-date").value };
   if (!item.description || !item.amount || !item.date) return showFeedback("Preencha descrição, valor e data.");
   persistBuffetEntry(item, id, $("#buffet-income-dialog"), "Receita do Buffet");
 });
 $("#buffet-expense-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const id = $("#buffet-expense-id").value;
-  const item = { id: id || `buffet-expense-${crypto.randomUUID()}`, description: $("#buffet-expense-description").value.trim(), amount: parseInputAmount($("#buffet-expense-amount").value), type: "expense", location: "Buffet", expenseType: "Buffet", taker: "Buffet", creditor: "Caixa", product: "buffet", date: $("#buffet-expense-date").value };
+  const item = { id: id || `buffet-expense-${crypto.randomUUID()}`, clientId: $("#buffet-expense-client-id").value || undefined, description: $("#buffet-expense-description").value.trim(), amount: parseInputAmount($("#buffet-expense-amount").value), type: "expense", location: "Buffet", expenseType: "Buffet", taker: "Buffet", creditor: "Caixa", product: "buffet", date: $("#buffet-expense-date").value };
   if (!item.description || !item.amount || !item.date) return showFeedback("Preencha descrição, valor e data.");
   persistBuffetEntry(item, id, $("#buffet-expense-dialog"), "Despesa do Buffet");
 });

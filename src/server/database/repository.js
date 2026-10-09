@@ -320,7 +320,8 @@ export async function saveTransaction(item) {
   try {
     await connection.beginTransaction();
     const numericId = Number.isInteger(item.id) || /^\d+$/.test(String(item.id)) ? Number(item.id) : null;
-    const [existing] = await connection.query("SELECT id FROM transactions WHERE id = ? OR client_id = ?", [numericId || 0, String(item.id)]);
+    const clientId = item.clientId || (!numericId ? String(item.id) : null);
+    const [existing] = await connection.query("SELECT id FROM transactions WHERE id = ? OR client_id = ?", [numericId || 0, clientId || ""]);
     const income = item.type === "income";
     const lookup = async (table, name) => {
       if (!name) return null;
@@ -341,7 +342,7 @@ export async function saveTransaction(item) {
     if (existing[0]) {
       await connection.execute("UPDATE transactions SET description = ?, amount = ?, type = ?, expense_type = ?, taker = ?, location = ?, creditor = ?, expense_type_id = ?, taker_id = ?, location_id = ?, creditor_id = ?, income_source_id = ?, transaction_date = ? WHERE id = ?", [...values, existing[0].id]);
     } else {
-      await connection.execute("INSERT INTO transactions (client_id, description, amount, type, expense_type, taker, location, creditor, expense_type_id, taker_id, location_id, creditor_id, income_source_id, transaction_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [numericId ? null : String(item.id), ...values]);
+      await connection.execute("INSERT INTO transactions (client_id, description, amount, type, expense_type, taker, location, creditor, expense_type_id, taker_id, location_id, creditor_id, income_source_id, transaction_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [clientId, ...values]);
     }
     await connection.commit();
   } catch (error) {
