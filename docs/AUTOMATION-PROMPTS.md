@@ -36,71 +36,38 @@ ou equivalente para apagar alterações.
 ## `sincronizar desenvolvimento`
 
 ```text
-Use somente o checkout de desenvolvimento do projeto zanzibar, em branch main,
-como fonte local e origin/main como versão oficial. Esta automação serve para
-trocar entre dois computadores, recuperar uma sessão ou worktree perdido e
-reconstruir o contexto operacional sem perda de informação. Não use worktrees,
-cópias, checkouts alternativos ou outro projeto.
+Use somente o checkout local do projeto zanzibar, na branch main. Esta
+automação tem duas operações e deve escolher uma pelo estado do checkout.
 
-Antes de alterar qualquer arquivo, execute e registre:
-git remote -v
-git branch --show-current
-git status --short
-git diff --cached
-git diff
-git log -1 --oneline
-git fetch origin main
-git rev-parse HEAD
-git rev-parse origin/main
+OPERAÇÃO 1 — FECHAR TRABALHO NESTE COMPUTADOR
+Se houver arquivos staged, não staged ou novos que pertençam ao
+desenvolvimento, trate o checkout local como a versão a preservar. Execute
+git status --short, git diff --cached, git diff e git diff --check. Não inclua
+data.json, settings.json, incomes.json, cash-closings.json,
+monthly-cash-closings.json, limits.json, snapshots, backups, dist,
+node_modules, credenciais, chaves privadas ou .htaccess. Se houver dúvida
+sobre qualquer arquivo, pare e informe o caminho. Caso esteja seguro, execute
+npm.cmd run build, npm.cmd test, node --check app.js e node --check server.js.
+Faça um commit de checkpoint com
+Co-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com> e
+execute somente git push origin main. Informe o SHA publicado. Não faça PR,
+merge, deploy ou force push.
 
-Confirme que o remoto aponta para o repositório oficial
-ianbarbosa2004/zanzibar e que a branch é main. Classifique toda alteração
-staged, não staged e não rastreada. Nunca use git reset --hard, git checkout --,
-git clean, git restore, force push ou qualquer comando que apague trabalho.
-Não sobrescreva nem remova arquivos locais. Compare o conteúdo local com
-origin/main antes de decidir. Se as alterações locais forem seguras, coerentes
-com a tarefa e não contiverem segredos ou runtime, elas prevalecem: execute as
-validações, incorpore o staged e o não staged seguro, faça commit e push direto
-para origin/main. Registre no relatório os arquivos e a decisão. Se a origem,
-intenção ou segurança não puder ser confirmada, pare e preserve tudo.
+OPERAÇÃO 2 — CONTINUAR TRABALHO EM OUTRO COMPUTADOR
+Se o checkout estiver limpo, confirme git remote -v, git branch --show-current
+e o remoto ianbarbosa2004/zanzibar. Execute git fetch origin main, compare
+git rev-parse HEAD com git rev-parse origin/main e, se estiver atrás, execute
+somente git pull --ff-only origin main. Depois execute npm.cmd run build,
+npm.cmd test, node --check app.js, node --check server.js e git diff --check.
+Informe o SHA sincronizado. Se houver qualquer alteração local, não faça pull:
+informe os caminhos e instrua o usuário a executar a operação 1 primeiro.
+Se houver divergência de histórico, branch incorreta, remoto incorreto ou
+falha de rede, pare sem resolver destrutivamente.
 
-Somente quando o checkout estiver limpo, atualize com `git pull --ff-only
-origin main` se HEAD estiver atrás de origin/main. Se houver divergência de
-histórico, branch incorreta, remoto incorreto ou falha de rede, pare sem tentar
-resolver destrutivamente e explique a ação manual necessária. Se HEAD já
-estiver em origin/main, confirme que não há atualização pendente.
-
-Após a sincronização segura, leia integralmente README.md, CONTRIBUTING.md,
-docs/CONTINUITY-PROMPT.md, docs/AUTOMATIONS.md, docs/AUTOMATION-PROMPTS.md e
-docs/DEPLOYMENT.md. Extraia as regras atuais de arquitetura, validação,
-persistência MySQL, deploy, proteção de dados, staged, branch e automações.
-Compare a configuração disponível na plataforma com as quatro automações
-oficiais: sincronizar desenvolvimento, atualizar readme, atualizar
-repositorio e publicar online. Confira nome, projeto zanzibar, ambiente local,
-modo autopilot, workspace branch, intervalo manual, uso exclusivo de main e
-conteúdo do prompt. A automação com prefixo DESATIVADA - deve continuar
-excluída e nunca ser executada.
-
-Se uma automação oficial estiver ausente e a plataforma fornecer uma operação
-segura para recriá-la, recrie somente a ausente usando os prompts versionados
-em docs/AUTOMATION-PROMPTS.md, sem duplicar automações existentes. Se não for
-possível recriar pela execução atual, produza uma lista precisa com nome,
-parâmetros e prompt que devem ser recriados manualmente. Nunca altere, exclua
-ou renomeie uma automação existente sem confirmação explícita.
-
-Verifique package.json, arquivos de configuração do Vite/Node e a presença de
-dependências instaladas. Não instale nada sem necessidade; se node_modules
-estiver ausente, execute npm.cmd install somente quando isso for indispensável
-para validar o projeto. Execute npm.cmd run build, npm.cmd test, node --check
-app.js, node --check server.js e git diff --check quando o checkout estiver
-íntegro. A sincronização pode fazer commit e push direto somente das alterações
-locais seguras previamente analisadas; não cria PR, não faz merge e não faz
-deploy. Não altere data.json,
-settings.json, outros arquivos de runtime, snapshots, backups, dist,
-node_modules, credenciais, chaves privadas ou .htaccess. Finalize com um
-relatório contendo SHA local, SHA de origin/main, arquivos preservados,
-divergências encontradas, automações conferidas/recriadas e validações
-executadas.
+Em ambas as operações nunca use git reset --hard, git checkout --, git restore,
+git clean, force push, PR, merge ou deploy. Não leia nem reescreva os arquivos
+de automações para decidir a operação. A conferência ou recriação das quatro
+automações é uma tarefa separada e usa este arquivo como contrato.
 ```
 
 ## `atualizar readme`

@@ -10,7 +10,7 @@ permanecer coerente com este documento e com o contrato em
 
 | Nome | Modo | Workspace | Fonte | Responsabilidade |
 | --- | --- | --- | --- | --- |
-| `sincronizar desenvolvimento` | `autopilot` | `branch` | `main` | Alinhar o checkout local com `origin/main`, recuperar contexto e auditar continuidade |
+| `sincronizar desenvolvimento` | `autopilot` | `branch` | `main` | Fechar o trabalho neste computador ou retomar o trabalho em outro |
 | `atualizar readme` | `autopilot` | `branch` | `main` | Atualizar Markdown afetado e enviar diretamente para `main` |
 | `atualizar repositorio` | `autopilot` | `branch` | `main` | Integrar código, testes, configuração e documentação diretamente em `main` |
 | `publicar online` | `autopilot` | `branch` | `main` | Publicar no cPanel, sem PR ou merge |
@@ -82,31 +82,27 @@ do usuário, respeitando a responsabilidade de cada automação abaixo.
 
 ## `sincronizar desenvolvimento`
 
-É a primeira automação a executar ao trocar de computador, recuperar uma
-sessão/worktree perdida ou suspeitar que o checkout local está desatualizado.
-Ela trata o checkout local como fonte prioritária: consulta `origin/main`,
-verifica a identidade do repositório, branch, remoto e estado do índice,
-analisa as diferenças e incorpora alterações locais seguras antes de buscar
-conteúdo remoto. Nunca sobrescreve, reseta ou remove arquivos locais.
-Alterações seguras podem ser validadas, commitadas e enviadas diretamente para
-`origin/main`; alterações ambíguas permanecem preservadas e bloqueiam a
-execução.
+Esta é uma automação de **duas operações simples**, executada manualmente.
+Ela não revisa documentação nem recria automações durante a sincronização.
 
-Depois de alinhar o código, ela lê `README.md`, `CONTRIBUTING.md`,
-`docs/CONTINUITY-PROMPT.md`, `docs/AUTOMATIONS.md`,
-`docs/AUTOMATION-PROMPTS.md` e a documentação de deploy, verifica a presença
-das quatro automações oficiais e compara seus nomes, projeto, modo, workspace,
-intervalo e prompts com o contrato versionado. Se a plataforma permitir
-recriação no contexto da execução, deve recriar somente automações ausentes
-com esses parâmetros; caso contrário, deve produzir um relatório preciso para
-recriação manual, sem criar duplicatas. Ela também instala dependências apenas
-se necessário, valida o projeto e registra divergências que exigem decisão.
+**Para interromper o trabalho neste computador:** execute-a enquanto houver
+alterações do desenvolvimento. Ela verifica os arquivos, executa build/testes,
+faz um commit de checkpoint com o trailer padrão e executa
+`git push origin main`. Ao terminar, informa o SHA que o outro computador deve
+usar. Arquivos de runtime, segredos, `dist/`, `node_modules/` e `.htaccess`
+nunca entram no checkpoint.
 
-Essa automação pode fazer commit e push direto somente das alterações locais
-seguras que foram analisadas. Ela nunca cria PR, faz merge ou deploy. A
-atualização a partir do GitHub usa `git pull --ff-only` somente quando o
-checkout está limpo; a publicação online continua exigindo autorização
-explícita.
+**Para continuar o trabalho em outro computador:** execute-a com o checkout
+limpo. Ela verifica remoto e branch, executa `git fetch origin main` e usa
+somente `git pull --ff-only origin main` quando o computador local estiver
+atrás. Depois roda as validações e informa o SHA sincronizado. Se houver
+qualquer alteração local, ela não faz pull nem sobrescreve arquivos: informa
+os caminhos para que o usuário execute primeiro a operação de interrupção.
+
+Ela nunca usa `reset --hard`, `checkout --`, `restore`, `clean`, force push,
+PR, merge ou deploy. As quatro automações oficiais e seus prompts são
+mantidos pela documentação versionada e recriados separadamente quando
+necessário.
 
 ## `atualizar readme`
 
@@ -138,8 +134,8 @@ credenciais, chaves privadas ou `node_modules`.
 
 Quando o usuário solicitar integração e publicação, a ordem é:
 
-1. `sincronizar desenvolvimento`, ao iniciar em outra máquina ou após perda
-   de sessão/worktree;
+1. `sincronizar desenvolvimento`, para fechar o trabalho atual ou retomá-lo
+   em outro computador;
 2. `atualizar readme`, se houver documentação a atualizar;
 3. `atualizar repositorio`, para enviar alterações a `main`;
 4. `publicar online`, somente após autorização explícita.

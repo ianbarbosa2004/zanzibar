@@ -107,11 +107,10 @@ npm.cmd test
   [`docs/AUTOMATIONS.md`](docs/AUTOMATIONS.md) e
   [`docs/AUTOMATION-PROMPTS.md`](docs/AUTOMATION-PROMPTS.md).
 - Ao trocar de computador ou recuperar uma sessão perdida, execute primeiro
-  `sincronizar desenvolvimento`. Ela usa somente fast-forward seguro para
-  alinhar `main` com `origin/main`, mas trata alterações locais seguras como
-  fonte prioritária: analisa, valida, commita e envia essas alterações antes
-  de buscar conteúdo remoto. Alterações ambíguas são preservadas e bloqueiam
-  a execução.
+  `sincronizar desenvolvimento`. Para pausar, ela cria um checkpoint, valida
+  e envia o trabalho para `origin/main`; para retomar, exige checkout limpo,
+  baixa com `git pull --ff-only` e valida o mesmo SHA. Ela nunca sobrescreve
+  trabalho local, usa force push ou faz deploy.
 
 ## Arquitetura
 
