@@ -326,7 +326,6 @@ $("#download-auxiliary-tables").addEventListener("click", () => {
 });
 
 function renderCashClosings() {
-  const total = cashClosings.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0);
   const orderedPaymentMethods = activeCatalog("payment_methods", paymentMethods);
   const paymentMethodOrder = new Map(orderedPaymentMethods.map((method, index) => [normalizeCatalogValue(method), index]));
   const sortRowsByPaymentMethod = (rows) => [...rows].sort((a, b) => {
@@ -334,7 +333,6 @@ function renderCashClosings() {
     const orderB = paymentMethodOrder.get(normalizeCatalogValue(b.paymentMethod));
     return (orderA ?? Number.MAX_SAFE_INTEGER) - (orderB ?? Number.MAX_SAFE_INTEGER);
   });
-  $("#cash-closing-total").textContent = `(${formatMoney(total)})`;
   const grouped = [...new Map([...cashClosings].sort((a, b) => b.date.localeCompare(a.date)).map((item) => [item.date, cashClosings.filter((entry) => entry.date === item.date)])).entries()];
   const state = paginationState.Fechamentos;
   const paged = paginate(grouped, state.page, state.pageSize);
@@ -356,7 +354,6 @@ function renderCashClosings() {
 }
 
 function renderMonthlyCashClosings(sortRowsByPaymentMethod) {
-  const total = monthlyCashClosings.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0);
   const grouped = new Map();
   monthlyCashClosings.forEach((item) => {
     const month = `${item.year}-${String(item.month).padStart(2, "0")}`;
@@ -389,7 +386,6 @@ function renderMonthlyCashClosings(sortRowsByPaymentMethod) {
   const otherMonths = [...monthly.entries()].filter(([month]) => month !== currentMonthKey).sort(([a], [b]) => b.localeCompare(a));
   const paged = paginate(otherMonths, state.page, state.pageSize);
   state.page = paged.page;
-  $("#monthly-cash-closing-total").textContent = `(${formatMoney(total)})`;
   const renderMonthlyRow = (month, rows, current = false) => {
     rows = sortRowsByPaymentMethod(rows);
     const paymentMethods = rows.map((item) => `<div>${escapeHtml(item.paymentMethod)}</div>`).join("");
