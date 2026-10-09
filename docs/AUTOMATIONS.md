@@ -1,76 +1,106 @@
 # Automações do projeto
 
-## Regra de branch
+Este documento descreve a configuração canônica das automações do Clareza.
+As automações são manuais, executam uma por vez e usam somente o projeto
+`zanzibar` no checkout de desenvolvimento. A configuração executável deve
+permanecer coerente com este documento e com o contrato em
+[`AUTOMATION-PROMPTS.md`](AUTOMATION-PROMPTS.md).
 
-As automações devem rodar uma por vez. As automações de documentação podem criar pull requests. A automação `atualizar online` é diferente: ela publica diretamente o checkout local validado, sem criar ou aguardar PR. O usuário deve executá-la quando quiser publicar as alterações locais. Ela nunca deve apagar ou sobrescrever arquivos de dados de produção, incluindo os JSON de runtime `data.json`, `settings.json`, `incomes.json`, `cash-closings.json` e `limits.json`.
+## Configuração canônica
 
-Quando uma implementação envolver schema, migração, foreign key ou persistência MySQL, a automação deve disparar automaticamente o deploy oficial assim que a implementação e os testes terminarem e validar a hospedagem/banco antes de considerar a tarefa concluída. Se o deploy falhar, deve parar e informar o bloqueio exato; não deve repetir ou declarar sucesso automaticamente.
+| Nome | Modo | Workspace | Fonte | Responsabilidade |
+| --- | --- | --- | --- | --- |
+| `atualizar readme desenvolvimento` | `autopilot` | `branch` | `main` | Atualizar Markdown afetado e enviar diretamente para `main` |
+| `atualizar repositorio desenvolvimento` | `autopilot` | `branch` | `main` | Integrar código, testes, configuração e documentação diretamente em `main` |
+| `publicar online desenvolvimento` | `autopilot` | `branch` | `main` | Publicar no cPanel, sem PR ou merge |
 
-As automações também devem verificar a consistência visual das escritas: formulários de despesas, receitas, fechamentos, limites e cadastros auxiliares só podem confirmar o sucesso depois do endpoint CRUD específico retornar sucesso; em caso de falha, o estado anterior deve ser restaurado. A verificação inclui inclusão, edição, exclusão, ordenação e ativação ou desativação.
+Todas são do projeto `zanzibar`, têm intervalo `manual`, ambiente local e
+devem operar no checkout de desenvolvimento. Para preservar a fonte única,
+não use `worktree`, cópia temporária, checkout alternativo ou outro projeto.
+Em ambiente local, não configure `remote_branch`: a plataforma rejeita esse
+campo; a instrução de usar `main` permanece no prompt da automação.
 
-Fechamentos diários são operações por data: a gravação substitui os itens da data e atualiza a receita técnica **Vendas** na mesma transação. Fechamentos mensais permanecem independentes. Alterações nesses fluxos devem verificar também a leitura inicial de receitas antigas sem origem, o recálculo de faturamento e a edição por `id` ou `client_id`.
+Os IDs atuais nesta máquina são apenas referências e não devem ser copiados
+como identidade em outro computador:
 
-O contrato técnico versionado dos prompts está em [`docs/AUTOMATION-PROMPTS.md`](AUTOMATION-PROMPTS.md). A configuração executável da automação deve permanecer coerente com esse documento.
+```text
+atualizar readme desenvolvimento       f7019883-139f-4da0-9a81-86b4d1ac8209
+atualizar repositorio desenvolvimento  969bb8c6-f0ea-4a36-9b0e-3a63013e49e0
+publicar online desenvolvimento        04efbea0-6c86-41b6-aeb2-40a8af6d2afb
+```
 
-## `atualizar repo`
+Ao configurar outro computador, crie as automações pelos nomes e parâmetros
+da tabela, usando os prompts versionados em
+[`AUTOMATION-PROMPTS.md`](AUTOMATION-PROMPTS.md). O `projectId` e os IDs das
+execuções podem ser diferentes; o comportamento e o texto dos prompts não.
 
-Integra alterações de código, testes, configuração e documentação por pull request protegido contra `main`. Deve analisar o checkout e o histórico local/remoto, incorporar somente arquivos seguros, executar as validações obrigatórias, aguardar o merge e confirmar que `origin/main` é a versão oficial. Não executa deploy no cPanel.
+## Migração de automações antigas
 
-## `atualizar readme`
+As automações antigas abaixo não fazem parte da configuração canônica:
 
-Automação manual do projeto `zanzibar`. Trabalha em uma branch de automação, analisa as implementações recentes e atualiza:
+- `atualizar readme corrigido`;
+- `atualizar repo corrigido`;
+- `atualizar online corrigido`.
 
-- `README.md`
-- `CONTRIBUTING.md`
-- `docs/DEPLOYMENT.md`
-- `docs/CONTINUITY-PROMPT.md`
-- `docs/AUTOMATIONS.md`
-- `docs/AUTOMATION-PROMPTS.md`
+Elas foram criadas como `worktree` e podem usar uma cópia sem as dependências
+do desenvolvimento. Não as execute. Renomeá-las com o prefixo
+`DESATIVADA -` é somente uma identificação visual; confirme no painel de
+automações que estão desabilitadas. Se a plataforma não aceitar a alteração
+de `enabled` ou não permitir removê-las, mantenha-as sem execução e use apenas
+as três automações canônicas.
 
-Executa `npm run build`, depois `npm test`, `node --check app.js`, `node --check server.js` e `git diff --check`. No Windows, se a política de execução bloquear `npm.ps1`, repete o mesmo build com `npm.cmd run build` ou com `powershell.exe -NoProfile -ExecutionPolicy Bypass`; registra a ocorrência e o comando alternativo usado, sem tratar o bloqueio do shell como falha do projeto. Ao concluir, cria commit com o trailer `Co-authored-by` exigido, envia a branch para `origin`, abre um pull request com `gh pr create` e solicita merge automático com `gh pr merge --auto --squash`. Se houver aprovação humana, conflito ou check falho, interrompe e informa o bloqueio exato. Não deve incluir credenciais, chaves privadas, dados de produção, JSON de runtime, `dist/` ou `node_modules/`, nem executar ou disparar deploy.
+## Regras comuns
 
-## `atualizar online`
+As automações devem:
 
-Automação manual do projeto `zanzibar`. Publica diretamente o checkout local, sem criar PR, trocar branch, fazer merge ou aguardar o GitHub. O PR fica reservado à integração do código no repositório; esta automação é somente o caminho operacional do cPanel.
+- preservar `data.json`, `settings.json`, `incomes.json`,
+  `cash-closings.json`, `monthly-cash-closings.json`, `limits.json`,
+  snapshots, backups, `dist/`, `node_modules/`, credenciais, chaves privadas
+  e `.htaccess`;
+- executar as validações previstas no prompt antes de declarar sucesso;
+- interromper em caso de erro, divergência, segredo ou arquivo de runtime
+  inesperado, preservando a saída completa;
+- atualizar a documentação quando uma mudança alterar o contrato operacional;
+- não criar PR vazio.
 
-O deploy via SFTP deve:
+Alterações visuais, correções de código e mudanças de documentação não geram
+deploy automaticamente. PR, merge e deploy dependem de solicitação explícita
+do usuário, respeitando a responsabilidade de cada automação abaixo.
 
-- verificar a chave protegida no `ssh-agent` antes do build e interromper com instrução clara quando ela não estiver carregada;
-- preservar `data.json`, `settings.json`, `incomes.json`, `cash-closings.json`, `monthly-cash-closings.json` e `limits.json`;
-- criar backups remotos dos dados existentes;
-- preservar `.htaccess`;
-- substituir `dist/`, `server.js`, `src/` e os manifestos npm;
-- reinstalar dependências e reiniciar o Passenger;
-- validar HTTP 200 e conferir os assets publicados por SHA-256;
-- nunca enviar credenciais ou chaves privadas.
+## `atualizar readme desenvolvimento`
 
-A passphrase da chave nunca pode ser salva em arquivo, variável de ambiente,
-argumento, log ou tarefa agendada. O usuário deve carregá-la manualmente com
-`ssh-add` quando necessário; o script oficial não deve tentar contornar essa
-proteção.
+Analisa as implementações recentes, commits, PRs mesclados e o estado do
+repositório. Atualiza somente os Markdown afetados, principalmente
+`README.md`, `CONTRIBUTING.md` e `docs/*.md`. Executa build, testes,
+verificações de sintaxe e `git diff --check`. Quando houver documentação real,
+cria commit com o trailer exigido e faz push direto para `origin/main`.
+Não cria PR, não faz merge e não executa deploy.
 
-As validações locais continuam sendo `npm run build`, `npm test`, `node --check app.js`, `node --check server.js` e `git diff --check`. O deploy deve ser executado a partir do checkout local validado. A proteção de `main` governa a integração por PR; esta automação não cria, troca branch, faz merge ou aguarda o GitHub. O script gera o build, remove somente a `dist/` remota antes de enviar a nova, publica `deploy-version.json` com o SHA local e confirma por HTTP que o cPanel serve esse mesmo SHA. A automação deve registrar a saída `CLAREZA_DEPLOY_COMMIT`; sem essa confirmação, a versão não deve ser considerada publicada. O deploy deve preservar:
+## `atualizar repositorio desenvolvimento`
 
-- `data.json`, `settings.json`, `incomes.json`, `cash-closings.json`, `monthly-cash-closings.json`, `limits.json` e backups;
-- `.htaccess`;
-- credenciais e chaves privadas, que nunca podem ser enviadas.
+Analisa o checkout e o histórico, integra somente alterações pertencentes ao
+projeto e executa as validações obrigatórias. Quando houver mudanças reais,
+cria commit com o trailer exigido e faz push direto para `origin/main`.
+Confirma que `origin/main` é a versão oficial. Não cria PR, não faz merge e
+não executa deploy.
 
-O script deve validar HTTP 200 e comparar os assets remotos por SHA-256. Alterações de schema, migração, foreign key ou persistência MySQL exigem validação remota após o merge; não devem ser consideradas concluídas apenas com o pull request aberto.
+## `publicar online desenvolvimento`
 
-### Validação da publicação
+Publica somente o estado validado de `main` usando o script oficial
+`.github/scripts/deploy.ps1`. Não cria PR, não faz merge, não troca branch e
+não usa arquivos de outro checkout. Deve validar `CLAREZA_DEPLOY_COMPLETED`,
+HTTP 200, API, `deploy-version.json` e os hashes dos assets. O deploy
+preserva dados MySQL, arquivos de runtime, backups e `.htaccess`; nunca envia
+credenciais, chaves privadas ou `node_modules`.
 
-Se a ferramenta exibir `deploy-version.json` como `{"type":"Buffer","data":[...]}`, isso é apenas uma serialização da resposta HTTP. A automação deve decodificar os bytes UTF-8 e apresentar o JSON legível, além de comparar o campo `commit` com o SHA do `git rev-parse HEAD` do checkout validado.
+## Ordem operacional
 
-Durante a reinicialização do Passenger, a automação pode receber
-temporariamente `503 Service Unavailable` na etapa de validação. O script
-oficial repete as consultas da página, da API e de `deploy-version.json` até
-cinco vezes, aguardando cinco segundos entre as tentativas. Uma resposta `503`
-isolada não deve ser tratada como falha definitiva nem deve iniciar outro
-deploy em paralelo. A publicação somente é confirmada quando a saída contém
-`CLAREZA_DEPLOY_COMPLETED`; se todas as tentativas falharem, preservar a saída
-completa e investigar a disponibilidade do Passenger antes de uma nova
-execução.
+Quando o usuário solicitar integração e publicação, a ordem é:
 
-## Separação entre publicação e integração
+1. `atualizar readme desenvolvimento`, se houver documentação a atualizar;
+2. `atualizar repositorio desenvolvimento`, para enviar alterações a `main`;
+3. `publicar online desenvolvimento`, somente após autorização explícita.
 
-`atualizar online` publica o checkout local diretamente e não faz PR. `atualizar readme` continua usando branch e PR para alterações de documentação. Essa separação evita bloquear uma publicação operacional por uma regra de proteção da branch.
+O resultado de uma automação deve ser analisado antes da próxima. Mudanças de
+schema, migração, foreign key ou persistência MySQL exigem validação remota
+após o deploy autorizado; não existe disparo automático de deploy.
