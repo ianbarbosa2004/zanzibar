@@ -204,7 +204,7 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
 }
 
 export async function readDatabase() {
-  const [rows] = await dbPool.query("SELECT t.id, t.client_id AS clientId, t.description, t.amount, t.type, et.name AS expenseType, et.slug AS expenseTypeSlug, tk.name AS taker, tk.slug AS takerSlug, l.name AS location, l.slug AS locationSlug, c.name AS creditor, c.slug AS creditorSlug, s.name AS source, s.slug AS sourceSlug, DATE_FORMAT(t.transaction_date, '%Y-%m-%d') AS date, t.created_at AS createdAt, t.updated_at AS updatedAt FROM transactions t LEFT JOIN expense_types et ON et.id = t.expense_type_id LEFT JOIN takers tk ON tk.id = t.taker_id LEFT JOIN locations l ON l.id = t.location_id LEFT JOIN creditors c ON c.id = t.creditor_id LEFT JOIN income_sources s ON s.id = t.income_source_id ORDER BY t.transaction_date DESC, t.updated_at DESC");
+  const [rows] = await dbPool.query("SELECT t.id, t.client_id AS clientId, t.description, t.amount, t.type, et.name AS expenseType, et.slug AS expenseTypeSlug, tk.name AS taker, tk.slug AS takerSlug, l.name AS location, l.slug AS locationSlug, c.name AS creditor, c.slug AS creditorSlug, COALESCE(s.name, CASE WHEN t.type = 'income' AND t.client_id LIKE 'cash-closing-income-%' THEN 'Vendas' END) AS source, COALESCE(s.slug, CASE WHEN t.type = 'income' AND t.client_id LIKE 'cash-closing-income-%' THEN 'vendas' END) AS sourceSlug, DATE_FORMAT(t.transaction_date, '%Y-%m-%d') AS date, t.created_at AS createdAt, t.updated_at AS updatedAt FROM transactions t LEFT JOIN expense_types et ON et.id = t.expense_type_id LEFT JOIN takers tk ON tk.id = t.taker_id LEFT JOIN locations l ON l.id = t.location_id LEFT JOIN creditors c ON c.id = t.creditor_id LEFT JOIN income_sources s ON s.id = t.income_source_id ORDER BY t.transaction_date DESC, t.updated_at DESC");
   const [[settings]] = await dbPool.query("SELECT currency, schema_version AS schemaVersion FROM app_settings WHERE id = 1");
   const catalogRows = {};
   for (const table of ["expense_types", "takers", "locations", "creditors", "payment_methods", "income_sources"]) {
@@ -295,9 +295,15 @@ export async function saveCashClosing(date, items) {
     const sales = items.reduce((sum, item) => sum + Number(item.saleCount || 0), 0);
     const incomeId = `cash-closing-income-${date}`;
     const [incomeRows] = await connection.query("SELECT id FROM transactions WHERE client_id = ?", [incomeId]);
+    const [[incomeSource]] = await connection.query("SELECT id FROM income_sources WHERE name = ? LIMIT 1", ["Vendas"]);
+    let incomeSourceId = incomeSource?.id || null;
+    if (!incomeSourceId) {
+      const [result] = await connection.execute("INSERT INTO income_sources (name, slug) VALUES (?, ?)", ["Vendas", "vendas"]);
+      incomeSourceId = result.insertId;
+    }
     const incomeValues = [`Vendas dia ${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)} (${sales})`, amount, "income", date];
-    if (incomeRows[0]) await connection.execute("UPDATE transactions SET description = ?, amount = ?, type = ?, expense_type = NULL, taker = NULL, location = NULL, creditor = NULL, transaction_date = ? WHERE id = ?", [...incomeValues, incomeRows[0].id]);
-    else await connection.execute("INSERT INTO transactions (client_id, description, amount, type, transaction_date) VALUES (?, ?, ?, ?, ?)", [incomeId, ...incomeValues]);
+    if (incomeRows[0]) await connection.execute("UPDATE transactions SET description = ?, amount = ?, type = ?, expense_type = NULL, taker = NULL, location = NULL, creditor = NULL, income_source_id = ?, transaction_date = ? WHERE id = ?", [incomeValues[0], incomeValues[1], incomeValues[2], incomeSourceId, incomeValues[3], incomeRows[0].id]);
+    else await connection.execute("INSERT INTO transactions (client_id, description, amount, type, income_source_id, transaction_date) VALUES (?, ?, ?, ?, ?, ?)", [incomeId, incomeValues[0], incomeValues[1], incomeValues[2], incomeSourceId, incomeValues[3]]);
     await refreshBillings(connection);
     await connection.commit();
   } catch (error) {
