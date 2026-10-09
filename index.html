@@ -32,6 +32,7 @@
           <a class="nav-link" href="#relatorios"><span>▥</span> Relatórios</a>
           <a class="nav-link" href="#cadastros"><span>⚙</span> Cadastros</a>
           <a class="nav-link" href="#ferramentas"><span>⚒</span> Ferramentas</a>
+          <a class="nav-link" href="#buffet"><span>▦</span> Buffet</a>
         </nav>
       </aside>
 
@@ -88,6 +89,24 @@
           <div class="home-actions">
             <button class="primary-button" id="home-new-income" type="button"><span>＋</span> Incluir receita</button>
             <button class="primary-button" id="home-new-transaction" type="button"><span>＋</span> Incluir despesa</button>
+          </div>
+        </section>
+
+        <section id="buffet" class="buffet-section" data-page="buffet">
+          <div class="section-heading">
+            <div><p class="eyebrow">Produto</p><h2>Buffet</h2><p class="section-description">Movimentações e fechamentos automáticos do produto Buffet.</p></div>
+            <div class="section-actions"><label class="month-picker"><span>Mês</span><select id="buffet-period-select" aria-label="Selecionar mês do Buffet"></select></label><button class="primary-button" id="buffet-new-income" type="button"><span>＋</span> Nova receita</button><button class="primary-button" id="buffet-new-expense" type="button"><span>＋</span> Nova despesa</button></div>
+          </div>
+          <div class="summary-grid buffet-summary-grid">
+            <article class="summary-card summary-card-income"><span class="summary-icon" aria-hidden="true">↗</span><div><span>Receitas</span><strong id="buffet-income-total">R$ 0,00</strong><em id="buffet-income-count">0 entradas</em></div></article>
+            <article class="summary-card summary-card-home"><span class="summary-icon" aria-hidden="true">↘</span><div><span>Despesas</span><strong id="buffet-expense-total">R$ 0,00</strong><em id="buffet-expense-count">0 saídas</em></div></article>
+            <article class="summary-card summary-card-balance"><span class="summary-icon" aria-hidden="true">=</span><div><span>Saldo do mês</span><strong id="buffet-balance-total">R$ 0,00</strong></div></article>
+          </div>
+          <div class="buffet-grid">
+            <section class="panel buffet-panel"><div class="section-heading"><div><p class="eyebrow">Movimentações</p><h3>Entradas e saídas</h3></div></div><div class="table-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th class="align-right">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody id="buffet-entries-list"></tbody></table><div id="buffet-entries-empty" class="empty-state" hidden>Nenhuma movimentação do Buffet.</div></div></section>
+            <section class="panel buffet-panel"><div class="section-heading"><div><p class="eyebrow">Fechamentos</p><h3>Fechamentos diários</h3></div></div><div class="table-wrap"><table><thead><tr><th>Data</th><th class="align-right">Receitas</th><th class="align-right">Despesas</th><th class="align-right">Saldo</th></tr></thead><tbody id="buffet-daily-list"></tbody></table><div id="buffet-daily-empty" class="empty-state" hidden>Nenhum fechamento diário.</div></div></section>
+            <section class="panel buffet-panel"><div class="section-heading"><div><p class="eyebrow">Fechamentos</p><h3>Fechamentos mensais</h3></div></div><div class="table-wrap"><table><thead><tr><th>Mês</th><th class="align-right">Receitas</th><th class="align-right">Despesas</th><th class="align-right">Saldo</th></tr></thead><tbody id="buffet-monthly-list"></tbody></table><div id="buffet-monthly-empty" class="empty-state" hidden>Nenhum fechamento mensal.</div></div></section>
+            <section class="panel buffet-panel"><div class="section-heading"><div><p class="eyebrow">Visão diária</p><h3>Calendário financeiro</h3></div></div><div id="buffet-calendar" class="financial-calendar" aria-label="Calendário financeiro do Buffet"></div></section>
           </div>
         </section>
 
@@ -333,6 +352,26 @@
         <label>Fonte<select id="income-source" name="incomeSource"></select></label>
         <label>Data<input id="income-date" name="incomeDate" type="date" required /></label>
         <div class="dialog-actions"><button class="secondary-button" id="cancel-income-dialog" type="button">Cancelar</button><button class="primary-button" type="submit">Salvar receita</button></div>
+      </form>
+    </dialog>
+    <dialog id="buffet-income-dialog">
+      <form id="buffet-income-form" method="dialog">
+        <div class="dialog-heading"><div><p class="eyebrow">Buffet</p><h2 id="buffet-income-dialog-title">Nova receita</h2></div><button class="close-button" id="close-buffet-income-dialog" type="button" aria-label="Fechar">×</button></div>
+        <input id="buffet-income-id" type="hidden" />
+        <label>Descrição<input id="buffet-income-description" required maxlength="60" placeholder="Ex.: Venda do dia" /></label>
+        <label>Valor<input id="buffet-income-amount" type="text" inputmode="decimal" dir="rtl" required placeholder="R$ 0,00" /></label>
+        <label>Data<input id="buffet-income-date" type="date" required /></label>
+        <div class="dialog-actions"><button class="secondary-button" id="cancel-buffet-income-dialog" type="button">Cancelar</button><button class="primary-button" type="submit">Salvar receita</button></div>
+      </form>
+    </dialog>
+    <dialog id="buffet-expense-dialog">
+      <form id="buffet-expense-form" method="dialog">
+        <div class="dialog-heading"><div><p class="eyebrow">Buffet</p><h2 id="buffet-expense-dialog-title">Nova despesa</h2></div><button class="close-button" id="close-buffet-expense-dialog" type="button" aria-label="Fechar">×</button></div>
+        <input id="buffet-expense-id" type="hidden" />
+        <label>Descrição<input id="buffet-expense-description" required maxlength="60" placeholder="Ex.: Compra de insumos" /></label>
+        <label>Valor<input id="buffet-expense-amount" type="text" inputmode="decimal" dir="rtl" required placeholder="R$ 0,00" /></label>
+        <label>Data<input id="buffet-expense-date" type="date" required /></label>
+        <div class="dialog-actions"><button class="secondary-button" id="cancel-buffet-expense-dialog" type="button">Cancelar</button><button class="primary-button" type="submit">Salvar despesa</button></div>
       </form>
     </dialog>
     <dialog id="cash-closing-dialog">

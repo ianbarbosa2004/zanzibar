@@ -12,6 +12,7 @@ import { importCashClosingsCsv } from "./src/shared/csv-cash-closings.js";
 import { catalogImportMarkdown } from "./src/shared/catalog-import-document.js";
 import { toSlug } from "./src/shared/slugs.js";
 import { refreshBillings, saveCashClosing, saveCatalog, saveLimit, saveMonthlyCashClosings, saveTransaction } from "./src/client/crud-api.js";
+import { buffetDailyClosings, buffetEntries, buffetMonthlyClosings, isBuffetExpense, isBuffetIncome } from "./src/shared/buffet.js";
 
 const { expenseTypes: defaultExpenseTypes, takers: defaultTakers, locations: defaultLocations, creditors: defaultCreditors, paymentMethods: defaultPaymentMethods, incomeSources: defaultIncomeSources } = catalogDefaults;
 const API_URL = new URL("api/data", document.baseURI).pathname;
@@ -89,7 +90,8 @@ function restoreState(previous) {
 function setupFormOptions() {
   const active = (kind, values) => values.filter((name) => catalogMetadata[kind]?.find((item) => item.name === name)?.isActive !== false).sort((a, b) => kind === "expense_types" ? a.localeCompare(b, "pt-BR") : (catalogMetadata[kind]?.find((item) => item.name === a)?.displayOrder || 0) - (catalogMetadata[kind]?.find((item) => item.name === b)?.displayOrder || 0) || a.localeCompare(b, "pt-BR"));
   if (!takers.some((taker) => taker.toLowerCase() === "zanzibar")) takers.push("Zanzibar");
-  const available = { expenseTypes: active("expense_types", expenseTypes), takers: active("takers", takers), locations: active("locations", locations), creditors: active("creditors", creditors), paymentMethods: active("payment_methods", paymentMethods), incomeSources: active("income_sources", incomeSources) };
+  const withoutBuffet = (values) => values.filter((value) => String(value).trim().toLocaleLowerCase("pt-BR") !== "buffet");
+  const available = { expenseTypes: withoutBuffet(active("expense_types", expenseTypes)), takers: withoutBuffet(active("takers", takers)), locations: withoutBuffet(active("locations", locations)), creditors: withoutBuffet(active("creditors", creditors)), paymentMethods: active("payment_methods", paymentMethods), incomeSources: withoutBuffet(active("income_sources", incomeSources)) };
   $("#expense-type").innerHTML = available.expenseTypes.map((type) => `<option>${escapeHtml(type)}</option>`).join("");
   $("#taker").innerHTML = available.takers.map((taker) => `<option>${escapeHtml(taker)}</option>`).join("");
   $("#creditor").innerHTML = available.creditors.map((creditor) => `<option>${escapeHtml(creditor)}</option>`).join("");
@@ -121,14 +123,61 @@ function setupFormOptions() {
 }
 
 function monthTransactions() {
-  return inMonth(transactions, selectedMonth());
+  return inMonth(transactions.filter((item) => !isBuffetExpense(item)), selectedMonth());
 }
 function monthIncomes() {
-  return inMonth(incomes, selectedMonth());
+  return inMonth(incomes.filter((item) => !isBuffetIncome(item)), selectedMonth());
+}
+
+function selectedBuffetMonth() {
+  return $("#buffet-period-select")?.value || currentMonth();
+}
+
+function renderBuffet() {
+  const allEntries = buffetEntries(transactions, incomes);
+  const periods = [...new Set([currentMonth(), ...allEntries.map((item) => String(item.date || "").slice(0, 7))])].filter(Boolean).sort().reverse();
+  const buffetPeriod = $("#buffet-period-select");
+  const previousPeriod = buffetPeriod.value || currentMonth();
+  buffetPeriod.innerHTML = periods.map((item) => `<option value="${item}">${escapeHtml(new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date(`${item}-15T12:00:00`)))}</option>`).join("");
+  buffetPeriod.value = periods.includes(previousPeriod) ? previousPeriod : periods[0];
+  const period = selectedBuffetMonth();
+  const entries = allEntries.filter((item) => String(item.date || "").startsWith(period));
+  const incomeTotal = entries.filter(isBuffetIncome).reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const expenseTotal = entries.filter(isBuffetExpense).reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  $("#buffet-income-total").textContent = formatMoney(incomeTotal);
+  $("#buffet-expense-total").textContent = formatMoney(-expenseTotal);
+  $("#buffet-balance-total").textContent = formatMoney(incomeTotal - expenseTotal);
+  $("#buffet-income-count").textContent = `${entries.filter(isBuffetIncome).length} entradas`;
+  $("#buffet-expense-count").textContent = `${entries.filter(isBuffetExpense).length} saídas`;
+  const entryRows = entries.map((item) => `<tr><td>${escapeHtml(formatTransactionDate(item.date))}</td><td>${item.type === "income" ? "Receita" : "Despesa"}</td><td>${escapeHtml(item.description)}</td><td class="align-right ${item.type === "income" ? "income-text" : "expense-text"}">${item.type === "income" ? "+ " : "- "}${formatMoney(item.amount)}</td><td class="align-right"><button class="action-button" data-edit-buffet="${escapeHtml(String(item.id))}" aria-label="Editar ${escapeHtml(item.description)}">•••</button></td></tr>`).join("");
+  $("#buffet-entries-list").innerHTML = entryRows;
+  $("#buffet-entries-empty").hidden = entries.length > 0;
+  const daily = buffetDailyClosings(entries);
+  $("#buffet-daily-list").innerHTML = daily.map((item) => `<tr><td>${escapeHtml(formatTransactionDate(item.date))}</td><td class="align-right income-text">${formatMoney(item.income)}</td><td class="align-right expense-text">${formatMoney(-item.expense)}</td><td class="align-right ${item.balance >= 0 ? "income-text" : "expense-text"}">${formatMoney(item.balance)}</td></tr>`).join("");
+  $("#buffet-daily-empty").hidden = daily.length > 0;
+  const monthly = buffetMonthlyClosings(allEntries);
+  $("#buffet-monthly-list").innerHTML = monthly.map((item) => `<tr><td>${escapeHtml(new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date(`${item.month}-15T12:00:00`)))}</td><td class="align-right income-text">${formatMoney(item.income)}</td><td class="align-right expense-text">${formatMoney(-item.expense)}</td><td class="align-right ${item.balance >= 0 ? "income-text" : "expense-text"}">${formatMoney(item.balance)}</td></tr>`).join("");
+  $("#buffet-monthly-empty").hidden = monthly.length > 0;
+  renderBuffetCalendar(entries, period);
+}
+
+function renderBuffetCalendar(entries, period) {
+  const [year, monthNumber] = period.split("-").map(Number);
+  const firstDay = new Date(Date.UTC(year, monthNumber - 1, 1)).getUTCDay();
+  const daysInMonth = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+  const daily = new Map(buffetDailyClosings(entries).map((item) => [item.date, item]));
+  const cells = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((day) => `<div class="calendar-weekday">${day}</div>`);
+  for (let index = 0; index < firstDay; index += 1) cells.push('<div class="calendar-day calendar-day-empty" aria-hidden="true"></div>');
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const date = `${period}-${String(day).padStart(2, "0")}`;
+    const item = daily.get(date) || { income: 0, expense: 0, balance: 0 };
+    cells.push(`<article class="calendar-day"><strong class="calendar-date">${day}</strong><div class="calendar-values"><span class="calendar-income">Entradas <b>${formatMoney(item.income)}</b></span><span class="calendar-expense">Saídas <b>${formatMoney(-item.expense)}</b></span></div><div class="calendar-balance ${item.balance >= 0 ? "calendar-balance-positive" : "calendar-balance-negative"}"><span>Saldo</span><strong>${formatMoney(item.balance)}</strong></div></article>`);
+  }
+  $("#buffet-calendar").innerHTML = cells.join("");
 }
 
 function renderSummary() {
-  const summary = summarize([...transactions, ...incomes], selectedMonth());
+  const summary = summarize([...monthTransactions(), ...monthIncomes()], selectedMonth());
   const [limitYear, limitMonth] = selectedMonth().split("-").map(Number);
   const limit = limits.find((item) => item.year === limitYear && item.month === limitMonth);
   const incomeCount = summary.items.filter((item) => item.type === "income").length;
@@ -273,7 +322,7 @@ function normalizeCatalogValue(value) {
   return repaired.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
-function render() { renderSummary(); renderFinancialCalendar(); renderTransactions(); }
+function render() { renderSummary(); renderFinancialCalendar(); renderTransactions(); renderBuffet(); }
 
 function renderReports() {
   const items = monthTransactions();
@@ -301,13 +350,16 @@ function renderReports() {
 }
 
 function renderRegistries() {
-  const renderList = (items, kind) => items.length ? items.map((item, index) => {
+  const renderList = (items, kind) => {
+    const visibleItems = items.map((item, index) => ({ item, index })).filter(({ item }) => String(item).trim().toLocaleLowerCase("pt-BR") !== "buffet");
+    return visibleItems.length ? visibleItems.map(({ item, index }) => {
     const table = { type: "expense_types", taker: "takers", location: "locations", creditor: "creditors", paymentMethod: "payment_methods", incomeSource: "income_sources" }[kind];
     const metadata = catalogMetadata[table]?.find((entry) => entry.name === item) || { displayOrder: 0, isActive: true };
     const sortable = ["taker", "creditor", "paymentMethod", "incomeSource"].includes(kind);
     const orderControl = sortable ? `<input class="registry-order" data-catalog-order="${kind}" data-registry-index="${index}" type="text" inputmode="numeric" pattern="[0-9]*" value="${metadata.displayOrder}" aria-label="Ordem de ${escapeHtml(item)}" />` : "";
     return `<li class="${sortable ? "registry-sortable" : ""}" ${sortable ? `draggable="true" data-registry-drag-kind="${kind}" data-registry-drag-index="${index}"` : ""}>${sortable ? `<span class="registry-drag-hint" aria-hidden="true">⠿</span>` : ""}<span class="registry-name">${orderControl}${escapeHtml(item)}</span><span class="registry-actions"><label class="switch" title="${metadata.isActive ? "Ativo" : "Inativo"}"><input data-catalog-status="${kind}" data-registry-index="${index}" type="checkbox" ${metadata.isActive ? "checked" : ""} aria-label="${metadata.isActive ? "Desativar" : "Ativar"} ${escapeHtml(item)}" /><span class="switch-track" aria-hidden="true"></span></label><button type="button" class="registry-action" data-edit-registry="${kind}" data-registry-index="${index}" aria-label="Editar ${escapeHtml(item)}">✎</button><button type="button" class="registry-action danger registry-delete" data-delete-registry="${kind}" data-registry-index="${index}" aria-label="Excluir ${escapeHtml(item)}">×</button></span></li>`;
-  }).join("") + (pendingRegistryOrderSaves.has(kind) ? `<li class="registry-order-save-row"><button type="button" class="small-button registry-order-save" data-save-registry-order="${kind}">Salvar Ordem</button></li>` : "") : `<li class="registry-empty">Nenhum cadastro criado.</li>`;
+    }).join("") + (pendingRegistryOrderSaves.has(kind) ? `<li class="registry-order-save-row"><button type="button" class="small-button registry-order-save" data-save-registry-order="${kind}">Salvar Ordem</button></li>` : "") : `<li class="registry-empty">Nenhum cadastro criado.</li>`;
+  };
   $("#type-registry-list").innerHTML = renderList(expenseTypes, "type");
   $("#taker-registry-list").innerHTML = renderList(takers, "taker");
   $("#creditor-registry-list").innerHTML = renderList(creditors, "creditor");
@@ -455,6 +507,7 @@ function activeCatalog(table, values) {
 }
 
 function openDialog(item) {
+  if (item && isBuffetExpense(item)) return showFeedback("Movimentações do Buffet devem ser editadas no menu Buffet.");
   $("#dialog-title").textContent = item ? "Editar despesa" : "Nova despesa";
   $("#transaction-id").value = item?.id || "";
   $("#description").value = item?.description || "";
@@ -472,6 +525,7 @@ function openDialog(item) {
 }
 
 function openIncomeDialog(item) {
+  if (item && isBuffetIncome(item)) return showFeedback("Receitas do Buffet devem ser editadas no menu Buffet.");
   $("#income-dialog-title").textContent = item ? "Editar receita" : "Nova receita";
   $("#income-id").value = item?.id || "";
   $("#income-description").value = item?.description || "";
@@ -831,6 +885,77 @@ $("#cash-import-confirm-form").addEventListener("submit", (event) => {
 $("#new-income").addEventListener("click", () => openIncomeDialog());
 $("#home-new-transaction").addEventListener("click", () => openDialog());
 $("#home-new-income").addEventListener("click", () => openIncomeDialog());
+function openBuffetIncomeDialog(item) {
+  $("#buffet-income-dialog-title").textContent = item ? "Editar receita" : "Nova receita";
+  $("#buffet-income-id").value = item?.id || "";
+  $("#buffet-income-description").value = item?.description || "";
+  $("#buffet-income-amount").value = item ? formatInputAmount(item.amount) : "";
+  $("#buffet-income-date").value = item?.date || localDate();
+  $("#buffet-income-dialog").showModal();
+}
+function openBuffetExpenseDialog(item) {
+  $("#buffet-expense-dialog-title").textContent = item ? "Editar despesa" : "Nova despesa";
+  $("#buffet-expense-id").value = item?.id || "";
+  $("#buffet-expense-description").value = item?.description || "";
+  $("#buffet-expense-amount").value = item ? formatInputAmount(item.amount) : "";
+  $("#buffet-expense-date").value = item?.date || localDate();
+  $("#buffet-expense-dialog").showModal();
+}
+function persistBuffetEntry(item, id, dialog, successMessage) {
+  const previous = captureState();
+  if (item.type === "income") incomes = upsertEntry(incomes, item);
+  else transactions = upsertEntry(transactions, item);
+  saveTransaction(API_URL, item).then(() => {
+    markTransactionsUpdated();
+    setupFormOptions();
+    render();
+    renderReports();
+    dialog.close();
+    showFeedback(id ? `${successMessage} atualizada.` : `${successMessage} adicionada.`);
+  }).catch((error) => {
+    console.error("Falha ao salvar movimentação do Buffet.", error);
+    restoreState(previous);
+    render();
+    showFeedback(error instanceof Error ? error.message : "Não foi possível salvar a movimentação do Buffet.");
+  });
+}
+$("#buffet-new-income").addEventListener("click", () => openBuffetIncomeDialog());
+$("#buffet-new-expense").addEventListener("click", () => openBuffetExpenseDialog());
+$("#close-buffet-income-dialog").addEventListener("click", () => $("#buffet-income-dialog").close());
+$("#cancel-buffet-income-dialog").addEventListener("click", () => $("#buffet-income-dialog").close());
+$("#close-buffet-expense-dialog").addEventListener("click", () => $("#buffet-expense-dialog").close());
+$("#cancel-buffet-expense-dialog").addEventListener("click", () => $("#buffet-expense-dialog").close());
+$("#buffet-income-amount").addEventListener("input", (event) => {
+  const amount = parseInputAmount(event.target.value);
+  event.target.value = amount ? formatInputAmount(amount) : "";
+});
+$("#buffet-expense-amount").addEventListener("input", (event) => {
+  const amount = parseInputAmount(event.target.value);
+  event.target.value = amount ? formatInputAmount(amount) : "";
+});
+$("#buffet-income-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const id = $("#buffet-income-id").value;
+  const item = { id: id || `buffet-income-${crypto.randomUUID()}`, description: $("#buffet-income-description").value.trim(), amount: parseInputAmount($("#buffet-income-amount").value), type: "income", source: "Buffet", product: "buffet", date: $("#buffet-income-date").value };
+  if (!item.description || !item.amount || !item.date) return showFeedback("Preencha descrição, valor e data.");
+  persistBuffetEntry(item, id, $("#buffet-income-dialog"), "Receita do Buffet");
+});
+$("#buffet-expense-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const id = $("#buffet-expense-id").value;
+  const item = { id: id || `buffet-expense-${crypto.randomUUID()}`, description: $("#buffet-expense-description").value.trim(), amount: parseInputAmount($("#buffet-expense-amount").value), type: "expense", location: "Buffet", expenseType: "Buffet", taker: "Buffet", creditor: "Caixa", product: "buffet", date: $("#buffet-expense-date").value };
+  if (!item.description || !item.amount || !item.date) return showFeedback("Preencha descrição, valor e data.");
+  persistBuffetEntry(item, id, $("#buffet-expense-dialog"), "Despesa do Buffet");
+});
+$("#buffet-period-select").addEventListener("change", renderBuffet);
+$("#buffet-entries-list").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-edit-buffet]");
+  if (!button) return;
+  const item = buffetEntries(transactions, incomes).find((entry) => String(entry.id) === button.dataset.editBuffet);
+  if (!item) return;
+  if (item.type === "income") openBuffetIncomeDialog(item);
+  else openBuffetExpenseDialog(item);
+});
 $("#close-dialog").addEventListener("click", () => $("#transaction-dialog").close());
 $("#cancel-dialog").addEventListener("click", () => $("#transaction-dialog").close());
 $("#close-income-dialog").addEventListener("click", () => $("#income-dialog").close());
@@ -1310,7 +1435,7 @@ $("#registry-lists").addEventListener("change", (event) => {
   if (statusInput) entry.isActive = statusInput.checked;
   saveCatalog(API_URL, { action: "rename", kind, current: name, name, displayOrder: entry.displayOrder, isActive: entry.isActive }).then(() => { setupFormOptions(); renderRegistries(); showFeedback("Cadastro atualizado."); }).catch(() => { restoreState(previous); setupFormOptions(); renderRegistries(); showFeedback("Não foi possível atualizar o cadastro."); });
 });
-const pages = ["resumo", "lancamentos", "vendas", "faturamento", "relatorios", "cadastros", "ferramentas"];
+const pages = ["resumo", "lancamentos", "vendas", "faturamento", "relatorios", "cadastros", "ferramentas", "buffet"];
 function renderPage() {
   const page = pages.includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : "resumo";
   document.querySelectorAll("[data-page]").forEach((section) => { section.hidden = section.dataset.page !== page; });

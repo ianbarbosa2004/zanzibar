@@ -89,6 +89,14 @@ a { color: inherit; text-decoration: none; }
 .report-period-banner label { display: grid; gap: 6px; min-width: 210px; margin: 0; color: var(--accent-dark); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .report-period-banner select { width: 100%; padding: 11px 12px; border: 1px solid #a8ceb7; border-radius: 9px; color: var(--ink); background: #fff; font: inherit; font-size: 12px; font-weight: 700; letter-spacing: 0; text-transform: none; }
 .financial-calendar { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); overflow: hidden; border: 1px solid #aab6d4; border-radius: 2px; background: #fff; }
+.buffet-grid { display: grid; gap: 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.buffet-summary-grid { margin-bottom: 1rem; }
+.buffet-panel { min-width: 0; }
+.buffet-panel .table-wrap { overflow-x: auto; }
+.buffet-panel table { min-width: 560px; }
+.buffet-panel .calendar-day { min-height: 8rem; }
+.buffet-section .section-actions { align-items: end; }
+.buffet-section .month-picker { min-width: 10rem; }
 .calendar-weekday { padding: 7px 4px; color: #fff; background: #111; font-size: 10px; font-weight: 700; text-align: center; }
 .calendar-day { display: flex; min-height: 142px; flex-direction: column; border-top: 1px solid #aab6d4; border-right: 1px solid #aab6d4; background: #fff; }
 .calendar-day:nth-child(7n) { border-right: 0; }
@@ -328,7 +336,7 @@ label input, label select { display: block; width: 100%; margin-top: 6px; paddin
 label input:focus-visible, label select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 dialog { overscroll-behavior: contain; }
 @media (max-width: 1050px) { .reports-grid { grid-template-columns: 1fr 1fr; } .reports-grid .report-panel:last-child { grid-column: span 2; } }
-@media (max-width: 850px) { .sidebar { width: 205px; } .content { padding: 30px 3%; } .overview { grid-template-columns: 1fr 1fr; gap: 18px; } .balance-card { grid-column: span 2; } .dashboard-grid { grid-template-columns: 1fr; gap: 18px; } .reports-grid, .registry-grid { grid-template-columns: 1fr; gap: 18px; } .reports-grid .report-panel:last-child { grid-column: auto; } }
+@media (max-width: 850px) { .sidebar { width: 205px; } .content { padding: 30px 3%; } .overview { grid-template-columns: 1fr 1fr; gap: 18px; } .balance-card { grid-column: span 2; } .dashboard-grid { grid-template-columns: 1fr; gap: 18px; } .reports-grid, .registry-grid, .buffet-grid { grid-template-columns: 1fr; gap: 18px; } .reports-grid .report-panel:last-child { grid-column: auto; } }
 @media (max-width: 600px) { .app-shell { display: block; } .sidebar { align-items: center; flex-direction: row; width: 100%; padding: 14px 18px; } .brand { margin: 0; } .main-nav, .sidebar-bottom { display: none; } .content { padding: 25px 16px; } .topbar { margin-bottom: 25px; } .topbar h1 { font-size: 24px; } .overview { display: block; margin-bottom: 22px; } .balance-card, .metric-card, .panel { margin-bottom: 16px; } .metric-card { display: inline-flex; width: calc(50% - 7px); min-height: 128px; margin-right: 7px; } .dashboard-grid { margin: 22px 0 36px; } .toolbar { align-items: stretch; flex-wrap: wrap; } .search-box { width: 100%; } .toolbar select { flex: 1; min-width: 130px; } .toolbar-hint { display: none; } table { min-width: 700px; } .table-wrap { overflow-x: auto; } .section-heading { align-items: flex-start; gap: 12px; } .section-heading h2 { font-size: 18px; } .section-actions { flex-direction: column; align-items: stretch; } .section-actions select { width: 100%; } .report-period-banner { align-items: stretch; flex-direction: column; gap: 14px; } .report-period-banner label { min-width: 0; } .primary-button { padding: 10px; } .transactions-section { margin-bottom: 22px; padding: 14px; } }
 
 @media (max-width: 1100px) {
