@@ -23,9 +23,11 @@ campo para esse tipo de ambiente; o prompt é que determina o uso de `main`.
 Os IDs do projeto e das automações são específicos de cada computador.
 
 Antes de qualquer build, teste, commit, push ou deploy, execute `git status
---short`, `git diff --cached` e `git diff`. Classifique cada alteração staged
-ou não staged. Incorpore somente arquivos seguros pertencentes à tarefa atual,
-preservando seu conteúdo; não inclua runtime, snapshots, backups, `dist/`,
+--short`, `git diff --cached` e `git diff`. O checkout local é a fonte
+prioritária: classifique e preserve primeiro todo staged, não staged e não
+rastreado. Incorpore alterações locais seguras pertencentes ao projeto,
+inclusive staged deixado por outra sessão, sem substituir seu conteúdo por
+uma cópia remota. Não inclua runtime, snapshots, backups, `dist/`,
 `node_modules/`, credenciais, chaves privadas ou `.htaccess`. Se a origem,
 intenção ou segurança de qualquer arquivo for ambígua, pare e informe o
 caminho exato. Nunca use `git reset --hard`, `git checkout --`, `git clean`
@@ -55,14 +57,18 @@ Confirme que o remoto aponta para o repositório oficial
 ianbarbosa2004/zanzibar e que a branch é main. Classifique toda alteração
 staged, não staged e não rastreada. Nunca use git reset --hard, git checkout --,
 git clean, git restore, force push ou qualquer comando que apague trabalho.
-Não sobrescreva nem remova arquivos locais. Se houver alterações locais que
-não possam ser classificadas com segurança, pare e informe os caminhos exatos.
+Não sobrescreva nem remova arquivos locais. Compare o conteúdo local com
+origin/main antes de decidir. Se as alterações locais forem seguras, coerentes
+com a tarefa e não contiverem segredos ou runtime, elas prevalecem: execute as
+validações, incorpore o staged e o não staged seguro, faça commit e push direto
+para origin/main. Registre no relatório os arquivos e a decisão. Se a origem,
+intenção ou segurança não puder ser confirmada, pare e preserve tudo.
 
-Se o checkout estiver limpo e HEAD estiver atrás de origin/main, atualize
-somente com git pull --ff-only origin main. Se houver divergência de histórico,
-branch incorreta, remoto incorreto, alterações locais ou falha de rede, pare
-sem tentar resolver destrutivamente e explique a ação manual necessária. Se
-HEAD já estiver em origin/main, confirme que não há atualização pendente.
+Somente quando o checkout estiver limpo, atualize com `git pull --ff-only
+origin main` se HEAD estiver atrás de origin/main. Se houver divergência de
+histórico, branch incorreta, remoto incorreto ou falha de rede, pare sem tentar
+resolver destrutivamente e explique a ação manual necessária. Se HEAD já
+estiver em origin/main, confirme que não há atualização pendente.
 
 Após a sincronização segura, leia integralmente README.md, CONTRIBUTING.md,
 docs/CONTINUITY-PROMPT.md, docs/AUTOMATIONS.md, docs/AUTOMATION-PROMPTS.md e
@@ -87,7 +93,9 @@ dependências instaladas. Não instale nada sem necessidade; se node_modules
 estiver ausente, execute npm.cmd install somente quando isso for indispensável
 para validar o projeto. Execute npm.cmd run build, npm.cmd test, node --check
 app.js, node --check server.js e git diff --check quando o checkout estiver
-íntegro. Não faça commit, push, PR, merge ou deploy. Não altere data.json,
+íntegro. A sincronização pode fazer commit e push direto somente das alterações
+locais seguras previamente analisadas; não cria PR, não faz merge e não faz
+deploy. Não altere data.json,
 settings.json, outros arquivos de runtime, snapshots, backups, dist,
 node_modules, credenciais, chaves privadas ou .htaccess. Finalize com um
 relatório contendo SHA local, SHA de origin/main, arquivos preservados,

@@ -108,8 +108,10 @@ npm.cmd test
   [`docs/AUTOMATION-PROMPTS.md`](docs/AUTOMATION-PROMPTS.md).
 - Ao trocar de computador ou recuperar uma sessão perdida, execute primeiro
   `sincronizar desenvolvimento`. Ela usa somente fast-forward seguro para
-  alinhar `main` com `origin/main`, preserva alterações locais e audita os
-  arquivos Markdown e as automações antes das validações.
+  alinhar `main` com `origin/main`, mas trata alterações locais seguras como
+  fonte prioritária: analisa, valida, commita e envia essas alterações antes
+  de buscar conteúdo remoto. Alterações ambíguas são preservadas e bloqueiam
+  a execução.
 
 ## Arquitetura
 
