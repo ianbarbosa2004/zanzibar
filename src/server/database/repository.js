@@ -295,8 +295,8 @@ export async function saveCashClosing(date, items) {
     const sales = items.reduce((sum, item) => sum + Number(item.saleCount || 0), 0);
     const incomeId = `cash-closing-income-${date}`;
     const [incomeRows] = await connection.query("SELECT id FROM transactions WHERE client_id = ?", [incomeId]);
-    const incomeValues = [`Vendas dia ${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)} (${sales})`, amount, "income", "Vendas", date];
-    if (incomeRows[0]) await connection.execute("UPDATE transactions SET description = ?, amount = ?, type = ?, expense_type = NULL, taker = NULL, location = NULL, creditor = NULL, transaction_date = ? WHERE id = ?", [incomeValues[0], incomeValues[1], incomeValues[2], incomeValues[4], incomeRows[0].id]);
+    const incomeValues = [`Vendas dia ${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)} (${sales})`, amount, "income", date];
+    if (incomeRows[0]) await connection.execute("UPDATE transactions SET description = ?, amount = ?, type = ?, expense_type = NULL, taker = NULL, location = NULL, creditor = NULL, transaction_date = ? WHERE id = ?", [...incomeValues, incomeRows[0].id]);
     else await connection.execute("INSERT INTO transactions (client_id, description, amount, type, transaction_date) VALUES (?, ?, ?, ?, ?)", [incomeId, ...incomeValues]);
     await refreshBillings(connection);
     await connection.commit();
