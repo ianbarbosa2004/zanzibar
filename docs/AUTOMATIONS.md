@@ -97,9 +97,12 @@ executa o procedimento sem iniciar a automação pelo painel. Isso evita uma
 pergunta interativa em uma sessão separada, cuja resposta não retornaria a este
 chat.
 Depois de sincronizar, porém, ela lê os Markdown operacionais recém obtidos e
-assume suas diretrizes como contexto da sessão/worktree. Ler e incorporar
+assume suas diretrizes como contexto da sessão/worktree. Em seguida, compara
+as automações locais com a configuração canônica desses arquivos e corrige
+somente divergências: atualiza prompts/parâmetros das quatro automações
+oficiais, recria uma oficial ausente e não cria duplicatas. Ler e incorporar
 diretrizes significa aplicar o conteúdo às decisões da execução; não significa
-editar, reformatar ou substituir esses arquivos.
+editar, reformatar ou substituir os arquivos Markdown.
 
 **Para interromper o trabalho neste computador:** execute-a enquanto houver
 alterações do desenvolvimento. Ela verifica os arquivos, executa build/testes,
@@ -114,15 +117,18 @@ somente `git pull --ff-only origin main` quando o computador local estiver
 atrás. Depois lê `README.md`, `CONTRIBUTING.md`, `docs/CONTINUITY-PROMPT.md`,
 `docs/AUTOMATIONS.md`, `docs/AUTOMATION-PROMPTS.md` e `docs/DEPLOYMENT.md`,
 resume as regras novas ou alteradas e passa a obedecê-las no restante da
-sessão. Não modifica esses arquivos como parte da sincronização. Em seguida
-roda as validações e informa o SHA sincronizado. Se houver
+sessão. Em seguida, compara e sincroniza as automações `sincronizar
+desenvolvimento`, `atualizar readme`, `atualizar repositorio` e `publicar
+online`, usando projeto, branch, modo, workspace, intervalo e prompts
+versionados. Mantém a automação `DESATIVADA - atualizar readme` excluída e
+nunca a executa. Não modifica os arquivos Markdown como parte da
+sincronização. Em seguida roda as validações e informa o SHA sincronizado. Se houver
 qualquer alteração local, ela não faz pull nem sobrescreve arquivos: informa
 os caminhos para que o usuário execute primeiro a operação de interrupção.
 
 Ela nunca usa `reset --hard`, `checkout --`, `restore`, `clean`, force push,
-PR, merge ou deploy. As quatro automações oficiais e seus prompts são
-mantidos pela documentação versionada e recriados separadamente quando
-necessário.
+PR, merge ou deploy. A sincronização das automações altera somente a
+configuração delas na plataforma; não altera o checkout nem publica código.
 
 ## `atualizar readme`
 

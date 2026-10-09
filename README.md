@@ -113,8 +113,10 @@ npm.cmd test
   retomar, exige checkout limpo,
   baixa com `git pull --ff-only`, lê os Markdown operacionais e incorpora suas
   diretrizes à sessão antes de continuar. Ela nunca sobrescreve trabalho local,
-  usa force push ou faz deploy; incorporar diretrizes não altera os arquivos
-  Markdown.
+  usa force push ou faz deploy. Depois, compara e sincroniza as quatro
+  automações oficiais com os prompts e parâmetros versionados, sem duplicar
+  automações nem executar a marcada `DESATIVADA -`; incorporar diretrizes não
+  altera os arquivos Markdown.
 - Em uma sessão do Copilot já aberta, o mesmo procedimento pode ser acionado
   diretamente pelo chat com `Finalizar trabalho neste computador` ou
   `Retomar/continuar trabalho neste computador`. Isso evita depender de uma

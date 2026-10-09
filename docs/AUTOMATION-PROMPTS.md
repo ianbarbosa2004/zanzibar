@@ -74,7 +74,21 @@ Se houver mudança de diretriz, obedeça à versão baixada a partir desse ponto
 registre no relatório quais regras foram incorporadas. Não edite, reescreva,
 reformate, reverta ou faça commit desses Markdown durante esta automação:
 incorporar o conteúdo é uma leitura operacional, não a tarefa de atualizar
-readme. Informe o SHA sincronizado. Se houver qualquer alteração local, não
+readme.
+
+Ainda na operação de retomada, consulte as automações da plataforma no projeto
+zanzibar e compare-as com a configuração canônica dos Markdown. As quatro
+automações oficiais são `sincronizar desenvolvimento`, `atualizar readme`,
+`atualizar repositorio` e `publicar online`; todas devem usar projeto zanzibar,
+branch main, modo autopilot, workspace branch e intervalo manual, além dos
+prompts versionados. Atualize somente a automação oficial que estiver
+divergente e recrie somente a oficial ausente. Não crie duplicatas, não altere
+automações sem divergência e não execute nem recrie a automação com prefixo
+`DESATIVADA -`. Registre no relatório o nome, ação (mantida, atualizada ou
+recriada) e divergência encontrada de cada automação. Essa sincronização de
+configuração ocorre apenas na plataforma e não edita arquivos do checkout.
+
+Informe o SHA sincronizado. Se houver qualquer alteração local, não
 faça pull nem leia uma versão remota por cima: informe os caminhos e instrua o
 usuário a executar primeiro a operação 1.
 Se houver divergência de histórico, branch incorreta, remoto incorreto ou
@@ -89,9 +103,9 @@ checkpoint novo para publicar, sem criar commit vazio.
 Em ambas as operações nunca use git reset --hard, git checkout --, git restore,
 git clean, force push, PR, merge ou deploy. A leitura dos Markdown ocorre
 somente depois de o estado seguro ser confirmado; ela serve para incorporar
-diretrizes, não para decidir a operação nem para alterar a documentação. A
-conferência ou recriação das quatro automações é uma tarefa separada e usa
-este arquivo como contrato.
+diretrizes e sincronizar a configuração das automações, não para alterar a
+documentação. Não altere código, runtime, dados ou credenciais para atualizar
+as automações.
 ```
 
 ## `atualizar readme`
