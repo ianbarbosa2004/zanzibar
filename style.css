@@ -278,7 +278,7 @@ td:first-child { color: var(--ink); font-weight: 650; }
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
 dialog { width: min(480px, calc(100% - 32px)); padding: 0; border: 0; border-radius: 16px; color: var(--ink); box-shadow: 0 20px 60px #193b3730; }
 dialog::backdrop { background: #193b3766; }
-#transaction-form, #income-form, #cash-closing-form, #monthly-cash-closing-form, #limit-form, #import-form { padding: 25px; }
+#transaction-form, #income-form, #buffet-income-form, #buffet-expense-form, #cash-closing-form, #monthly-cash-closing-form, #limit-form, #import-form { padding: 25px; }
 .import-summary { margin: 0 0 13px; color: var(--accent-dark); font-size: 11px; }
 .import-form-file { display: block; margin-bottom: 15px; }
 .import-form-file input { padding: 8px; background: #fbfcfa; }
@@ -410,7 +410,7 @@ dialog { overscroll-behavior: contain; }
   .reports-grid, .registry-grid { gap: 14px; }
   .report-panel { min-height: 190px; }
   .dialog-heading h2 { font-size: 18px; }
-  #transaction-form, #import-form { padding: 20px; }
+  #transaction-form, #income-form, #buffet-income-form, #buffet-expense-form, #import-form { padding: 20px; }
   .form-row { grid-template-columns: 1fr; gap: 0; }
   .calendar-section { overflow-x: auto; }
   .financial-calendar { min-width: 700px; }
