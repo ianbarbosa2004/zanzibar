@@ -88,6 +88,14 @@ Antes de executar qualquer comando, pergunta qual operação o usuário deseja:
 **Finalizar trabalho neste computador** ou **Retomar/continuar trabalho neste
 computador**. O estado do Git é usado como trava de segurança, não para
 adivinhar a intenção do usuário.
+
+Quando o usuário estiver trabalhando em uma sessão já aberta, pode acionar o
+mesmo procedimento diretamente no chat com uma destas frases exatas:
+`Finalizar trabalho neste computador` ou
+`Retomar/continuar trabalho neste computador`. Nesse caso, a sessão atual
+executa o procedimento sem iniciar a automação pelo painel. Isso evita uma
+pergunta interativa em uma sessão separada, cuja resposta não retornaria a este
+chat.
 Depois de sincronizar, porém, ela lê os Markdown operacionais recém obtidos e
 assume suas diretrizes como contexto da sessão/worktree. Ler e incorporar
 diretrizes significa aplicar o conteúdo às decisões da execução; não significa

@@ -115,6 +115,10 @@ npm.cmd test
   diretrizes à sessão antes de continuar. Ela nunca sobrescreve trabalho local,
   usa force push ou faz deploy; incorporar diretrizes não altera os arquivos
   Markdown.
+- Em uma sessão do Copilot já aberta, o mesmo procedimento pode ser acionado
+  diretamente pelo chat com `Finalizar trabalho neste computador` ou
+  `Retomar/continuar trabalho neste computador`. Isso evita depender de uma
+  pergunta interativa em uma execução separada da automação.
 
 ## Arquitetura
 
