@@ -322,21 +322,21 @@ export async function saveTransaction(item) {
     const numericId = Number.isInteger(item.id) || /^\d+$/.test(String(item.id)) ? Number(item.id) : null;
     const [existing] = await connection.query("SELECT id FROM transactions WHERE id = ? OR client_id = ?", [numericId || 0, String(item.id)]);
     const income = item.type === "income";
-    const lookup = async (table, name, fallback = null) => {
+    const lookup = async (table, name) => {
       if (!name) return null;
       const [rows] = await connection.query(`SELECT id FROM ${table} WHERE name = ? LIMIT 1`, [name]);
-      if (!rows[0] && fallback) {
-        await connection.execute(`INSERT INTO ${table} (name, slug) VALUES (?, ?)`, [name, fallback]);
+      if (!rows[0]) {
+        await connection.execute(`INSERT INTO ${table} (name, slug) VALUES (?, ?)`, [name, toSlug(name)]);
         const [created] = await connection.query(`SELECT id FROM ${table} WHERE name = ? LIMIT 1`, [name]);
         return created[0]?.id || null;
       }
       return rows[0]?.id || null;
     };
-    const expenseTypeId = income ? null : await lookup("expense_types", item.expenseType, "outros");
-    const takerId = income ? null : await lookup("takers", item.taker, "pessoal");
-    const locationId = income ? null : await lookup("locations", item.location, "casa");
-    const creditorId = income ? null : await lookup("creditors", item.creditor, "caixa");
-    const sourceId = income ? await lookup("income_sources", item.source, "salario") : null;
+    const expenseTypeId = income ? null : await lookup("expense_types", item.expenseType);
+    const takerId = income ? null : await lookup("takers", item.taker);
+    const locationId = income ? null : await lookup("locations", item.location);
+    const creditorId = income ? null : await lookup("creditors", item.creditor);
+    const sourceId = income ? await lookup("income_sources", item.source) : null;
     const values = [item.description, Number(item.amount || 0), income ? "income" : "expense", income ? null : item.expenseType, income ? null : item.taker, income ? null : item.location, income ? null : item.creditor, expenseTypeId, takerId, locationId, creditorId, sourceId, item.date];
     if (existing[0]) {
       await connection.execute("UPDATE transactions SET description = ?, amount = ?, type = ?, expense_type = ?, taker = ?, location = ?, creditor = ?, expense_type_id = ?, taker_id = ?, location_id = ?, creditor_id = ?, income_source_id = ?, transaction_date = ? WHERE id = ?", [...values, existing[0].id]);
