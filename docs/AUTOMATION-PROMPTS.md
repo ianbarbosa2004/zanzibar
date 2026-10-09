@@ -31,6 +31,70 @@ intenção ou segurança de qualquer arquivo for ambígua, pare e informe o
 caminho exato. Nunca use `git reset --hard`, `git checkout --`, `git clean`
 ou equivalente para apagar alterações.
 
+## `sincronizar desenvolvimento`
+
+```text
+Use somente o checkout de desenvolvimento do projeto zanzibar, em branch main,
+como fonte local e origin/main como versão oficial. Esta automação serve para
+trocar entre dois computadores, recuperar uma sessão ou worktree perdido e
+reconstruir o contexto operacional sem perda de informação. Não use worktrees,
+cópias, checkouts alternativos ou outro projeto.
+
+Antes de alterar qualquer arquivo, execute e registre:
+git remote -v
+git branch --show-current
+git status --short
+git diff --cached
+git diff
+git log -1 --oneline
+git fetch origin main
+git rev-parse HEAD
+git rev-parse origin/main
+
+Confirme que o remoto aponta para o repositório oficial
+ianbarbosa2004/zanzibar e que a branch é main. Classifique toda alteração
+staged, não staged e não rastreada. Nunca use git reset --hard, git checkout --,
+git clean, git restore, force push ou qualquer comando que apague trabalho.
+Não sobrescreva nem remova arquivos locais. Se houver alterações locais que
+não possam ser classificadas com segurança, pare e informe os caminhos exatos.
+
+Se o checkout estiver limpo e HEAD estiver atrás de origin/main, atualize
+somente com git pull --ff-only origin main. Se houver divergência de histórico,
+branch incorreta, remoto incorreto, alterações locais ou falha de rede, pare
+sem tentar resolver destrutivamente e explique a ação manual necessária. Se
+HEAD já estiver em origin/main, confirme que não há atualização pendente.
+
+Após a sincronização segura, leia integralmente README.md, CONTRIBUTING.md,
+docs/CONTINUITY-PROMPT.md, docs/AUTOMATIONS.md, docs/AUTOMATION-PROMPTS.md e
+docs/DEPLOYMENT.md. Extraia as regras atuais de arquitetura, validação,
+persistência MySQL, deploy, proteção de dados, staged, branch e automações.
+Compare a configuração disponível na plataforma com as quatro automações
+oficiais: sincronizar desenvolvimento, atualizar readme, atualizar
+repositorio e publicar online. Confira nome, projeto zanzibar, ambiente local,
+modo autopilot, workspace branch, intervalo manual, uso exclusivo de main e
+conteúdo do prompt. A automação com prefixo DESATIVADA - deve continuar
+excluída e nunca ser executada.
+
+Se uma automação oficial estiver ausente e a plataforma fornecer uma operação
+segura para recriá-la, recrie somente a ausente usando os prompts versionados
+em docs/AUTOMATION-PROMPTS.md, sem duplicar automações existentes. Se não for
+possível recriar pela execução atual, produza uma lista precisa com nome,
+parâmetros e prompt que devem ser recriados manualmente. Nunca altere, exclua
+ou renomeie uma automação existente sem confirmação explícita.
+
+Verifique package.json, arquivos de configuração do Vite/Node e a presença de
+dependências instaladas. Não instale nada sem necessidade; se node_modules
+estiver ausente, execute npm.cmd install somente quando isso for indispensável
+para validar o projeto. Execute npm.cmd run build, npm.cmd test, node --check
+app.js, node --check server.js e git diff --check quando o checkout estiver
+íntegro. Não faça commit, push, PR, merge ou deploy. Não altere data.json,
+settings.json, outros arquivos de runtime, snapshots, backups, dist,
+node_modules, credenciais, chaves privadas ou .htaccess. Finalize com um
+relatório contendo SHA local, SHA de origin/main, arquivos preservados,
+divergências encontradas, automações conferidas/recriadas e validações
+executadas.
+```
+
 ## `atualizar readme`
 
 ```text

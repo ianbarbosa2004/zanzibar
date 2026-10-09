@@ -10,6 +10,7 @@ permanecer coerente com este documento e com o contrato em
 
 | Nome | Modo | Workspace | Fonte | Responsabilidade |
 | --- | --- | --- | --- | --- |
+| `sincronizar desenvolvimento` | `autopilot` | `branch` | `main` | Alinhar o checkout local com `origin/main`, recuperar contexto e auditar continuidade |
 | `atualizar readme` | `autopilot` | `branch` | `main` | Atualizar Markdown afetado e enviar diretamente para `main` |
 | `atualizar repositorio` | `autopilot` | `branch` | `main` | Integrar código, testes, configuração e documentação diretamente em `main` |
 | `publicar online` | `autopilot` | `branch` | `main` | Publicar no cPanel, sem PR ou merge |
@@ -43,7 +44,7 @@ execuções podem ser diferentes; o comportamento e o texto dos prompts não.
 uma duplicata antiga da automação de documentação e deve ser excluída no
 painel. Não execute essa automação. O prefixo `DESATIVADA -` é uma marcação
 visual para facilitar a identificação até a exclusão manual. Use somente as
-três automações sem esse prefixo.
+quatro automações sem esse prefixo.
 
 ## Regras comuns
 
@@ -77,6 +78,31 @@ Alterações visuais, correções de código e mudanças de documentação não 
 deploy automaticamente. PR, merge e deploy dependem de solicitação explícita
 do usuário, respeitando a responsabilidade de cada automação abaixo.
 
+## `sincronizar desenvolvimento`
+
+É a primeira automação a executar ao trocar de computador, recuperar uma
+sessão/worktree perdida ou suspeitar que o checkout local está desatualizado.
+Ela consulta `origin/main`, verifica a identidade do repositório, branch,
+remoto e estado do índice, e só aplica uma atualização fast-forward quando não
+há alterações locais ambíguas. Nunca sobrescreve, reseta ou remove arquivos
+locais. Alterações locais seguras devem ser preservadas e alterações
+staged/não staged que possam ser trabalho do usuário interrompem a
+sincronização para análise explícita.
+
+Depois de alinhar o código, ela lê `README.md`, `CONTRIBUTING.md`,
+`docs/CONTINUITY-PROMPT.md`, `docs/AUTOMATIONS.md`,
+`docs/AUTOMATION-PROMPTS.md` e a documentação de deploy, verifica a presença
+das quatro automações oficiais e compara seus nomes, projeto, modo, workspace,
+intervalo e prompts com o contrato versionado. Se a plataforma permitir
+recriação no contexto da execução, deve recriar somente automações ausentes
+com esses parâmetros; caso contrário, deve produzir um relatório preciso para
+recriação manual, sem criar duplicatas. Ela também instala dependências apenas
+se necessário, valida o projeto e registra divergências que exigem decisão.
+
+Essa automação não faz commit, push, PR, merge ou deploy. A atualização de
+`main` é feita apenas quando o checkout está seguro e por `git pull --ff-only`;
+a publicação online continua exigindo autorização explícita.
+
 ## `atualizar readme`
 
 Analisa as implementações recentes, commits, PRs mesclados e o estado do
@@ -107,9 +133,11 @@ credenciais, chaves privadas ou `node_modules`.
 
 Quando o usuário solicitar integração e publicação, a ordem é:
 
-1. `atualizar readme`, se houver documentação a atualizar;
-2. `atualizar repositorio`, para enviar alterações a `main`;
-3. `publicar online`, somente após autorização explícita.
+1. `sincronizar desenvolvimento`, ao iniciar em outra máquina ou após perda
+   de sessão/worktree;
+2. `atualizar readme`, se houver documentação a atualizar;
+3. `atualizar repositorio`, para enviar alterações a `main`;
+4. `publicar online`, somente após autorização explícita.
 
 O resultado de uma automação deve ser analisado antes da próxima. Mudanças de
 schema, migração, foreign key ou persistência MySQL exigem validação remota

@@ -93,10 +93,15 @@ git diff --check
 - A publicação usa exclusivamente `.github/scripts/deploy.ps1`, preserva
   dados MySQL, arquivos de runtime, backups e `.htaccess`, e nunca envia
   `data.json`, `settings.json`, `node_modules`, credenciais ou chaves privadas.
-- As automações oficiais são `atualizar readme`, `atualizar repositorio` e
-  `publicar online`; a configuração reproduzível está em
+- As automações oficiais são `sincronizar desenvolvimento`, `atualizar
+  readme`, `atualizar repositorio` e `publicar online`; a configuração
+  reproduzível está em
   [`docs/AUTOMATIONS.md`](docs/AUTOMATIONS.md) e
   [`docs/AUTOMATION-PROMPTS.md`](docs/AUTOMATION-PROMPTS.md).
+- Ao trocar de computador ou recuperar uma sessão perdida, execute primeiro
+  `sincronizar desenvolvimento`. Ela usa somente fast-forward seguro para
+  alinhar `main` com `origin/main`, preserva alterações locais e audita os
+  arquivos Markdown e as automações antes das validações.
 
 ## Arquitetura
 
