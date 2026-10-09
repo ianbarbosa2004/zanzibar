@@ -6,6 +6,11 @@ O entrypoint do CloudLinux Passenger é `server.js`. A aplicação usa `/clareza
 
 O `.htaccess` é administrado pelo cPanel e não deve ser sobrescrito. Dados de produção ficam no MySQL; os arquivos `data.json`, `settings.json`, `incomes.json`, `cash-closings.json` e `monthly-cash-closings.json` não são enviados e devem ser preservados. O CRUD de produção grava somente por SQL no MySQL.
 
+O fluxo de integração é protegido por pull request contra `main`, mas a
+publicação operacional é direta: o script envia o checkout local validado ao
+cPanel, sem criar, mesclar ou aguardar um pull request. Essa separação não
+autoriza publicar um checkout não validado nem alterar os dados de produção.
+
 ## Procedimento oficial
 
 ### Migrações MySQL
@@ -23,7 +28,14 @@ git diff --check
 powershell -NoProfile -ExecutionPolicy Bypass -File .github\scripts\deploy.ps1
 ```
 
+No Windows, se `npm.ps1` for bloqueado pela política de execução, use
+`npm.cmd run build` e `npm.cmd test` para as validações equivalentes.
+
 Alterações de código locais são permitidas e são justamente o conteúdo a ser publicado diretamente. O script gera `dist/` localmente, remove somente a pasta `dist/` remota e envia o novo build. `data.json`, `settings.json`, `incomes.json`, `cash-closings.json`, `limits.json`, backups e `.htaccess` são preservados no servidor; nenhum desses arquivos deve ser incluído no upload como parte do build.
+
+O script não envia `local-snapshot.json`, `node_modules/`, credenciais ou
+chaves privadas. O modo de snapshot é somente para leitura local e mantém
+todas as gravações bloqueadas.
 
 A proteção de `main` exige que a integração no GitHub passe pelo pull request e pelos checks configurados; ela não é substituída pelo deploy operacional. O script publica o checkout local escolhido, sem criar, mesclar ou aguardar PR. Depois do upload, ele publica `deploy-version.json` com o SHA do commit e confirma por HTTP que o cPanel está servindo esse mesmo SHA. A saída `CLAREZA_DEPLOY_COMMIT` é a referência da versão efetivamente publicada.
 

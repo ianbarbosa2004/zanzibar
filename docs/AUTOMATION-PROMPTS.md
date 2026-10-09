@@ -27,6 +27,10 @@ Para arquivos estáticos, deve normalizar `/` e `\`, rejeitar caminhos que escap
 
 Analisa código, commits, PRs mesclados e o estado do repositório. Atualiza somente os Markdown afetados entre `README.md`, `CONTRIBUTING.md`, `docs/DEPLOYMENT.md`, `docs/CONTINUITY-PROMPT.md`, `docs/AUTOMATIONS.md` e `docs/AUTOMATION-PROMPTS.md`. Deve executar build, testes, verificações de sintaxe e `git diff --check`, criar PR e solicitar merge automático. No Windows, se `npm run build` falhar porque a política de execução bloqueou `npm.ps1`, deve repetir o mesmo comando como `npm.cmd run build` ou por `powershell.exe -NoProfile -ExecutionPolicy Bypass`; deve registrar a ocorrência e o comando alternativo usado, sem tratar o bloqueio do shell como falha do projeto. Não executa nem dispara deploy.
 
+Essa automação não altera código nem publica no cPanel. O checkout
+documental segue as regras de branch e PR contra `main`; a publicação direta
+é responsabilidade exclusiva de `atualizar online`.
+
 ## `atualizar online`
 
 Publica diretamente no cPanel o checkout local validado. Não cria, inspeciona, aguarda ou mescla PR; também não faz pull, push, switch de branch ou reset Git. Executa as validações prévias e somente o script oficial `.github/scripts/deploy.ps1`. A proteção de `main` continua valendo apenas para a integração no GitHub.

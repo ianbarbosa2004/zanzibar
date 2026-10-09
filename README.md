@@ -80,6 +80,14 @@ node --check server.js
 git diff --check
 ```
 
+No Windows, use `npm.cmd` para evitar o bloqueio de execução do
+`npm.ps1`:
+
+```powershell
+npm.cmd run build
+npm.cmd test
+```
+
 ## Arquitetura
 
 ```text
@@ -109,6 +117,11 @@ Formulários CRUD não enviam mais um snapshot completo do estado. Cada operaç�
 As operações compostas usam transações MySQL. Falhas retornam `503` e não são representadas como sucesso no navegador. Não existe endpoint global de escrita: o estado só pode ser alterado pelos endpoints CRUD específicos.
 
 A tabela `billings` consolida vendas por mês e ano. Períodos históricos usam `monthly_cash_closings`; o mês corrente usa `cash_closings`. O campo `average_ticket` é calculado como `amount / sale_count` (zero quando não há vendas). O fechamento diário recalcula automaticamente o período correspondente, e a página **Faturamento** oferece o botão **Atualizar faturamento** para uma recomposição completa. Como essa funcionalidade altera o schema MySQL, sua implementação exige deploy automático e validação remota antes de ser considerada concluída.
+
+As receitas criadas automaticamente a partir de fechamentos diários podem não
+ter uma linha correspondente em `income_sources`. Nessa leitura, a API
+apresenta a origem técnica `Vendas`/`vendas`, sem criar um catálogo duplicado e
+sem alterar o CRUD direto no MySQL.
 
 A refatoração da aplicação é incremental. Regras de domínio devem ficar em `src/shared`, integrações de navegador em `src/client` e integrações de servidor em `src/server`. Novas funcionalidades devem preservar o contrato da API e incluir testes na camada adequada.
 

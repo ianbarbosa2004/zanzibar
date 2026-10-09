@@ -19,6 +19,9 @@ node --check server.js
 git diff --check
 ```
 
+No Windows, prefira os equivalentes `npm.cmd run build` e `npm.cmd test`
+quando a política de execução bloquear `npm.ps1`.
+
 Para mudanças específicas, os testes também podem ser executados por camada:
 
 ```bash
@@ -37,6 +40,11 @@ Ao adicionar paginação a uma nova listagem, mantenha seu estado separado dos e
 O banco de produção é MySQL. O fallback local usa `data.json`, `settings.json`, `incomes.json` e `cash-closings.json`; esses arquivos são runtime e não devem ser commitados. Alterações de schema, foreign keys, exclusão ou migração devem preservar dados existentes, ser integradas em `main` e disparar automaticamente o deploy oficial assim que a implementação e os testes terminarem. Não considere a implementação concluída enquanto o deploy e a validação remota não terminarem; se o deploy falhar, informe o bloqueio e não trate a migração como concluída.
 
 O procedimento de publicação está em [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+A integração do código ocorre por pull request protegido contra `main`.
+O deploy operacional é separado: publica diretamente no cPanel o checkout
+local validado pelo script oficial e não substitui o PR nem a proteção da
+branch. Uma alteração apenas documental, como esta, não deve executar deploy.
 
 Antes de executar o deploy no Windows, carregue a chave autorizada no
 `ssh-agent` com o procedimento documentado. O script valida essa condição
