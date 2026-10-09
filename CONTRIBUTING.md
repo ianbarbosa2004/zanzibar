@@ -5,7 +5,7 @@
 1. Faça uma alteração pequena e focada, preservando o contrato da API.
 2. Leia os módulos existentes antes de duplicar regras. Regras compartilhadas ficam em `src/shared`, integrações do navegador em `src/client` e integrações do servidor em `src/server`.
 3. Atualize ou crie testes para o comportamento alterado.
-4. Não inclua credenciais, dados de produção, arquivos JSON de runtime (`data.json`, `settings.json`, `incomes.json`, `cash-closings.json` e `limits.json`), `node_modules/` ou `dist/`.
+4. Não inclua credenciais, dados de produção, arquivos JSON de runtime (`data.json`, `settings.json`, `incomes.json`, `cash-closings.json`, `monthly-cash-closings.json` e `limits.json`), `node_modules/` ou `dist/`.
 
 ## Validação local
 
@@ -32,9 +32,11 @@ Toda operação de escrita da interface — despesa, receita ou cadastro auxilia
 
 Ao adicionar paginação a uma nova listagem, mantenha seu estado separado dos estados de filtros e listagens existentes. Não use a coleção inteira de `paginationState` para renderizar uma família específica de componentes: um estado de paginação sem painel correspondente pode lançar uma exceção após uma gravação bem-sucedida e mascarar o sucesso da API.
 
+Fechamentos diários são persistidos por data e devem atualizar, na mesma transação, a receita técnica de vendas da data. A origem dessa receita é `Vendas`; não crie uma segunda transação de receita para o mesmo fechamento. Fechamentos mensais usam sua própria tabela e não sincronizam automaticamente com os fechamentos diários. Ao ler dados antigos, preserve a compatibilidade com receitas de fechamento sem `income_source_id`.
+
 ## Persistência e produção
 
-O banco de produção é MySQL. O fallback local usa `data.json`, `settings.json`, `incomes.json` e `cash-closings.json`; esses arquivos são runtime e não devem ser commitados. Alterações de schema, foreign keys, exclusão ou migração devem preservar dados existentes e ser enviadas diretamente para `main` somente após as validações locais. O deploy não é disparado automaticamente: só publique quando o usuário solicitar, usando exclusivamente `.github/scripts/deploy.ps1`, e considere a alteração operacionalmente concluída somente após a validação remota documentada em [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+O banco de produção é MySQL. O fallback local usa `data.json`, `settings.json`, `incomes.json`, `cash-closings.json`, `monthly-cash-closings.json` e `limits.json`; esses arquivos são runtime e não devem ser commitados. Alterações de schema, foreign keys, exclusão ou migração devem preservar dados existentes, ser integradas em `main` e disparar automaticamente o deploy oficial assim que a implementação e os testes terminarem. Não considere a implementação concluída enquanto o deploy e a validação remota não terminarem; se o deploy falhar, informe o bloqueio e não trate a migração como concluída.
 
 O procedimento de publicação está em [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 

@@ -12,6 +12,7 @@ Aplicação web para organização financeira pessoal e empresarial. O sistema r
 - Categorias, tomadores, locais, credores e fontes de receita.
 - Interface organizada por resumo, movimentações, vendas, relatórios e cadastros, incluindo a área de Empréstimos.
 - Limites e metas mensais com meta, orçamento, previsão, patamar, resultado e status de fechamento.
+- Fechamentos diários agrupados por data e forma de recebimento, com edição do fechamento existente e receita consolidada de vendas.
 - Persistência MySQL com migração da estrutura legada de receitas.
 - Leitura de fallback JSON para desenvolvimento local, sem gravação CRUD quando o MySQL está indisponível.
 - Interface compilada pelo Vite e servida pelo Node.js.
@@ -80,23 +81,6 @@ node --check server.js
 git diff --check
 ```
 
-## Diretrizes operacionais vigentes
-
-- O checkout de desenvolvimento é a fonte única para alterações e
-  automações; não use worktrees, cópias ou checkouts alternativos como fonte.
-- `main` é a versão oficial do repositório e recebe alterações por push
-  direto autorizado. O force push e a exclusão da branch continuam bloqueados.
-- O push normal é `git push origin main`; não use `--force` nem
-  `--force-with-lease`.
-- Alterações visuais não exigem PR, merge ou deploy por padrão. PR, merge e
-  publicação online somente devem ocorrer após solicitação explícita.
-- A publicação usa exclusivamente `.github/scripts/deploy.ps1`, preserva
-  dados MySQL, arquivos de runtime, backups e `.htaccess`, e nunca envia
-  `data.json`, `settings.json`, `node_modules`, credenciais ou chaves privadas.
-- A configuração reproduzível das automações está em
-  [`docs/AUTOMATIONS.md`](docs/AUTOMATIONS.md) e
-  [`docs/AUTOMATION-PROMPTS.md`](docs/AUTOMATION-PROMPTS.md).
-
 ## Arquitetura
 
 ```text
@@ -125,7 +109,9 @@ Formulários CRUD não enviam mais um snapshot completo do estado. Cada operaç�
 
 As operações compostas usam transações MySQL. Falhas retornam `503` e não são representadas como sucesso no navegador. Não existe endpoint global de escrita: o estado só pode ser alterado pelos endpoints CRUD específicos.
 
-A tabela `billings` consolida vendas por mês e ano. Períodos históricos usam `monthly_cash_closings`; o mês corrente usa `cash_closings`. O campo `average_ticket` é calculado como `amount / sale_count` (zero quando não há vendas). O fechamento diário recalcula automaticamente o período correspondente, e a página **Faturamento** oferece o botão **Atualizar faturamento** para uma recomposição completa. Alterações nessa funcionalidade que envolvam schema ou persistência MySQL devem ser integradas em `main` e publicadas pelo script oficial somente após autorização explícita, com validação remota.
+A tabela `billings` consolida vendas por mês e ano. Períodos históricos usam `monthly_cash_closings`; o mês corrente usa `cash_closings`. O campo `average_ticket` é calculado como `amount / sale_count` (zero quando não há vendas). O fechamento diário recalcula automaticamente o período correspondente, e a página **Faturamento** oferece o botão **Atualizar faturamento** para uma recomposição completa. Como essa funcionalidade altera o schema MySQL, sua implementação exige deploy automático e validação remota antes de ser considerada concluída.
+
+O fechamento diário é salvo por data: uma nova gravação substitui os registros daquela data e uma edição reconhece o fechamento pelo `id` numérico ou pelo `client_id`. O total de vendas da data gera ou atualiza uma única receita técnica com origem **Vendas**; essa receita não deve ser duplicada manualmente em `transactions`. Fechamentos mensais usam `monthly_cash_closings` e permanecem independentes dos fechamentos diários. Na inicialização, receitas técnicas antigas sem `income_source_id` continuam sendo exibidas como **Vendas**, evitando perda de contexto durante a migração.
 
 A refatoração da aplicação é incremental. Regras de domínio devem ficar em `src/shared`, integrações de navegador em `src/client` e integrações de servidor em `src/server`. Novas funcionalidades devem preservar o contrato da API e incluir testes na camada adequada.
 
@@ -147,6 +133,7 @@ Sem `CLAREZA_DB_PASSWORD`, o desenvolvimento usa estes arquivos na raiz:
 - `settings.json`
 - `incomes.json`
 - `cash-closings.json`
+- `monthly-cash-closings.json`
 - `limits.json`
 
 Eles são arquivos de runtime ignorados pelo Git. Os arquivos `*.example.json`, quando presentes, servem como referência de estrutura. Não coloque credenciais ou dados reais nesses arquivos.
@@ -242,7 +229,7 @@ As principais rotas são:
 | --- | --- | --- |
 | `GET` | `/clareza/api/data` | Lê transações, receitas derivadas e configurações |
 | `PUT` | `/clareza/api/transactions` | Insere ou atualiza uma despesa/receita |
-| `PUT` | `/clareza/api/cash-closings` | Grava um fechamento diário e sua receita correspondente |
+| `PUT` | `/clareza/api/cash-closings` | Substitui o fechamento da data informada e atualiza sua receita de vendas |
 | `PUT` | `/clareza/api/monthly-cash-closings` | Grava os registros mensais do período editado |
 | `PUT` | `/clareza/api/limits` | Insere ou atualiza um limite |
 | `PUT` | `/clareza/api/catalogs` | Executa uma operação SQL de catálogo |
