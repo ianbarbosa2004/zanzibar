@@ -67,14 +67,13 @@ a { color: inherit; text-decoration: none; }
 .summary-card > .summary-icon { grid-column: 1; grid-row: 2; }
 .summary-card > div:not(.summary-limit) { grid-column: 2; grid-row: 2; }
 .summary-limit { display: flex; flex: 0 0 auto; align-items: baseline; justify-content: center; gap: 8px; width: calc(100% + 32px); margin: 0 -16px 4px; padding: 8px 10px; color: #fff; background: #32815e; font-size: 12px; text-align: center; }
-.summary-card .summary-limit span { color: #fff; white-space: nowrap; }
-.summary-limit strong { overflow: hidden; color: #fff; font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+.summary-limit strong { display: block; width: 100%; overflow: hidden; color: #fff; font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: pre-line; }
 .summary-card > div { min-width: 0; }
 .summary-card > div > span { display: block; overflow: hidden; color: var(--muted); font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 .summary-card strong { display: block; margin-top: 7px; color: var(--ink); font-size: 20px; letter-spacing: -.5px; font-variant-numeric: tabular-nums; }
 .summary-card-income strong, .summary-card-balance strong.value-positive { color: #248452; }
 .summary-card-home strong, .summary-card-business strong, .summary-card-loans strong, .summary-card-balance strong.value-negative { color: #c04b4b; }
-.summary-card .summary-limit strong { margin-top: 0; color: #fff; font-size: 16px; }
+.summary-card .summary-limit strong { margin-top: 0; color: #fff; font-size: 16px; white-space: pre-line; }
 .summary-card em { display: block; margin-top: 5px; overflow: hidden; color: #8b9992; font-size: 10px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
 .summary-icon { display: flex; flex: 0 0 39px; align-items: center; justify-content: center; width: 39px; height: 39px; border-radius: 11px; color: #428c69; background: #e3f4ea; font-size: 20px; }
 .summary-card-home .summary-icon { color: #96751f; background: #fbf3d9; }

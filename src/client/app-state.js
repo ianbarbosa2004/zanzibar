@@ -19,6 +19,7 @@ export function createAppState(data, defaults) {
   }));
   const limits = (data.limits || []).map((item) => ({
     ...item,
+    owner: item.owner === "R" ? "R" : "P",
     month: Number(item.month),
     year: Number(item.year),
     target: Number(item.target || 0),

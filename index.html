@@ -60,27 +60,32 @@
             </div>
             <div class="summary-grid">
               <article class="summary-card summary-card-income">
-                <div class="summary-limit" aria-label="Meta do mês"><span>Meta:</span><strong id="summary-limit-target">R$ 0,00</strong></div>
+                <div class="summary-limit" aria-label="Meta do mês"><strong id="summary-limit-target">Meta R: R$ 0,00
+P: R$ 0,00</strong></div>
                 <span class="summary-icon" aria-hidden="true">↗</span>
                 <div><span>Receitas</span><strong id="income-value">R$ 0,00</strong><em id="income-caption">0 entradas registradas</em></div>
               </article>
               <article class="summary-card summary-card-home">
-                <div class="summary-limit" aria-label="Orçamento do mês"><span>Orçamento:</span><strong id="summary-limit-budget">R$ 0,00</strong></div>
+                <div class="summary-limit" aria-label="Orçamento do mês"><strong id="summary-limit-budget">Orçamento R: R$ 0,00
+P: R$ 0,00</strong></div>
                 <span class="summary-icon" aria-hidden="true">⌂</span>
                 <div><span>Despesas Casa</span><strong id="home-expense-value">R$ 0,00</strong><em id="home-expense-caption">0 despesas registradas</em></div>
               </article>
               <article class="summary-card summary-card-business">
-                <div class="summary-limit" aria-label="Previsão do mês"><span>Previsão:</span><strong id="summary-limit-forecast">R$ 0,00</strong></div>
+                <div class="summary-limit" aria-label="Previsão do mês"><strong id="summary-limit-forecast">Previsão R: R$ 0,00
+P: R$ 0,00</strong></div>
                 <span class="summary-icon" aria-hidden="true">◆</span>
                 <div><span>Despesas Zanzibar</span><strong id="business-expense-value">R$ 0,00</strong><em id="business-expense-caption">0 despesas registradas</em></div>
               </article>
               <article class="summary-card summary-card-loans">
-                <div class="summary-limit" aria-label="Patamar do mês"><span>Patamar:</span><strong id="summary-limit-patamar">R$ 0,00</strong></div>
+                <div class="summary-limit" aria-label="Patamar do mês"><strong id="summary-limit-patamar">Patamar R: R$ 0,00
+P: R$ 0,00</strong></div>
                 <span class="summary-icon" aria-hidden="true">↔</span>
                 <div><span>Empréstimos</span><strong id="loans-expense-value">R$ 0,00</strong><em id="loans-expense-caption">0 despesas registradas</em></div>
               </article>
               <article class="summary-card summary-card-balance">
-                <div class="summary-limit" aria-label="Resultado do mês"><span>Resultado:</span><strong id="summary-limit-result">R$ 0,00</strong></div>
+                <div class="summary-limit" aria-label="Resultado do mês"><strong id="summary-limit-result">Resultado R: R$ 0,00
+P: R$ 0,00</strong></div>
                 <span class="summary-icon" aria-hidden="true">=</span>
                 <div><span>Saldo</span><strong id="balance-value">R$ 0,00</strong></div>
               </article>
@@ -241,7 +246,7 @@
         </section>
         <section class="transactions-section limits-section" data-page="ferramentas">
           <div class="section-heading limits-heading"><div><p class="eyebrow">Planejamento</p><h2>Limites e Metas</h2></div><button class="primary-button" id="new-limit" type="button"><span>＋</span> Limite</button></div>
-          <div class="table-wrap"><table><thead><tr><th>Período</th><th class="align-right">Meta</th><th class="align-right">Orçamento</th><th class="align-right">Previsão</th><th class="align-right">Patamar</th><th class="align-right">Resultado</th><th>Status</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody id="limits-list"></tbody></table><div id="limits-empty" class="empty-state" hidden>Nenhum limite encontrado.</div></div>
+          <div class="table-wrap"><table><thead><tr><th>Período</th><th>Owner</th><th class="align-right">Meta</th><th class="align-right">Orçamento</th><th class="align-right">Previsão</th><th class="align-right">Patamar</th><th class="align-right">Resultado</th><th>Status</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody id="limits-list"></tbody></table><div id="limits-empty" class="empty-state" hidden>Nenhum limite encontrado.</div></div>
           <nav class="pagination" aria-label="Paginação dos limites"><span class="pagination-controls"><button id="limit-pagination-prev" class="pagination-button" type="button">← Anterior</button><span id="limit-pagination-status" aria-live="polite"></span><button id="limit-pagination-next" class="pagination-button" type="button">Próxima →</button></span><label class="page-size">Por página <select id="limit-page-size" aria-label="Limites por página"><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label></nav>
         </section>
 
@@ -403,6 +408,7 @@
         <div class="dialog-heading"><div><p class="eyebrow">Planejamento mensal</p><h2 id="limit-dialog-title">Novo limite</h2></div><button class="close-button" id="close-limit-dialog" type="button" aria-label="Fechar">×</button></div>
         <input id="limit-id" type="hidden" />
         <div class="form-row"><label>Mês<select id="limit-month" required></select></label><label>Ano<input id="limit-year" type="number" min="2000" max="9999" required /></label></div>
+        <div class="field-label">Owner</div><div id="limit-owner-options" class="location-options" role="radiogroup" aria-label="Owner do limite"><button type="button" class="location-option" data-limit-owner="P" role="radio" aria-checked="true"><span class="location-radio" aria-hidden="true"></span>P</button><button type="button" class="location-option" data-limit-owner="R" role="radio" aria-checked="false"><span class="location-radio" aria-hidden="true"></span>R</button></div>
         <div id="limit-values" class="limit-values">
           <label>Meta (~ Receitas)<input id="limit-target" type="text" inputmode="decimal" dir="rtl" placeholder="R$ 0,00" /></label>
           <label>Orçamento (~ Despesas Casa)<input id="limit-budget" type="text" inputmode="decimal" dir="rtl" placeholder="R$ 0,00" /></label>

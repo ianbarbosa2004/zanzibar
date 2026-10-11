@@ -183,7 +183,7 @@ function renderBuffetCalendar(entries, period) {
 function renderSummary() {
   const summary = summarize([...monthTransactions(), ...monthIncomes()], selectedMonth());
   const [limitYear, limitMonth] = selectedMonth().split("-").map(Number);
-  const limit = limits.find((item) => item.year === limitYear && item.month === limitMonth);
+  const periodLimits = limits.filter((item) => item.year === limitYear && item.month === limitMonth);
   const incomeCount = summary.items.filter((item) => item.type === "income").length;
   const locationSummary = (location) => {
     const items = monthTransactions().filter((item) => item.location === location);
@@ -195,11 +195,12 @@ function renderSummary() {
   const home = locationSummary("Casa");
   const business = locationSummary("Zanzibar");
   const loans = locationSummary("Empréstimos");
-  $("#summary-limit-target").textContent = formatMoney(limit?.target || 0);
-  $("#summary-limit-budget").textContent = formatMoney(limit?.budget || 0);
-  $("#summary-limit-forecast").textContent = formatMoney(limit?.forecast || 0);
-  $("#summary-limit-patamar").textContent = formatMoney(limit?.patamar || 0);
-  $("#summary-limit-result").textContent = formatMoney(limit?.result || 0);
+  const ownerLimitText = (field, label) => `${label} R: ${formatMoney(periodLimits.find((item) => item.owner === "R")?.[field] || 0)}\n${label} P: ${formatMoney(periodLimits.find((item) => item.owner !== "R")?.[field] || 0)}`;
+  $("#summary-limit-target").textContent = ownerLimitText("target", "Meta");
+  $("#summary-limit-budget").textContent = ownerLimitText("budget", "Orçamento");
+  $("#summary-limit-forecast").textContent = ownerLimitText("forecast", "Previsão");
+  $("#summary-limit-patamar").textContent = ownerLimitText("patamar", "Patamar");
+  $("#summary-limit-result").textContent = ownerLimitText("result", "Resultado");
   $("#income-value").textContent = formatMoney(summary.income);
   $("#income-caption").textContent = `${incomeCount} ${incomeCount === 1 ? "entrada registrada" : "entradas registradas"}`;
   $("#home-expense-value").textContent = formatMoney(-home.amount);
@@ -276,6 +277,7 @@ function renderLocationTransactions(location) {
     fields: ["description", "expenseType", "taker", "location", "creditor"],
     filters: { location, expenseType: type, taker },
   }));
+  const filteredTotal = filtered.reduce((sum, item) => sum + Number(item.amount || 0), 0);
   const paged = paginate(filtered, state.page, state.pageSize);
   state.page = paged.page;
   const { items: pageItems, totalPages } = paged;
@@ -284,6 +286,7 @@ function renderLocationTransactions(location) {
     <td><span class="tag">${escapeHtml(item.expenseType)}</span></td><td>${escapeHtml(item.taker)}</td><td>${escapeHtml(item.creditor)}</td>
     <td class="align-right expense-text">- ${formatMoney(item.amount)}</td>
     <td class="align-right"><button class="action-button" data-edit="${item.id}" aria-label="Editar ${escapeHtml(item.description)}">•••</button></td></tr>`).join("");
+  panel.querySelector("[data-location-total]").textContent = `(${formatMoney(filteredTotal)})`;
   panel.querySelector("[data-empty-state]").hidden = filtered.length > 0;
   panel.querySelector("[data-pagination-status]").textContent = `Página ${state.page} de ${totalPages}`;
   panel.querySelector("[data-pagination-prev]").disabled = state.page === 1;
@@ -493,7 +496,7 @@ function renderLimits() {
   $("#limits-list").innerHTML = paged.items.map((item) => {
     const period = `${String(item.month).padStart(2, "0")}/${item.year}`;
     const status = item.closed ? '<span class="status-badge">Fechado</span>' : '<span class="status-badge status-open">Aberto</span>';
-    return `<tr><td>${period}</td><td class="align-right">${formatMoney(item.target)}</td><td class="align-right">${formatMoney(item.budget)}</td><td class="align-right">${formatMoney(item.forecast)}</td><td class="align-right">${formatMoney(item.patamar)}</td><td class="align-right">${formatMoney(item.result)}</td><td>${status}</td><td class="align-right"><button class="action-button" data-edit-limit="${item.id}" aria-label="Editar limite">•••</button></td></tr>`;
+    return `<tr><td>${period}</td><td>${item.owner === "R" ? "R" : "P"}</td><td class="align-right">${formatMoney(item.target)}</td><td class="align-right">${formatMoney(item.budget)}</td><td class="align-right">${formatMoney(item.forecast)}</td><td class="align-right">${formatMoney(item.patamar)}</td><td class="align-right">${formatMoney(item.result)}</td><td>${status}</td><td class="align-right"><button class="action-button" data-edit-limit="${item.id}" aria-label="Editar limite">•••</button></td></tr>`;
   }).join("");
   $("#limits-empty").hidden = limits.length > 0;
   $("#limit-pagination-status").textContent = `Página ${state.page} de ${paged.totalPages}`;
@@ -586,10 +589,12 @@ $("#income-form").addEventListener("submit", (event) => {
 });
 function renderLocationOptions() {
   const selected = $("#location-options").dataset.value || "Casa";
+  const withoutBuffet = (values) => values.filter((value) => String(value).trim().toLocaleLowerCase("pt-BR") !== "buffet");
   const locationOrder = ["Casa", "Zanzibar", "Empréstimos"];
   const activeLocations = locationOrder
     .filter((name) => locations.includes(name) && catalogMetadata.locations?.find((item) => item.name === name)?.isActive !== false)
-    .concat(locations.filter((name) => !locationOrder.includes(name) && catalogMetadata.locations?.find((item) => item.name === name)?.isActive !== false));
+    .concat(locations.filter((name) => !locationOrder.includes(name) && catalogMetadata.locations?.find((item) => item.name === name)?.isActive !== false))
+    .filter((name) => withoutBuffet([name]).length);
   $("#location-options").innerHTML = activeLocations.map((location) => `<button type="button" class="location-option${location === selected ? " selected" : ""}" role="radio" aria-checked="${location === selected}" data-location="${escapeHtml(location)}"><span class="location-radio" aria-hidden="true"></span>${escapeHtml(location)}</button>`).join("");
 }
 function setLocation(location) {
@@ -621,12 +626,12 @@ function applyLocationRules(location) {
     expenseType.setAttribute("aria-disabled", "true");
     return;
   }
-  const availableExpenseTypes = activeCatalog("expense_types", expenseTypes).filter((item) => item !== "Empréstimo");
+  const availableExpenseTypes = activeCatalog("expense_types", expenseTypes).filter((item) => item !== "Empréstimo" && String(item).trim().toLocaleLowerCase("pt-BR") !== "buffet");
   expenseType.innerHTML = availableExpenseTypes.map((item) => `<option>${escapeHtml(item)}</option>`).join("");
   expenseType.disabled = false;
   expenseType.removeAttribute("aria-disabled");
   if (location === "Casa") {
-    const availableTakers = takers.filter((item) => item !== "Zanzibar");
+    const availableTakers = takers.filter((item) => item !== "Zanzibar" && String(item).trim().toLocaleLowerCase("pt-BR") !== "buffet");
     creditor.innerHTML = "<option>Caixa</option>";
     creditor.value = "Caixa";
     creditor.disabled = true;
@@ -648,7 +653,7 @@ function applyLocationRules(location) {
     creditor.setAttribute("aria-disabled", "true");
     return;
   }
-  taker.innerHTML = takers.map((item) => `<option>${escapeHtml(item)}</option>`).join("");
+  taker.innerHTML = takers.filter((item) => String(item).trim().toLocaleLowerCase("pt-BR") !== "buffet").map((item) => `<option>${escapeHtml(item)}</option>`).join("");
   creditor.innerHTML = creditors.map((item) => `<option>${escapeHtml(item)}</option>`).join("");
   taker.disabled = false;
   creditor.disabled = false;
@@ -1144,6 +1149,12 @@ function openLimitDialog(item) {
   $("#limit-month").innerHTML = Array.from({ length: 12 }, (_, index) => `<option value="${index + 1}">${new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(new Date(2020, index, 15))}</option>`).join("");
   $("#limit-month").value = String(item?.month || new Date().getMonth() + 1);
   $("#limit-year").value = item?.year || new Date().getFullYear();
+  const owner = item?.owner === "R" ? "R" : "P";
+  document.querySelectorAll("[data-limit-owner]").forEach((option) => {
+    const selected = option.dataset.limitOwner === owner;
+    option.classList.toggle("selected", selected);
+    option.setAttribute("aria-checked", String(selected));
+  });
   ["target", "budget", "forecast", "patamar", "result"].forEach((field) => { $(`#limit-${field}`).value = item ? formatInputAmount(item[field]) : ""; });
   updateLimitResult();
   $("#limit-dialog").showModal();
@@ -1152,6 +1163,15 @@ function openLimitDialog(item) {
 $("#new-limit").addEventListener("click", () => openLimitDialog());
 $("#close-limit-dialog").addEventListener("click", () => $("#limit-dialog").close());
 $("#cancel-limit-dialog").addEventListener("click", () => $("#limit-dialog").close());
+$("#limit-owner-options").addEventListener("click", (event) => {
+  const option = event.target.closest("[data-limit-owner]");
+  if (!option) return;
+  document.querySelectorAll("[data-limit-owner]").forEach((item) => {
+    const selected = item === option;
+    item.classList.toggle("selected", selected);
+    item.setAttribute("aria-checked", String(selected));
+  });
+});
 ["target", "budget", "forecast", "patamar", "result"].forEach((field) => {
   if (field === "result") return;
   $(`#limit-${field}`).addEventListener("input", (event) => {
@@ -1172,10 +1192,11 @@ $("#limit-form").addEventListener("submit", (event) => {
   const id = $("#limit-id").value;
   const month = Number($("#limit-month").value);
   const year = Number($("#limit-year").value);
-  if (limits.some((item) => item.month === month && item.year === year && String(item.id) !== String(id))) return showFeedback("Já existe limite para este mês.");
+  const owner = document.querySelector("[data-limit-owner].selected")?.dataset.limitOwner || "P";
+  if (limits.some((item) => item.month === month && item.year === year && item.owner === owner && String(item.id) !== String(id))) return showFeedback("Já existe limite para este mês e owner.");
   const existingLimit = limits.find((entry) => String(entry.id) === String(id));
   const item = {
-    id: id || crypto.randomUUID(), ...(existingLimit?.clientId ? { clientId: existingLimit.clientId } : {}), month, year,
+    id: id || crypto.randomUUID(), ...(existingLimit?.clientId ? { clientId: existingLimit.clientId } : {}), month, year, owner,
     target: parseInputAmount($("#limit-target").value),
     budget: parseInputAmount($("#limit-budget").value),
     forecast: parseInputAmount($("#limit-forecast").value),

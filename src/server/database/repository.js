@@ -78,7 +78,8 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
     closed TINYINT(1) NOT NULL DEFAULT 0,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY uq_limits_period (year, month)
+    owner ENUM('P', 'R') NOT NULL DEFAULT 'P',
+    UNIQUE KEY uq_limits_period_owner (year, month, owner)
   ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
   await dbPool.query(`CREATE TABLE IF NOT EXISTS monthly_cash_closings (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, client_id VARCHAR(36) NULL UNIQUE,
@@ -107,6 +108,12 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
   ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
   const [[patamarColumn]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'limits' AND column_name = 'patamar'");
   if (!patamarColumn.total) await dbPool.query("ALTER TABLE limits ADD COLUMN patamar DECIMAL(12, 2) NOT NULL DEFAULT 0 AFTER forecast");
+  const [[ownerColumn]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'limits' AND column_name = 'owner'");
+  if (!ownerColumn.total) await dbPool.query("ALTER TABLE limits ADD COLUMN owner ENUM('P', 'R') NOT NULL DEFAULT 'P' AFTER year");
+  const [[legacyLimitIndex]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'limits' AND index_name = 'uq_limits_period'");
+  if (legacyLimitIndex.total) await dbPool.query("ALTER TABLE limits DROP INDEX uq_limits_period");
+  const [[ownerLimitIndex]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'limits' AND index_name = 'uq_limits_period_owner'");
+  if (!ownerLimitIndex.total) await dbPool.query("ALTER TABLE limits ADD UNIQUE KEY uq_limits_period_owner (year, month, owner)");
   const timestampTables = ["transactions", "app_settings", "expense_types", "takers", "locations", "creditors", "income_sources", "payment_methods", "cash_closings", "monthly_cash_closings", "limits"];
   for (const table of timestampTables) {
     for (const [column, definition] of Object.entries({ created_at: "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP", updated_at: "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" })) {
@@ -176,7 +183,7 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
   }
   for (const item of limits) {
     const clientId = item.clientId || item.id;
-    await dbPool.execute("INSERT INTO limits (client_id, month, year, target, budget, forecast, patamar, result, closed) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM limits WHERE client_id = ?)", [clientId, item.month, item.year, item.target || 0, item.budget || 0, item.forecast || 0, item.patamar || 0, item.result || 0, item.closed ? 1 : 0, clientId]);
+    await dbPool.execute("INSERT INTO limits (client_id, month, year, owner, target, budget, forecast, patamar, result, closed) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM limits WHERE client_id = ?)", [clientId, item.month, item.year, item.owner === "R" ? "R" : "P", item.target || 0, item.budget || 0, item.forecast || 0, item.patamar || 0, item.result || 0, item.closed ? 1 : 0, clientId]);
   }
   const [[transactionCount]] = await dbPool.query("SELECT COUNT(*) AS total FROM transactions");
   if (transactionCount.total === 0 && transactions.length) {
@@ -221,10 +228,10 @@ export async function readDatabase() {
   const catalogMetadata = Object.fromEntries(Object.entries(catalogRows).map(([table, rows]) => [table, rows.map((item) => ({ id: Number(item.id), name: item.name, slug: item.slug, displayOrder: Number(item.displayOrder), isActive: Boolean(item.isActive) }))]));
   const normalizedRows = rows.map((item) => ({ ...item, amount: Number(item.amount) }));
   const [cashClosings] = await dbPool.query("SELECT c.id, c.client_id AS clientId, DATE_FORMAT(c.closing_date, '%Y-%m-%d') AS date, p.name AS paymentMethod, c.sale_count AS saleCount, c.total_amount AS totalAmount, c.created_at AS createdAt, c.updated_at AS updatedAt FROM cash_closings c JOIN payment_methods p ON p.id = c.payment_method_id ORDER BY c.closing_date DESC, c.updated_at DESC");
-  const [limits] = await dbPool.query("SELECT id, client_id AS clientId, month, year, target, budget, forecast, patamar, result, closed, created_at AS createdAt, updated_at AS updatedAt FROM limits ORDER BY year DESC, month DESC");
+  const [limits] = await dbPool.query("SELECT id, client_id AS clientId, month, year, owner, target, budget, forecast, patamar, result, closed, created_at AS createdAt, updated_at AS updatedAt FROM limits ORDER BY year DESC, month DESC, owner");
   const [monthlyRows] = await dbPool.query("SELECT c.id, c.client_id AS clientId, c.closing_month AS month, c.closing_year AS year, p.name AS paymentMethod, c.sale_count AS saleCount, c.total_amount AS totalAmount, c.created_at AS createdAt, c.updated_at AS updatedAt FROM monthly_cash_closings c JOIN payment_methods p ON p.id = c.payment_method_id ORDER BY c.closing_year DESC, c.closing_month DESC");
   const [billingRows] = await dbPool.query("SELECT id, client_id AS clientId, closing_month AS month, closing_year AS year, sale_count AS saleCount, average_ticket AS averageTicket, amount, created_at AS createdAt, updated_at AS updatedAt FROM billings ORDER BY closing_year DESC, closing_month DESC");
-  return { transactions: normalizedRows, incomes: normalizedRows.filter((item) => item.type === "income"), cashClosings: cashClosings.map((item) => ({ ...item, saleCount: Number(item.saleCount), totalAmount: Number(item.totalAmount) })), monthlyCashClosings: monthlyRows.map((item) => ({ ...item, month: Number(item.month), year: Number(item.year), saleCount: Number(item.saleCount), totalAmount: Number(item.totalAmount) })), billings: billingRows.map((item) => ({ ...item, month: Number(item.month), year: Number(item.year), saleCount: Number(item.saleCount), averageTicket: Number(item.averageTicket), amount: Number(item.amount) })), limits: limits.map((item) => ({ ...item, month: Number(item.month), year: Number(item.year), target: Number(item.target), budget: Number(item.budget), forecast: Number(item.forecast), patamar: Number(item.patamar), result: Number(item.result), closed: Boolean(item.closed) })), settings: { currency: settings?.currency || "BRL", schemaVersion: settings?.schemaVersion || 10, expenseTypes: expenseTypes.map((item) => item.name), takers: takers.map((item) => item.name), locations: locations.map((item) => item.name), creditors: creditors.map((item) => item.name), paymentMethods: paymentMethods.map((item) => item.name), incomeSources: incomeSources.map((item) => item.name), catalogMetadata } };
+  return { transactions: normalizedRows, incomes: normalizedRows.filter((item) => item.type === "income"), cashClosings: cashClosings.map((item) => ({ ...item, saleCount: Number(item.saleCount), totalAmount: Number(item.totalAmount) })), monthlyCashClosings: monthlyRows.map((item) => ({ ...item, month: Number(item.month), year: Number(item.year), saleCount: Number(item.saleCount), totalAmount: Number(item.totalAmount) })), billings: billingRows.map((item) => ({ ...item, month: Number(item.month), year: Number(item.year), saleCount: Number(item.saleCount), averageTicket: Number(item.averageTicket), amount: Number(item.amount) })), limits: limits.map((item) => ({ ...item, owner: item.owner === "R" ? "R" : "P", month: Number(item.month), year: Number(item.year), target: Number(item.target), budget: Number(item.budget), forecast: Number(item.forecast), patamar: Number(item.patamar), result: Number(item.result), closed: Boolean(item.closed) })), settings: { currency: settings?.currency || "BRL", schemaVersion: settings?.schemaVersion || 10, expenseTypes: expenseTypes.map((item) => item.name), takers: takers.map((item) => item.name), locations: locations.map((item) => item.name), creditors: creditors.map((item) => item.name), paymentMethods: paymentMethods.map((item) => item.name), incomeSources: incomeSources.map((item) => item.name), catalogMetadata } };
 }
 
 function currentBrazilPeriod() {
@@ -355,13 +362,14 @@ export async function saveTransaction(item) {
 
 export async function saveLimit(item) {
   if (!dbPool) throw new Error("MySQL indisponível. Limite não gravado.");
+  if (item.owner !== "P" && item.owner !== "R") throw new Error("Owner inválido. Use P ou R.");
   const connection = await dbPool.getConnection();
   try {
     const numericId = Number.isInteger(item.id) || /^\d+$/.test(String(item.id)) ? Number(item.id) : null;
     const [existing] = await connection.query("SELECT id FROM limits WHERE id = ? OR client_id = ?", [numericId || 0, String(item.id)]);
-    const values = [Number(item.month), Number(item.year), Number(item.target || 0), Number(item.budget || 0), Number(item.forecast || 0), Number(item.patamar || 0), Number(item.result || 0), item.closed ? 1 : 0];
-    if (existing[0]) await connection.execute("UPDATE limits SET month = ?, year = ?, target = ?, budget = ?, forecast = ?, patamar = ?, result = ?, closed = ? WHERE id = ?", [...values, existing[0].id]);
-    else await connection.execute("INSERT INTO limits (client_id, month, year, target, budget, forecast, patamar, result, closed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", [numericId ? null : String(item.id), ...values]);
+    const values = [Number(item.month), Number(item.year), item.owner, Number(item.target || 0), Number(item.budget || 0), Number(item.forecast || 0), Number(item.patamar || 0), Number(item.result || 0), item.closed ? 1 : 0];
+    if (existing[0]) await connection.execute("UPDATE limits SET month = ?, year = ?, owner = ?, target = ?, budget = ?, forecast = ?, patamar = ?, result = ?, closed = ? WHERE id = ?", [...values, existing[0].id]);
+    else await connection.execute("INSERT INTO limits (client_id, month, year, owner, target, budget, forecast, patamar, result, closed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [numericId ? null : String(item.id), ...values]);
   } finally {
     connection.release();
   }
