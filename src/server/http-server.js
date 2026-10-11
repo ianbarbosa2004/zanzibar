@@ -27,7 +27,7 @@ function send(response, status, payload, contentType = "application/json", heade
 
 function staticCacheHeaders(file) {
   if (file.contentType === "text/html") return { "Cache-Control": "no-cache, no-store, must-revalidate", Pragma: "no-cache", Expires: "0" };
-  if (/\.[a-f0-9_-]{6,}\.(?:js|css)$/i.test(file.name || "")) return { "Cache-Control": "public, max-age=31536000, immutable" };
+  if (/(?:-|_)[a-z0-9]{6,}\.(?:js|css)$/i.test(file.name || "")) return { "Cache-Control": "public, max-age=31536000, immutable" };
   return { "Cache-Control": "no-cache" };
 }
 
