@@ -78,8 +78,7 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
     closed TINYINT(1) NOT NULL DEFAULT 0,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    owner ENUM('P', 'R') NOT NULL DEFAULT 'P',
-    UNIQUE KEY uq_limits_period_owner (year, month, owner)
+    UNIQUE KEY uq_limits_period (year, month)
   ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
   await dbPool.query(`CREATE TABLE IF NOT EXISTS monthly_cash_closings (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, client_id VARCHAR(36) NULL UNIQUE,
@@ -108,12 +107,6 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
   ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
   const [[patamarColumn]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'limits' AND column_name = 'patamar'");
   if (!patamarColumn.total) await dbPool.query("ALTER TABLE limits ADD COLUMN patamar DECIMAL(12, 2) NOT NULL DEFAULT 0 AFTER forecast");
-  const [[ownerColumn]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'limits' AND column_name = 'owner'");
-  if (!ownerColumn.total) await dbPool.query("ALTER TABLE limits ADD COLUMN owner ENUM('P', 'R') NOT NULL DEFAULT 'P' AFTER year");
-  const [[legacyLimitIndex]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'limits' AND index_name = 'uq_limits_period'");
-  if (legacyLimitIndex.total) await dbPool.query("ALTER TABLE limits DROP INDEX uq_limits_period");
-  const [[ownerLimitIndex]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'limits' AND index_name = 'uq_limits_period_owner'");
-  if (!ownerLimitIndex.total) await dbPool.query("ALTER TABLE limits ADD UNIQUE KEY uq_limits_period_owner (year, month, owner)");
   const timestampTables = ["transactions", "app_settings", "expense_types", "takers", "locations", "creditors", "income_sources", "payment_methods", "cash_closings", "monthly_cash_closings", "limits"];
   for (const table of timestampTables) {
     for (const [column, definition] of Object.entries({ created_at: "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP", updated_at: "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" })) {
@@ -161,12 +154,6 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
     if (!found.total) await dbPool.query(`ALTER TABLE transactions ADD COLUMN ${column} VARCHAR(120) NULL`);
     else await dbPool.query(`ALTER TABLE transactions MODIFY COLUMN ${column} VARCHAR(120) NULL`);
   }
-  await dbPool.query(`CREATE TABLE IF NOT EXISTS buffet_observations (
-    transaction_id INT UNSIGNED PRIMARY KEY, observation VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_buffet_observations_transaction FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE
-  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
   await dbPool.query("UPDATE transactions t JOIN expense_types c ON c.name = t.expense_type SET t.expense_type_id = c.id WHERE t.expense_type_id IS NULL");
   await dbPool.query("UPDATE transactions t JOIN takers c ON c.name = t.taker SET t.taker_id = c.id WHERE t.taker_id IS NULL");
   await dbPool.query("UPDATE transactions t JOIN locations c ON c.name = t.location SET t.location_id = c.id WHERE t.location_id IS NULL");
@@ -189,7 +176,7 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
   }
   for (const item of limits) {
     const clientId = item.clientId || item.id;
-    await dbPool.execute("INSERT INTO limits (client_id, month, year, owner, target, budget, forecast, patamar, result, closed) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM limits WHERE client_id = ?)", [clientId, item.month, item.year, item.owner === "R" ? "R" : "P", item.target || 0, item.budget || 0, item.forecast || 0, item.patamar || 0, item.result || 0, item.closed ? 1 : 0, clientId]);
+    await dbPool.execute("INSERT INTO limits (client_id, month, year, target, budget, forecast, patamar, result, closed) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM limits WHERE client_id = ?)", [clientId, item.month, item.year, item.target || 0, item.budget || 0, item.forecast || 0, item.patamar || 0, item.result || 0, item.closed ? 1 : 0, clientId]);
   }
   const [[transactionCount]] = await dbPool.query("SELECT COUNT(*) AS total FROM transactions");
   if (transactionCount.total === 0 && transactions.length) {
@@ -217,7 +204,7 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
 }
 
 export async function readDatabase() {
-  const [rows] = await dbPool.query("SELECT t.id, t.client_id AS clientId, t.description, bo.observation, t.amount, t.type, et.name AS expenseType, et.slug AS expenseTypeSlug, tk.name AS taker, tk.slug AS takerSlug, l.name AS location, l.slug AS locationSlug, c.name AS creditor, c.slug AS creditorSlug, COALESCE(s.name, CASE WHEN t.type = 'income' AND t.client_id LIKE 'cash-closing-income-%' THEN 'Vendas' END) AS source, COALESCE(s.slug, CASE WHEN t.type = 'income' AND t.client_id LIKE 'cash-closing-income-%' THEN 'vendas' END) AS sourceSlug, DATE_FORMAT(t.transaction_date, '%Y-%m-%d') AS date, t.created_at AS createdAt, t.updated_at AS updatedAt FROM transactions t LEFT JOIN buffet_observations bo ON bo.transaction_id = t.id LEFT JOIN expense_types et ON et.id = t.expense_type_id LEFT JOIN takers tk ON tk.id = t.taker_id LEFT JOIN locations l ON l.id = t.location_id LEFT JOIN creditors c ON c.id = t.creditor_id LEFT JOIN income_sources s ON s.id = t.income_source_id ORDER BY t.transaction_date DESC, t.updated_at DESC");
+  const [rows] = await dbPool.query("SELECT t.id, t.client_id AS clientId, t.description, t.amount, t.type, et.name AS expenseType, et.slug AS expenseTypeSlug, tk.name AS taker, tk.slug AS takerSlug, l.name AS location, l.slug AS locationSlug, c.name AS creditor, c.slug AS creditorSlug, COALESCE(s.name, CASE WHEN t.type = 'income' AND t.client_id LIKE 'cash-closing-income-%' THEN 'Vendas' END) AS source, COALESCE(s.slug, CASE WHEN t.type = 'income' AND t.client_id LIKE 'cash-closing-income-%' THEN 'vendas' END) AS sourceSlug, DATE_FORMAT(t.transaction_date, '%Y-%m-%d') AS date, t.created_at AS createdAt, t.updated_at AS updatedAt FROM transactions t LEFT JOIN expense_types et ON et.id = t.expense_type_id LEFT JOIN takers tk ON tk.id = t.taker_id LEFT JOIN locations l ON l.id = t.location_id LEFT JOIN creditors c ON c.id = t.creditor_id LEFT JOIN income_sources s ON s.id = t.income_source_id ORDER BY t.transaction_date DESC, t.updated_at DESC");
   const [[settings]] = await dbPool.query("SELECT currency, schema_version AS schemaVersion FROM app_settings WHERE id = 1");
   const catalogRows = {};
   for (const table of ["expense_types", "takers", "locations", "creditors", "payment_methods", "income_sources"]) {
@@ -234,10 +221,10 @@ export async function readDatabase() {
   const catalogMetadata = Object.fromEntries(Object.entries(catalogRows).map(([table, rows]) => [table, rows.map((item) => ({ id: Number(item.id), name: item.name, slug: item.slug, displayOrder: Number(item.displayOrder), isActive: Boolean(item.isActive) }))]));
   const normalizedRows = rows.map((item) => ({ ...item, amount: Number(item.amount) }));
   const [cashClosings] = await dbPool.query("SELECT c.id, c.client_id AS clientId, DATE_FORMAT(c.closing_date, '%Y-%m-%d') AS date, p.name AS paymentMethod, c.sale_count AS saleCount, c.total_amount AS totalAmount, c.created_at AS createdAt, c.updated_at AS updatedAt FROM cash_closings c JOIN payment_methods p ON p.id = c.payment_method_id ORDER BY c.closing_date DESC, c.updated_at DESC");
-  const [limits] = await dbPool.query("SELECT id, client_id AS clientId, month, year, owner, target, budget, forecast, patamar, result, closed, created_at AS createdAt, updated_at AS updatedAt FROM limits ORDER BY year DESC, month DESC, owner");
+  const [limits] = await dbPool.query("SELECT id, client_id AS clientId, month, year, target, budget, forecast, patamar, result, closed, created_at AS createdAt, updated_at AS updatedAt FROM limits ORDER BY year DESC, month DESC");
   const [monthlyRows] = await dbPool.query("SELECT c.id, c.client_id AS clientId, c.closing_month AS month, c.closing_year AS year, p.name AS paymentMethod, c.sale_count AS saleCount, c.total_amount AS totalAmount, c.created_at AS createdAt, c.updated_at AS updatedAt FROM monthly_cash_closings c JOIN payment_methods p ON p.id = c.payment_method_id ORDER BY c.closing_year DESC, c.closing_month DESC");
   const [billingRows] = await dbPool.query("SELECT id, client_id AS clientId, closing_month AS month, closing_year AS year, sale_count AS saleCount, average_ticket AS averageTicket, amount, created_at AS createdAt, updated_at AS updatedAt FROM billings ORDER BY closing_year DESC, closing_month DESC");
-  return { transactions: normalizedRows, incomes: normalizedRows.filter((item) => item.type === "income"), cashClosings: cashClosings.map((item) => ({ ...item, saleCount: Number(item.saleCount), totalAmount: Number(item.totalAmount) })), monthlyCashClosings: monthlyRows.map((item) => ({ ...item, month: Number(item.month), year: Number(item.year), saleCount: Number(item.saleCount), totalAmount: Number(item.totalAmount) })), billings: billingRows.map((item) => ({ ...item, month: Number(item.month), year: Number(item.year), saleCount: Number(item.saleCount), averageTicket: Number(item.averageTicket), amount: Number(item.amount) })), limits: limits.map((item) => ({ ...item, owner: item.owner === "R" ? "R" : "P", month: Number(item.month), year: Number(item.year), target: Number(item.target), budget: Number(item.budget), forecast: Number(item.forecast), patamar: Number(item.patamar), result: Number(item.result), closed: Boolean(item.closed) })), settings: { currency: settings?.currency || "BRL", schemaVersion: settings?.schemaVersion || 10, expenseTypes: expenseTypes.map((item) => item.name), takers: takers.map((item) => item.name), locations: locations.map((item) => item.name), creditors: creditors.map((item) => item.name), paymentMethods: paymentMethods.map((item) => item.name), incomeSources: incomeSources.map((item) => item.name), catalogMetadata } };
+  return { transactions: normalizedRows, incomes: normalizedRows.filter((item) => item.type === "income"), cashClosings: cashClosings.map((item) => ({ ...item, saleCount: Number(item.saleCount), totalAmount: Number(item.totalAmount) })), monthlyCashClosings: monthlyRows.map((item) => ({ ...item, month: Number(item.month), year: Number(item.year), saleCount: Number(item.saleCount), totalAmount: Number(item.totalAmount) })), billings: billingRows.map((item) => ({ ...item, month: Number(item.month), year: Number(item.year), saleCount: Number(item.saleCount), averageTicket: Number(item.averageTicket), amount: Number(item.amount) })), limits: limits.map((item) => ({ ...item, month: Number(item.month), year: Number(item.year), target: Number(item.target), budget: Number(item.budget), forecast: Number(item.forecast), patamar: Number(item.patamar), result: Number(item.result), closed: Boolean(item.closed) })), settings: { currency: settings?.currency || "BRL", schemaVersion: settings?.schemaVersion || 10, expenseTypes: expenseTypes.map((item) => item.name), takers: takers.map((item) => item.name), locations: locations.map((item) => item.name), creditors: creditors.map((item) => item.name), paymentMethods: paymentMethods.map((item) => item.name), incomeSources: incomeSources.map((item) => item.name), catalogMetadata } };
 }
 
 function currentBrazilPeriod() {
@@ -333,35 +320,29 @@ export async function saveTransaction(item) {
   try {
     await connection.beginTransaction();
     const numericId = Number.isInteger(item.id) || /^\d+$/.test(String(item.id)) ? Number(item.id) : null;
-    const clientId = item.clientId || (!numericId ? String(item.id) : null);
-    const [existing] = await connection.query("SELECT id FROM transactions WHERE id = ? OR client_id = ?", [numericId || 0, clientId || ""]);
+    const [existing] = await connection.query("SELECT id FROM transactions WHERE id = ? OR client_id = ?", [numericId || 0, String(item.id)]);
     const income = item.type === "income";
-    const lookup = async (table, name) => {
+    const lookup = async (table, name, fallback = null) => {
       if (!name) return null;
       const [rows] = await connection.query(`SELECT id FROM ${table} WHERE name = ? LIMIT 1`, [name]);
-      if (!rows[0]) {
-        await connection.execute(`INSERT INTO ${table} (name, slug) VALUES (?, ?)`, [name, toSlug(name)]);
+      if (!rows[0] && fallback) {
+        await connection.execute(`INSERT INTO ${table} (name, slug) VALUES (?, ?)`, [name, fallback]);
         const [created] = await connection.query(`SELECT id FROM ${table} WHERE name = ? LIMIT 1`, [name]);
         return created[0]?.id || null;
       }
       return rows[0]?.id || null;
     };
-    const expenseTypeId = income ? null : await lookup("expense_types", item.expenseType);
-    const takerId = income ? null : await lookup("takers", item.taker);
-    const locationId = income ? null : await lookup("locations", item.location);
-    const creditorId = income ? null : await lookup("creditors", item.creditor);
-    const sourceId = income ? await lookup("income_sources", item.source) : null;
+    const expenseTypeId = income ? null : await lookup("expense_types", item.expenseType, "outros");
+    const takerId = income ? null : await lookup("takers", item.taker, "pessoal");
+    const locationId = income ? null : await lookup("locations", item.location, "casa");
+    const creditorId = income ? null : await lookup("creditors", item.creditor, "caixa");
+    const sourceId = income ? await lookup("income_sources", item.source, "salario") : null;
     const values = [item.description, Number(item.amount || 0), income ? "income" : "expense", income ? null : item.expenseType, income ? null : item.taker, income ? null : item.location, income ? null : item.creditor, expenseTypeId, takerId, locationId, creditorId, sourceId, item.date];
-    let transactionId;
     if (existing[0]) {
-      transactionId = existing[0].id;
-      await connection.execute("UPDATE transactions SET description = ?, amount = ?, type = ?, expense_type = ?, taker = ?, location = ?, creditor = ?, expense_type_id = ?, taker_id = ?, location_id = ?, creditor_id = ?, income_source_id = ?, transaction_date = ? WHERE id = ?", [...values, transactionId]);
+      await connection.execute("UPDATE transactions SET description = ?, amount = ?, type = ?, expense_type = ?, taker = ?, location = ?, creditor = ?, expense_type_id = ?, taker_id = ?, location_id = ?, creditor_id = ?, income_source_id = ?, transaction_date = ? WHERE id = ?", [...values, existing[0].id]);
     } else {
-      const [result] = await connection.execute("INSERT INTO transactions (client_id, description, amount, type, expense_type, taker, location, creditor, expense_type_id, taker_id, location_id, creditor_id, income_source_id, transaction_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [clientId, ...values]);
-      transactionId = result.insertId;
+      await connection.execute("INSERT INTO transactions (client_id, description, amount, type, expense_type, taker, location, creditor, expense_type_id, taker_id, location_id, creditor_id, income_source_id, transaction_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [numericId ? null : String(item.id), ...values]);
     }
-    if (item.observation?.trim()) await connection.execute("INSERT INTO buffet_observations (transaction_id, observation) VALUES (?, ?) ON DUPLICATE KEY UPDATE observation = VALUES(observation), updated_at = CURRENT_TIMESTAMP", [transactionId, item.observation.trim()]);
-    else await connection.execute("DELETE FROM buffet_observations WHERE transaction_id = ?", [transactionId]);
     await connection.commit();
   } catch (error) {
     await connection.rollback();
@@ -373,14 +354,13 @@ export async function saveTransaction(item) {
 
 export async function saveLimit(item) {
   if (!dbPool) throw new Error("MySQL indisponível. Limite não gravado.");
-  if (item.owner !== "P" && item.owner !== "R") throw new Error("Owner inválido. Use P ou R.");
   const connection = await dbPool.getConnection();
   try {
     const numericId = Number.isInteger(item.id) || /^\d+$/.test(String(item.id)) ? Number(item.id) : null;
     const [existing] = await connection.query("SELECT id FROM limits WHERE id = ? OR client_id = ?", [numericId || 0, String(item.id)]);
-    const values = [Number(item.month), Number(item.year), item.owner, Number(item.target || 0), Number(item.budget || 0), Number(item.forecast || 0), Number(item.patamar || 0), Number(item.result || 0), item.closed ? 1 : 0];
-    if (existing[0]) await connection.execute("UPDATE limits SET month = ?, year = ?, owner = ?, target = ?, budget = ?, forecast = ?, patamar = ?, result = ?, closed = ? WHERE id = ?", [...values, existing[0].id]);
-    else await connection.execute("INSERT INTO limits (client_id, month, year, owner, target, budget, forecast, patamar, result, closed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [numericId ? null : String(item.id), ...values]);
+    const values = [Number(item.month), Number(item.year), Number(item.target || 0), Number(item.budget || 0), Number(item.forecast || 0), Number(item.patamar || 0), Number(item.result || 0), item.closed ? 1 : 0];
+    if (existing[0]) await connection.execute("UPDATE limits SET month = ?, year = ?, target = ?, budget = ?, forecast = ?, patamar = ?, result = ?, closed = ? WHERE id = ?", [...values, existing[0].id]);
+    else await connection.execute("INSERT INTO limits (client_id, month, year, target, budget, forecast, patamar, result, closed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", [numericId ? null : String(item.id), ...values]);
   } finally {
     connection.release();
   }
@@ -452,7 +432,6 @@ export async function saveMonthlyCashClosings(items) {
       if (ids.length) await connection.query("DELETE FROM monthly_cash_closings WHERE closing_year = ? AND closing_month = ? AND id NOT IN (?)", [year, month, ids]);
       else await connection.execute("DELETE FROM monthly_cash_closings WHERE closing_year = ? AND closing_month = ?", [year, month]);
     }
-    await refreshBillings(connection);
     await connection.commit();
   } catch (error) {
     await connection.rollback();

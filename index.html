@@ -30,7 +30,6 @@
           <a class="nav-link" href="#vendas"><span>▣</span> Vendas</a>
           <a class="nav-link" href="#faturamento"><span>▤</span> Faturamento</a>
           <a class="nav-link" href="#relatorios"><span>▥</span> Relatórios</a>
-          <a class="nav-link" href="#buffet"><span>▦</span> Buffet</a>
           <a class="nav-link" href="#cadastros"><span>⚙</span> Cadastros</a>
           <a class="nav-link" href="#ferramentas"><span>⚒</span> Ferramentas</a>
         </nav>
@@ -60,32 +59,27 @@
             </div>
             <div class="summary-grid">
               <article class="summary-card summary-card-income">
-                <div class="summary-limit" aria-label="Meta do mês"><strong id="summary-limit-target">Meta R: R$ 0,00
-P: R$ 0,00</strong></div>
+                <div class="summary-limit" aria-label="Meta do mês"><span>Meta:</span><strong id="summary-limit-target">R$ 0,00</strong></div>
                 <span class="summary-icon" aria-hidden="true">↗</span>
                 <div><span>Receitas</span><strong id="income-value">R$ 0,00</strong><em id="income-caption">0 entradas registradas</em></div>
               </article>
               <article class="summary-card summary-card-home">
-                <div class="summary-limit" aria-label="Orçamento do mês"><strong id="summary-limit-budget">Orçamento R: R$ 0,00
-P: R$ 0,00</strong></div>
+                <div class="summary-limit" aria-label="Orçamento do mês"><span>Orçamento:</span><strong id="summary-limit-budget">R$ 0,00</strong></div>
                 <span class="summary-icon" aria-hidden="true">⌂</span>
                 <div><span>Despesas Casa</span><strong id="home-expense-value">R$ 0,00</strong><em id="home-expense-caption">0 despesas registradas</em></div>
               </article>
               <article class="summary-card summary-card-business">
-                <div class="summary-limit" aria-label="Previsão do mês"><strong id="summary-limit-forecast">Previsão R: R$ 0,00
-P: R$ 0,00</strong></div>
+                <div class="summary-limit" aria-label="Previsão do mês"><span>Previsão:</span><strong id="summary-limit-forecast">R$ 0,00</strong></div>
                 <span class="summary-icon" aria-hidden="true">◆</span>
                 <div><span>Despesas Zanzibar</span><strong id="business-expense-value">R$ 0,00</strong><em id="business-expense-caption">0 despesas registradas</em></div>
               </article>
               <article class="summary-card summary-card-loans">
-                <div class="summary-limit" aria-label="Patamar do mês"><strong id="summary-limit-patamar">Patamar R: R$ 0,00
-P: R$ 0,00</strong></div>
+                <div class="summary-limit" aria-label="Patamar do mês"><span>Patamar:</span><strong id="summary-limit-patamar">R$ 0,00</strong></div>
                 <span class="summary-icon" aria-hidden="true">↔</span>
                 <div><span>Empréstimos</span><strong id="loans-expense-value">R$ 0,00</strong><em id="loans-expense-caption">0 despesas registradas</em></div>
               </article>
               <article class="summary-card summary-card-balance">
-                <div class="summary-limit" aria-label="Resultado do mês"><strong id="summary-limit-result">Resultado R: R$ 0,00
-P: R$ 0,00</strong></div>
+                <div class="summary-limit" aria-label="Resultado do mês"><span>Resultado:</span><strong id="summary-limit-result">R$ 0,00</strong></div>
                 <span class="summary-icon" aria-hidden="true">=</span>
                 <div><span>Saldo</span><strong id="balance-value">R$ 0,00</strong></div>
               </article>
@@ -94,25 +88,6 @@ P: R$ 0,00</strong></div>
           <div class="home-actions">
             <button class="primary-button" id="home-new-income" type="button"><span>＋</span> Incluir receita</button>
             <button class="primary-button" id="home-new-transaction" type="button"><span>＋</span> Incluir despesa</button>
-          </div>
-        </section>
-
-        <section id="buffet" class="buffet-section" data-page="buffet">
-          <div class="section-heading">
-            <div><p class="eyebrow">Produto</p><h2>Buffet</h2><p class="section-description">Movimentações e fechamentos automáticos do produto Buffet.</p></div>
-            <div class="section-actions"><label class="month-picker"><span>Mês</span><select id="buffet-period-select" aria-label="Selecionar mês do Buffet"></select></label></div>
-          </div>
-          <div class="summary-grid buffet-summary-grid">
-            <article class="summary-card summary-card-income"><span class="summary-icon" aria-hidden="true">↗</span><div><span>Receitas</span><strong id="buffet-income-total">R$ 0,00</strong><em id="buffet-income-count">0 entradas</em></div></article>
-            <article class="summary-card summary-card-home"><span class="summary-icon" aria-hidden="true">↘</span><div><span>Despesas</span><strong id="buffet-expense-total">R$ 0,00</strong><em id="buffet-expense-count">0 saídas</em></div></article>
-            <article class="summary-card summary-card-balance"><span class="summary-icon" aria-hidden="true">=</span><div><span>Saldo do mês</span><strong id="buffet-balance-total">R$ 0,00</strong></div></article>
-          </div>
-          <div class="buffet-grid">
-            <section class="panel buffet-panel"><div class="section-heading"><div><p class="eyebrow">Movimentação</p><h3>Entradas</h3></div><button class="primary-button" id="buffet-new-income" type="button"><span>＋</span> Nova receita</button></div><div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th class="align-right">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody id="buffet-income-list"></tbody></table><div id="buffet-income-empty" class="empty-state" hidden>Nenhuma entrada do Buffet.</div></div></section>
-            <section class="panel buffet-panel"><div class="section-heading"><div><p class="eyebrow">Movimentação</p><h3>Saídas</h3></div><button class="primary-button" id="buffet-new-expense" type="button"><span>＋</span> Nova despesa</button></div><div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th class="align-right">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody id="buffet-expense-list"></tbody></table><div id="buffet-expense-empty" class="empty-state" hidden>Nenhuma saída do Buffet.</div></div></section>
-            <section class="panel buffet-panel buffet-wide-panel"><div class="section-heading"><div><p class="eyebrow">Fechamento diário</p><h3>Fechamentos diários</h3></div></div><div class="table-wrap"><table><thead><tr><th>Data</th><th class="align-right">Receitas</th><th class="align-right">Despesas</th><th class="align-right">Saldo</th></tr></thead><tbody id="buffet-daily-list"></tbody></table><div id="buffet-daily-empty" class="empty-state" hidden>Nenhum fechamento diário.</div></div></section>
-            <section class="panel buffet-panel buffet-wide-panel"><div class="section-heading"><div><p class="eyebrow">Fechamento mensal</p><h3>Fechamentos mensais</h3></div></div><div class="table-wrap"><table><thead><tr><th>Mês</th><th class="align-right">Receitas</th><th class="align-right">Despesas</th><th class="align-right">Saldo</th></tr></thead><tbody id="buffet-monthly-list"></tbody></table><div id="buffet-monthly-empty" class="empty-state" hidden>Nenhum fechamento mensal.</div></div></section>
-            <section class="panel buffet-panel buffet-wide-panel"><div class="section-heading"><div><p class="eyebrow">Visão diária</p><h3>Calendário financeiro</h3></div></div><div id="buffet-calendar" class="financial-calendar" aria-label="Calendário financeiro do Buffet"></div></section>
           </div>
         </section>
 
@@ -134,7 +109,7 @@ P: R$ 0,00</strong></div>
         <section id="receitas" class="transactions-section income-section" data-page="lancamentos">
           <div class="section-heading"><div><p class="eyebrow">Entradas</p><h2>Receitas registradas <span id="income-section-total" class="section-total">(R$ 0,00)</span></h2></div><div class="section-actions"><select data-month-select aria-label="Selecionar mês e ano das receitas"></select><button class="primary-button" id="new-income" type="button"><span>＋</span> Nova receita</button></div></div>
           <div class="location-panel" data-income-panel>
-            <div class="toolbar"><label class="search-box"><span>⌕</span><input data-income-search type="search" placeholder="Buscar receita..." /></label><select data-panel-month-select aria-label="Filtrar receitas por mês"></select><select data-income-source-filter aria-label="Filtrar receitas por fonte"><option value="all">Todas as fontes</option></select></div>
+            <div class="toolbar"><label class="search-box"><span>⌕</span><input data-income-search type="search" placeholder="Buscar receita..." /></label><select data-income-source-filter aria-label="Filtrar receitas por fonte"><option value="all">Todas as fontes</option></select></div>
             <div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Fonte</th><th class="align-right">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody data-income-list></tbody></table><div data-income-empty class="empty-state" hidden>Nenhuma receita encontrada.</div></div>
             <nav data-income-pagination class="pagination" aria-label="Paginação das receitas"><span class="pagination-controls"><button data-income-pagination-prev class="pagination-button" type="button">← Anterior</button><span data-income-pagination-status aria-live="polite"></span><button data-income-pagination-next class="pagination-button" type="button">Próxima →</button></span><label class="page-size">Por página <select data-income-page-size aria-label="Registros por página em receitas"><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label></nav>
           </div>
@@ -149,7 +124,7 @@ P: R$ 0,00</strong></div>
             <div class="location-panel" data-location-panel="Casa">
               <div class="location-panel-heading"><h3>Casa <span data-location-total>(R$ 0,00)</span></h3></div>
               <div class="toolbar">
-                <label class="search-box"><span>⌕</span><input data-search type="search" placeholder="Buscar em Casa..." /></label><select data-panel-month-select aria-label="Filtrar despesas de Casa por mês"></select>
+                <label class="search-box"><span>⌕</span><input data-search type="search" placeholder="Buscar em Casa..." /></label>
                 <select data-type-filter aria-label="Filtrar despesas de Casa por tipo"><option value="all">Todos os tipos</option></select>
                 <select data-taker-filter aria-label="Filtrar despesas de Casa por tomador"><option value="all">Todos os tomadores</option></select>
               </div>
@@ -159,7 +134,7 @@ P: R$ 0,00</strong></div>
             <div class="location-panel" data-location-panel="Zanzibar">
               <div class="location-panel-heading"><h3>Zanzibar <span data-location-total>(R$ 0,00)</span></h3></div>
               <div class="toolbar">
-                <label class="search-box"><span>⌕</span><input data-search type="search" placeholder="Buscar em Zanzibar..." /></label><select data-panel-month-select aria-label="Filtrar despesas de Zanzibar por mês"></select>
+                <label class="search-box"><span>⌕</span><input data-search type="search" placeholder="Buscar em Zanzibar..." /></label>
                 <select data-type-filter aria-label="Filtrar despesas de Zanzibar por tipo"><option value="all">Todos os tipos</option></select>
                 <select data-taker-filter aria-label="Filtrar despesas de Zanzibar por tomador"><option value="all">Todos os tomadores</option></select>
               </div>
@@ -169,7 +144,7 @@ P: R$ 0,00</strong></div>
             <div class="location-panel" data-location-panel="Empréstimos">
               <div class="location-panel-heading"><h3>Empréstimos <span data-location-total>(R$ 0,00)</span></h3></div>
               <div class="toolbar">
-                <label class="search-box"><span>⌕</span><input data-search type="search" placeholder="Buscar em Empréstimos..." /></label><select data-panel-month-select aria-label="Filtrar despesas de Empréstimos por mês"></select>
+                <label class="search-box"><span>⌕</span><input data-search type="search" placeholder="Buscar em Empréstimos..." /></label>
                 <select data-type-filter aria-label="Filtrar despesas de Empréstimos por tipo"><option value="all">Todos os tipos</option></select>
                 <select data-taker-filter aria-label="Filtrar despesas de Empréstimos por tomador"><option value="all">Todos os tomadores</option></select>
               </div>
@@ -246,7 +221,7 @@ P: R$ 0,00</strong></div>
         </section>
         <section class="transactions-section limits-section" data-page="ferramentas">
           <div class="section-heading limits-heading"><div><p class="eyebrow">Planejamento</p><h2>Limites e Metas</h2></div><button class="primary-button" id="new-limit" type="button"><span>＋</span> Limite</button></div>
-          <div class="table-wrap"><table><thead><tr><th>Período</th><th>Owner</th><th class="align-right">Meta</th><th class="align-right">Orçamento</th><th class="align-right">Previsão</th><th class="align-right">Patamar</th><th class="align-right">Resultado</th><th>Status</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody id="limits-list"></tbody></table><div id="limits-empty" class="empty-state" hidden>Nenhum limite encontrado.</div></div>
+          <div class="table-wrap"><table><thead><tr><th>Período</th><th class="align-right">Meta</th><th class="align-right">Orçamento</th><th class="align-right">Previsão</th><th class="align-right">Patamar</th><th class="align-right">Resultado</th><th>Status</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody id="limits-list"></tbody></table><div id="limits-empty" class="empty-state" hidden>Nenhum limite encontrado.</div></div>
           <nav class="pagination" aria-label="Paginação dos limites"><span class="pagination-controls"><button id="limit-pagination-prev" class="pagination-button" type="button">← Anterior</button><span id="limit-pagination-status" aria-live="polite"></span><button id="limit-pagination-next" class="pagination-button" type="button">Próxima →</button></span><label class="page-size">Por página <select id="limit-page-size" aria-label="Limites por página"><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label></nav>
         </section>
 
@@ -360,30 +335,6 @@ P: R$ 0,00</strong></div>
         <div class="dialog-actions"><button class="secondary-button" id="cancel-income-dialog" type="button">Cancelar</button><button class="primary-button" type="submit">Salvar receita</button></div>
       </form>
     </dialog>
-    <dialog id="buffet-income-dialog">
-      <form id="buffet-income-form" method="dialog">
-        <div class="dialog-heading"><div><p class="eyebrow">Buffet</p><h2 id="buffet-income-dialog-title">Nova receita</h2></div><button class="close-button" id="close-buffet-income-dialog" type="button" aria-label="Fechar">×</button></div>
-        <input id="buffet-income-id" type="hidden" />
-        <input id="buffet-income-client-id" type="hidden" />
-        <label>Descrição<input id="buffet-income-description" required maxlength="60" placeholder="Ex.: Venda do dia" /></label>
-        <label>Observação<textarea id="buffet-income-observation" maxlength="255" rows="3" placeholder="Informações adicionais"></textarea></label>
-        <label>Valor<input id="buffet-income-amount" type="text" inputmode="decimal" dir="rtl" required placeholder="R$ 0,00" /></label>
-        <label>Data<input id="buffet-income-date" type="date" required /></label>
-        <div class="dialog-actions"><button class="secondary-button" id="cancel-buffet-income-dialog" type="button">Cancelar</button><button class="primary-button" type="submit">Salvar receita</button></div>
-      </form>
-    </dialog>
-    <dialog id="buffet-expense-dialog">
-      <form id="buffet-expense-form" method="dialog">
-        <div class="dialog-heading"><div><p class="eyebrow">Buffet</p><h2 id="buffet-expense-dialog-title">Nova despesa</h2></div><button class="close-button" id="close-buffet-expense-dialog" type="button" aria-label="Fechar">×</button></div>
-        <input id="buffet-expense-id" type="hidden" />
-        <input id="buffet-expense-client-id" type="hidden" />
-        <label>Descrição<input id="buffet-expense-description" required maxlength="60" placeholder="Ex.: Compra de insumos" /></label>
-        <label>Observação<textarea id="buffet-expense-observation" maxlength="255" rows="3" placeholder="Informações adicionais"></textarea></label>
-        <label>Valor<input id="buffet-expense-amount" type="text" inputmode="decimal" dir="rtl" required placeholder="R$ 0,00" /></label>
-        <label>Data<input id="buffet-expense-date" type="date" required /></label>
-        <div class="dialog-actions"><button class="secondary-button" id="cancel-buffet-expense-dialog" type="button">Cancelar</button><button class="primary-button" type="submit">Salvar despesa</button></div>
-      </form>
-    </dialog>
     <dialog id="cash-closing-dialog">
       <form id="cash-closing-form" method="dialog">
         <div class="dialog-heading"><div><p class="eyebrow">Nova venda</p><h2 id="cash-closing-dialog-title">Fechamento diário</h2></div><button class="close-button" id="close-cash-closing-dialog" type="button" aria-label="Fechar">×</button></div>
@@ -410,7 +361,6 @@ P: R$ 0,00</strong></div>
         <div class="dialog-heading"><div><p class="eyebrow">Planejamento mensal</p><h2 id="limit-dialog-title">Novo limite</h2></div><button class="close-button" id="close-limit-dialog" type="button" aria-label="Fechar">×</button></div>
         <input id="limit-id" type="hidden" />
         <div class="form-row"><label>Mês<select id="limit-month" required></select></label><label>Ano<input id="limit-year" type="number" min="2000" max="9999" required /></label></div>
-        <div class="field-label">Owner</div><div id="limit-owner-options" class="location-options" role="radiogroup" aria-label="Owner do limite"><button type="button" class="location-option" data-limit-owner="P" role="radio" aria-checked="true"><span class="location-radio" aria-hidden="true"></span>P</button><button type="button" class="location-option" data-limit-owner="R" role="radio" aria-checked="false"><span class="location-radio" aria-hidden="true"></span>R</button></div>
         <div id="limit-values" class="limit-values">
           <label>Meta (~ Receitas)<input id="limit-target" type="text" inputmode="decimal" dir="rtl" placeholder="R$ 0,00" /></label>
           <label>Orçamento (~ Despesas Casa)<input id="limit-budget" type="text" inputmode="decimal" dir="rtl" placeholder="R$ 0,00" /></label>

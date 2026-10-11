@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { accumulatedBalance, groupTotals, inMonth, summarize } from "../../src/shared/finance.js";
+import { groupTotals, inMonth, summarize } from "../../src/shared/finance.js";
 
 const entries = [
   { id: "e1", date: "2026-10-02", type: "expense", amount: 30, expenseType: "Casa" },
@@ -23,10 +23,4 @@ test("calcula despesas, receitas e saldo", () => {
 
 test("agrupa totais por propriedade", () => {
   assert.deepEqual(groupTotals(entries.filter((item) => item.type === "expense"), "expenseType"), [["Casa", 50]]);
-});
-
-test("calcula o acumulado somando o saldo do dia ao acumulado anterior", () => {
-  assert.equal(accumulatedBalance(80, 125), 205);
-  assert.equal(accumulatedBalance(80, -125), -45);
-  assert.equal(accumulatedBalance(-45, -35), -80);
 });

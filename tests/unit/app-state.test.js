@@ -37,16 +37,3 @@ test("usa catálogos padrão quando a API não retorna opções", () => {
   assert.deepEqual(state.incomeSources, ["Salário"]);
   assert.deepEqual(state.locations, ["Casa"]);
 });
-
-test("normaliza owner dos limites para P ou R", () => {
-  const state = createAppState({
-    transactions: [],
-    limits: [
-      { id: "p", month: 1, year: 2026, target: 100 },
-      { id: "r", owner: "R", month: 1, year: 2026, target: 200 },
-    ],
-    settings: {},
-  }, defaults);
-  assert.equal(state.limits[0].owner, "P");
-  assert.equal(state.limits[1].owner, "R");
-});
