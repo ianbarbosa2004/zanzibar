@@ -134,7 +134,7 @@ P: R$ 0,00</strong></div>
         <section id="receitas" class="transactions-section income-section" data-page="lancamentos">
           <div class="section-heading"><div><p class="eyebrow">Entradas</p><h2>Receitas registradas <span id="income-section-total" class="section-total">(R$ 0,00)</span></h2></div><div class="section-actions"><select data-month-select aria-label="Selecionar mês e ano das receitas"></select><button class="primary-button" id="new-income" type="button"><span>＋</span> Nova receita</button></div></div>
           <div class="location-panel" data-income-panel>
-            <div class="toolbar"><label class="search-box"><span>⌕</span><input data-income-search type="search" placeholder="Buscar receita..." /></label><select data-income-source-filter aria-label="Filtrar receitas por fonte"><option value="all">Todas as fontes</option></select></div>
+            <div class="toolbar"><label class="search-box"><span>⌕</span><input data-income-search type="search" placeholder="Buscar receita..." /></label><select data-panel-month-select aria-label="Filtrar receitas por mês"></select><select data-income-source-filter aria-label="Filtrar receitas por fonte"><option value="all">Todas as fontes</option></select></div>
             <div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Fonte</th><th class="align-right">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody data-income-list></tbody></table><div data-income-empty class="empty-state" hidden>Nenhuma receita encontrada.</div></div>
             <nav data-income-pagination class="pagination" aria-label="Paginação das receitas"><span class="pagination-controls"><button data-income-pagination-prev class="pagination-button" type="button">← Anterior</button><span data-income-pagination-status aria-live="polite"></span><button data-income-pagination-next class="pagination-button" type="button">Próxima →</button></span><label class="page-size">Por página <select data-income-page-size aria-label="Registros por página em receitas"><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label></nav>
           </div>
@@ -149,7 +149,7 @@ P: R$ 0,00</strong></div>
             <div class="location-panel" data-location-panel="Casa">
               <div class="location-panel-heading"><h3>Casa <span data-location-total>(R$ 0,00)</span></h3></div>
               <div class="toolbar">
-                <label class="search-box"><span>⌕</span><input data-search type="search" placeholder="Buscar em Casa..." /></label>
+                <label class="search-box"><span>⌕</span><input data-search type="search" placeholder="Buscar em Casa..." /></label><select data-panel-month-select aria-label="Filtrar despesas de Casa por mês"></select>
                 <select data-type-filter aria-label="Filtrar despesas de Casa por tipo"><option value="all">Todos os tipos</option></select>
                 <select data-taker-filter aria-label="Filtrar despesas de Casa por tomador"><option value="all">Todos os tomadores</option></select>
               </div>
@@ -159,7 +159,7 @@ P: R$ 0,00</strong></div>
             <div class="location-panel" data-location-panel="Zanzibar">
               <div class="location-panel-heading"><h3>Zanzibar <span data-location-total>(R$ 0,00)</span></h3></div>
               <div class="toolbar">
-                <label class="search-box"><span>⌕</span><input data-search type="search" placeholder="Buscar em Zanzibar..." /></label>
+                <label class="search-box"><span>⌕</span><input data-search type="search" placeholder="Buscar em Zanzibar..." /></label><select data-panel-month-select aria-label="Filtrar despesas de Zanzibar por mês"></select>
                 <select data-type-filter aria-label="Filtrar despesas de Zanzibar por tipo"><option value="all">Todos os tipos</option></select>
                 <select data-taker-filter aria-label="Filtrar despesas de Zanzibar por tomador"><option value="all">Todos os tomadores</option></select>
               </div>
@@ -169,7 +169,7 @@ P: R$ 0,00</strong></div>
             <div class="location-panel" data-location-panel="Empréstimos">
               <div class="location-panel-heading"><h3>Empréstimos <span data-location-total>(R$ 0,00)</span></h3></div>
               <div class="toolbar">
-                <label class="search-box"><span>⌕</span><input data-search type="search" placeholder="Buscar em Empréstimos..." /></label>
+                <label class="search-box"><span>⌕</span><input data-search type="search" placeholder="Buscar em Empréstimos..." /></label><select data-panel-month-select aria-label="Filtrar despesas de Empréstimos por mês"></select>
                 <select data-type-filter aria-label="Filtrar despesas de Empréstimos por tipo"><option value="all">Todos os tipos</option></select>
                 <select data-taker-filter aria-label="Filtrar despesas de Empréstimos por tomador"><option value="all">Todos os tomadores</option></select>
               </div>

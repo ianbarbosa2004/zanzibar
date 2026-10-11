@@ -22,7 +22,7 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; background: #f6f8f7; }
-button, input, select { font: inherit; }
+button, input, select, textarea { font: inherit; }
 button { border: 0; cursor: pointer; }
 a { color: inherit; text-decoration: none; }
 .app-shell { display: flex; min-height: 100vh; }
@@ -312,7 +312,8 @@ dialog::backdrop { background: #193b3766; }
 .dialog-heading h2 { margin: 0; font-size: 21px; }
 .close-button { color: var(--muted); background: transparent; font-size: 25px; line-height: 1; }
 label { display: block; margin-bottom: 15px; color: #596862; font-size: 12px; font-weight: 650; }
-label input, label select { display: block; width: 100%; margin-top: 6px; padding: 10px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: #fbfcfa; font-size: 13px; }
+label input, label select, label textarea { display: block; width: 100%; margin-top: 6px; padding: 10px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: #fbfcfa; font-size: 13px; }
+label textarea { min-height: 82px; resize: vertical; line-height: 1.45; }
 #amount { text-align: right; }
 .field-label { display: block; margin-bottom: 6px; color: #596862; font-size: 12px; font-weight: 650; }
 .location-picker { margin-bottom: 15px; }
@@ -338,7 +339,7 @@ label input, label select { display: block; width: 100%; margin-top: 6px; paddin
 .cash-closing-stack-sales strong { text-align: left; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
 .secondary-button { padding: 11px 15px; border-radius: 8px; color: #52625b; background: #edf1ed; font-size: 13px; }
-label input:focus-visible, label select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+label input:focus-visible, label select:focus-visible, label textarea:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 dialog { overscroll-behavior: contain; }
 @media (max-width: 1050px) { .reports-grid { grid-template-columns: 1fr 1fr; } .reports-grid .report-panel:last-child { grid-column: span 2; } }
 @media (max-width: 850px) { .sidebar { width: 205px; } .content { padding: 30px 3%; } .overview { grid-template-columns: 1fr 1fr; gap: 18px; } .balance-card { grid-column: span 2; } .dashboard-grid { grid-template-columns: 1fr; gap: 18px; } .reports-grid, .registry-grid, .buffet-summary-grid { grid-template-columns: 1fr; gap: 18px; } .reports-grid .report-panel:last-child { grid-column: auto; } .buffet-summary-grid .summary-card-balance, .buffet-wide-panel { grid-column: auto; } }

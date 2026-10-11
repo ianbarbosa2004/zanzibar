@@ -357,7 +357,7 @@ export async function saveTransaction(item) {
       transactionId = existing[0].id;
       await connection.execute("UPDATE transactions SET description = ?, amount = ?, type = ?, expense_type = ?, taker = ?, location = ?, creditor = ?, expense_type_id = ?, taker_id = ?, location_id = ?, creditor_id = ?, income_source_id = ?, transaction_date = ? WHERE id = ?", [...values, transactionId]);
     } else {
-      const [result] = await connection.execute("INSERT INTO transactions (client_id, description, amount, type, expense_type, taker, location, creditor, expense_type_id, taker_id, location_id, creditor_id, income_source_id, transaction_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [clientId, ...values]);
+      const [result] = await connection.execute("INSERT INTO transactions (client_id, description, amount, type, expense_type, taker, location, creditor, expense_type_id, taker_id, location_id, creditor_id, income_source_id, transaction_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [clientId, ...values]);
       transactionId = result.insertId;
     }
     if (item.observation?.trim()) await connection.execute("INSERT INTO buffet_observations (transaction_id, observation) VALUES (?, ?) ON DUPLICATE KEY UPDATE observation = VALUES(observation), updated_at = CURRENT_TIMESTAMP", [transactionId, item.observation.trim()]);

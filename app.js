@@ -100,6 +100,7 @@ function setupFormOptions() {
   const availableMonths = [...new Set([currentMonth(), ...transactions.map((item) => item.date), ...incomes.map((item) => item.date), ...limits.map((item) => `${item.year}-${String(item.month).padStart(2, "0")}-01`)].map((date) => date.slice(0, 7)))].sort().reverse();
   const monthOptions = availableMonths.map((month) => `<option value="${month}">${new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date(`${month}-15`))}</option>`).join("");
   document.querySelectorAll("[data-month-select]").forEach((select) => { select.innerHTML = monthOptions; select.value = currentMonth(); });
+  document.querySelectorAll("[data-panel-month-select]").forEach((select) => { select.innerHTML = monthOptions; select.value = currentMonth(); });
   $("#report-period-select").innerHTML = monthOptions;
   const [currentYear, currentMonthNumber] = currentMonth().split("-");
   const years = [...new Set([currentYear, ...availableMonths.map((month) => month.slice(0, 4))])].sort((a, b) => Number(b) - Number(a));
@@ -172,10 +173,14 @@ function renderBuffetCalendar(entries, period) {
   const daily = new Map(buffetDailyClosings(entries).map((item) => [item.date, item]));
   const cells = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((day) => `<div class="calendar-weekday">${day}</div>`);
   for (let index = 0; index < firstDay; index += 1) cells.push('<div class="calendar-day calendar-day-empty" aria-hidden="true"></div>');
+  let previousAccumulated = 0;
   for (let day = 1; day <= daysInMonth; day += 1) {
     const date = `${period}-${String(day).padStart(2, "0")}`;
     const item = daily.get(date) || { income: 0, expense: 0, balance: 0 };
-    cells.push(`<article class="calendar-day"><strong class="calendar-date">${day}</strong><div class="calendar-values"><span class="calendar-income">Entradas <b>${formatMoney(item.income)}</b></span><span class="calendar-expense">Saídas <b>${formatMoney(-item.expense)}</b></span></div><div class="calendar-balance ${item.balance >= 0 ? "calendar-balance-positive" : "calendar-balance-negative"}"><span>Saldo</span><strong>${formatMoney(item.balance)}</strong></div></article>`);
+    const accumulated = accumulatedBalance(previousAccumulated, item.balance);
+    const accumulatedClass = accumulated > 0 ? "calendar-balance-positive" : accumulated < 0 ? "calendar-balance-negative" : "calendar-balance-zero";
+    cells.push(`<article class="calendar-day"><strong class="calendar-date">${day}</strong><div class="calendar-values"><span class="calendar-income">Entradas <b>${formatMoney(item.income)}</b></span><span class="calendar-expense">Saídas <b>${formatMoney(-item.expense)}</b></span></div><div class="calendar-balance ${item.balance >= 0 ? "calendar-balance-positive" : "calendar-balance-negative"}"><span>Saldo</span><strong>${formatMoney(item.balance)}</strong></div><div class="calendar-accumulated ${accumulatedClass}"><span>Acumulado</span><strong>${formatMoney(accumulated)}</strong></div></article>`);
+    previousAccumulated = accumulated;
   }
   $("#buffet-calendar").innerHTML = cells.join("");
 }
@@ -279,7 +284,8 @@ function renderLocationTransactions(location) {
   const query = panel.querySelector("[data-search]").value.toLowerCase().trim();
   const type = panel.querySelector("[data-type-filter]").value;
   const taker = panel.querySelector("[data-taker-filter]").value;
-  const filtered = sortByDateDescending(filterEntries(monthTransactions(), {
+  const month = panel.querySelector("[data-panel-month-select]").value || selectedMonth();
+  const filtered = sortByDateDescending(filterEntries(inMonth(transactions.filter((item) => !isBuffetExpense(item)), month), {
     query,
     fields: ["description", "expenseType", "taker", "location", "creditor"],
     filters: { location, expenseType: type, taker },
@@ -294,6 +300,7 @@ function renderLocationTransactions(location) {
     <td class="align-right expense-text">- ${formatMoney(item.amount)}</td>
     <td class="align-right"><button class="action-button" data-edit="${item.id}" aria-label="Editar ${escapeHtml(item.description)}">•••</button></td></tr>`).join("");
   panel.querySelector("[data-location-total]").textContent = `(${formatMoney(filteredTotal)})`;
+  panel.querySelector("[data-location-total]").dataset.total = String(filteredTotal);
   panel.querySelector("[data-empty-state]").hidden = filtered.length > 0;
   panel.querySelector("[data-pagination-status]").textContent = `Página ${state.page} de ${totalPages}`;
   panel.querySelector("[data-pagination-prev]").disabled = state.page === 1;
@@ -303,6 +310,8 @@ function renderLocationTransactions(location) {
 function renderTransactions() {
   ["Casa", "Zanzibar", "Empréstimos"].forEach(renderLocationTransactions);
   renderIncomeTransactions();
+  const expenseTotal = [...document.querySelectorAll("[data-location-total]")].reduce((sum, element) => sum + Number(element.dataset.total || 0), 0);
+  $("#expense-section-total").textContent = `(${formatMoney(expenseTotal)})`;
 }
 
 function renderIncomeTransactions() {
@@ -310,7 +319,8 @@ function renderIncomeTransactions() {
   const state = paginationState.Receitas;
   const query = panel.querySelector("[data-income-search]").value.toLowerCase().trim();
   const source = panel.querySelector("[data-income-source-filter]").value;
-  const filtered = sortByDateDescending(filterEntries(monthIncomes(), {
+  const month = panel.querySelector("[data-panel-month-select]").value || selectedMonth();
+  const filtered = sortByDateDescending(filterEntries(inMonth(incomes.filter((item) => !isBuffetIncome(item)), month), {
     query,
     fields: ["description", "source"],
     filters: { source },
@@ -320,6 +330,7 @@ function renderIncomeTransactions() {
   const { items: pageItems, totalPages } = paged;
   panel.querySelector("[data-income-list]").innerHTML = pageItems.map((item) => `<tr><td>${escapeHtml(formatTransactionDate(item.date))}</td><td><div class="transaction-description"><span class="transaction-icon income">↗</span>${escapeHtml(item.description)}</div></td><td>${escapeHtml(item.source)}</td><td class="align-right income-text">+ ${formatMoney(item.amount)}</td><td class="align-right"><button class="action-button" data-edit-income="${item.id}" aria-label="Editar ${escapeHtml(item.description)}">•••</button></td></tr>`).join("");
   panel.querySelector("[data-income-empty]").hidden = filtered.length > 0;
+  panel.closest(".income-section").querySelector("#income-section-total").textContent = `(${formatMoney(filtered.reduce((sum, item) => sum + Number(item.amount || 0), 0))})`;
   panel.querySelector("[data-income-pagination-status]").textContent = `Página ${state.page} de ${totalPages}`;
   panel.querySelector("[data-income-pagination-prev]").disabled = state.page === 1;
   panel.querySelector("[data-income-pagination-next]").disabled = state.page === totalPages;
@@ -1243,22 +1254,20 @@ $("#income-amount").addEventListener("input", (event) => {
   event.target.value = amount ? formatInputAmount(amount) : "";
 });
 document.querySelectorAll("[data-location-panel]").forEach((panel) => {
-  panel.querySelectorAll("[data-search], [data-type-filter], [data-taker-filter]").forEach((control) => control.addEventListener("input", () => {
+  panel.querySelectorAll("[data-search], [data-type-filter], [data-taker-filter], [data-panel-month-select]").forEach((control) => control.addEventListener("input", () => {
     paginationState[panel.dataset.locationPanel].page = 1;
     renderLocationTransactions(panel.dataset.locationPanel);
   }));
+  panel.querySelector("[data-panel-month-select]").addEventListener("change", () => {
+    paginationState[panel.dataset.locationPanel].page = 1;
+    renderLocationTransactions(panel.dataset.locationPanel);
+  });
   panel.querySelector("[data-page-size]").addEventListener("change", (event) => {
     const state = paginationState[panel.dataset.locationPanel];
     state.pageSize = Number(event.target.value);
     state.page = 1;
     renderLocationTransactions(panel.dataset.locationPanel);
   });
-  const incomePanel = $("[data-income-panel]");
-  incomePanel.querySelectorAll("[data-income-search], [data-income-source-filter]").forEach((control) => control.addEventListener("input", () => { paginationState.Receitas.page = 1; renderIncomeTransactions(); }));
-  incomePanel.querySelector("[data-income-page-size]").addEventListener("change", (event) => { paginationState.Receitas.pageSize = Number(event.target.value); paginationState.Receitas.page = 1; renderIncomeTransactions(); });
-  incomePanel.querySelector("[data-income-pagination-prev]").addEventListener("click", () => { if (paginationState.Receitas.page > 1) { paginationState.Receitas.page--; renderIncomeTransactions(); } });
-  incomePanel.querySelector("[data-income-pagination-next]").addEventListener("click", () => { paginationState.Receitas.page++; renderIncomeTransactions(); });
-  incomePanel.addEventListener("click", (event) => { const button = event.target.closest("[data-edit-income]");   if (button) openIncomeDialog(incomes.find((item) => String(item.id) === button.dataset.editIncome)); });
   panel.querySelector("[data-pagination-prev]").addEventListener("click", () => {
     const state = paginationState[panel.dataset.locationPanel];
     if (state.page > 1) { state.page -= 1; renderLocationTransactions(panel.dataset.locationPanel); }
@@ -1273,6 +1282,13 @@ document.querySelectorAll("[data-location-panel]").forEach((panel) => {
     if (button) openDialog(transactions.find((item) => String(item.id) === button.dataset.edit));
   });
 });
+const incomePanel = $("[data-income-panel]");
+incomePanel.querySelectorAll("[data-income-search], [data-income-source-filter], [data-panel-month-select]").forEach((control) => control.addEventListener("input", () => { paginationState.Receitas.page = 1; renderIncomeTransactions(); }));
+incomePanel.querySelector("[data-panel-month-select]").addEventListener("change", () => { paginationState.Receitas.page = 1; renderIncomeTransactions(); });
+incomePanel.querySelector("[data-income-page-size]").addEventListener("change", (event) => { paginationState.Receitas.pageSize = Number(event.target.value); paginationState.Receitas.page = 1; renderIncomeTransactions(); });
+incomePanel.querySelector("[data-income-pagination-prev]").addEventListener("click", () => { if (paginationState.Receitas.page > 1) { paginationState.Receitas.page--; renderIncomeTransactions(); } });
+incomePanel.querySelector("[data-income-pagination-next]").addEventListener("click", () => { paginationState.Receitas.page++; renderIncomeTransactions(); });
+incomePanel.addEventListener("click", (event) => { const button = event.target.closest("[data-edit-income]");   if (button) openIncomeDialog(incomes.find((item) => String(item.id) === button.dataset.editIncome)); });
 document.querySelectorAll("[data-month-select]").forEach((select) => select.addEventListener("change", (event) => {
   const [year, month] = event.target.value.split("-");
   $("#month-filter-month").value = month;
