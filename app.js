@@ -1,4 +1,4 @@
-import { inMonth, groupTotals, summarize } from "./src/shared/finance.js";
+import { accumulatedBalance, inMonth, groupTotals, summarize } from "./src/shared/finance.js";
 import { currentMonth, localDate, todayLabel } from "./src/shared/dates.js";
 import { formatDate, formatInputAmount, formatLastTransactionUpdate, formatMoney, formatTransactionDate, parseInputAmount } from "./src/shared/formatters.js";
 import { canDeleteRegistry, hasRegistryName, registryDefinition, renameRegistry } from "./src/shared/registries.js";
@@ -149,7 +149,7 @@ function renderBuffet() {
   $("#buffet-balance-total").textContent = formatMoney(incomeTotal - expenseTotal);
   $("#buffet-income-count").textContent = `${entries.filter(isBuffetIncome).length} entradas`;
   $("#buffet-expense-count").textContent = `${entries.filter(isBuffetExpense).length} saídas`;
-  const entryRows = (items, kind) => items.map((item) => `<tr><td>${escapeHtml(formatTransactionDate(item.date))}</td><td>${escapeHtml(item.description)}</td><td class="align-right ${kind === "income" ? "income-text" : "expense-text"}">${kind === "income" ? "+ " : "- "}${formatMoney(item.amount)}</td><td class="align-right"><button class="action-button" data-edit-buffet="${escapeHtml(String(item.id))}" aria-label="Editar ${escapeHtml(item.description)}">•••</button></td></tr>`).join("");
+  const entryRows = (items, kind) => items.map((item) => `<tr><td>${escapeHtml(formatTransactionDate(item.date))}</td><td><div>${escapeHtml(item.description)}</div>${item.observation ? `<small>${escapeHtml(item.observation)}</small>` : ""}</td><td class="align-right ${kind === "income" ? "income-text" : "expense-text"}">${kind === "income" ? "+ " : "- "}${formatMoney(item.amount)}</td><td class="align-right"><button class="action-button" data-edit-buffet="${escapeHtml(String(item.id))}" aria-label="Editar ${escapeHtml(item.description)}">•••</button></td></tr>`).join("");
   const incomesForPeriod = entries.filter(isBuffetIncome);
   const expensesForPeriod = entries.filter(isBuffetExpense);
   $("#buffet-income-list").innerHTML = entryRows(incomesForPeriod, "income");
@@ -244,6 +244,7 @@ function renderFinancialCalendar() {
   $("#calendar-period").textContent = monthLabel;
   const cells = weekdays.map((weekday) => `<div class="calendar-weekday">${weekday}</div>`);
   for (let index = 0; index < firstDay; index += 1) cells.push('<div class="calendar-day calendar-day-empty" aria-hidden="true"></div>');
+  let previousAccumulated = 0;
   for (let dayNumber = 1; dayNumber <= daysInMonth; dayNumber += 1) {
     const date = `${month}-${String(dayNumber).padStart(2, "0")}`;
     const values = entries.get(date) || { home: 0, zanzibar: 0, loans: 0, income: 0 };
@@ -251,6 +252,10 @@ function renderFinancialCalendar() {
     const balanceClass = balance > 0 ? "calendar-balance-positive" : balance < 0 ? "calendar-balance-negative" : "calendar-balance-zero";
     const balanceSign = balance > 0 ? "+ " : balance < 0 ? "− " : "";
     const balanceLabel = `${balanceSign}${formatMoney(Math.abs(balance))}`;
+    const accumulated = accumulatedBalance(previousAccumulated, balance);
+    const accumulatedClass = accumulated > 0 ? "calendar-balance-positive" : accumulated < 0 ? "calendar-balance-negative" : "calendar-balance-zero";
+    const accumulatedSign = accumulated > 0 ? "+ " : accumulated < 0 ? "− " : "";
+    const accumulatedLabel = `${accumulatedSign}${formatMoney(Math.abs(accumulated))}`;
     const weekday = new Date(Date.UTC(year, monthNumber - 1, dayNumber)).getUTCDay();
     cells.push(`<article class="calendar-day ${weekday === 0 ? "calendar-day-sunday" : ""} ${weekday === 6 ? "calendar-day-saturday" : ""}">
       <strong class="calendar-date">${dayNumber}</strong>
@@ -261,7 +266,9 @@ function renderFinancialCalendar() {
         <span class="calendar-income">Receitas <b>${formatMoney(values.income)}</b></span>
       </div>
       <div class="calendar-balance ${balanceClass}"><span>Saldo</span><strong>${balanceLabel}</strong></div>
+      <div class="calendar-accumulated ${accumulatedClass}"><span>Acumulado</span><strong>${accumulatedLabel}</strong></div>
     </article>`);
+    previousAccumulated = accumulated;
   }
   $("#financial-calendar").innerHTML = cells.join("");
 }
@@ -899,6 +906,7 @@ function openBuffetIncomeDialog(item) {
   $("#buffet-income-id").value = item?.id || "";
   $("#buffet-income-client-id").value = item?.clientId || "";
   $("#buffet-income-description").value = item?.description || "";
+  $("#buffet-income-observation").value = item?.observation || "";
   $("#buffet-income-amount").value = item ? formatInputAmount(item.amount) : "";
   $("#buffet-income-date").value = item?.date || localDate();
   $("#buffet-income-dialog").showModal();
@@ -908,6 +916,7 @@ function openBuffetExpenseDialog(item) {
   $("#buffet-expense-id").value = item?.id || "";
   $("#buffet-expense-client-id").value = item?.clientId || "";
   $("#buffet-expense-description").value = item?.description || "";
+  $("#buffet-expense-observation").value = item?.observation || "";
   $("#buffet-expense-amount").value = item ? formatInputAmount(item.amount) : "";
   $("#buffet-expense-date").value = item?.date || localDate();
   $("#buffet-expense-dialog").showModal();
@@ -947,14 +956,14 @@ $("#buffet-expense-amount").addEventListener("input", (event) => {
 $("#buffet-income-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const id = $("#buffet-income-id").value;
-  const item = { id: id || `buffet-income-${crypto.randomUUID()}`, clientId: $("#buffet-income-client-id").value || undefined, description: $("#buffet-income-description").value.trim(), amount: parseInputAmount($("#buffet-income-amount").value), type: "income", source: "Buffet", product: "buffet", date: $("#buffet-income-date").value };
+  const item = { id: id || `buffet-income-${crypto.randomUUID()}`, clientId: $("#buffet-income-client-id").value || undefined, description: $("#buffet-income-description").value.trim(), observation: $("#buffet-income-observation").value.trim(), amount: parseInputAmount($("#buffet-income-amount").value), type: "income", source: "Buffet", product: "buffet", date: $("#buffet-income-date").value };
   if (!item.description || !item.amount || !item.date) return showFeedback("Preencha descrição, valor e data.");
   persistBuffetEntry(item, id, $("#buffet-income-dialog"), "Receita do Buffet");
 });
 $("#buffet-expense-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const id = $("#buffet-expense-id").value;
-  const item = { id: id || `buffet-expense-${crypto.randomUUID()}`, clientId: $("#buffet-expense-client-id").value || undefined, description: $("#buffet-expense-description").value.trim(), amount: parseInputAmount($("#buffet-expense-amount").value), type: "expense", location: "Buffet", expenseType: "Buffet", taker: "Buffet", creditor: "Caixa", product: "buffet", date: $("#buffet-expense-date").value };
+  const item = { id: id || `buffet-expense-${crypto.randomUUID()}`, clientId: $("#buffet-expense-client-id").value || undefined, description: $("#buffet-expense-description").value.trim(), observation: $("#buffet-expense-observation").value.trim(), amount: parseInputAmount($("#buffet-expense-amount").value), type: "expense", location: "Buffet", expenseType: "Buffet", taker: "Buffet", creditor: "Caixa", product: "buffet", date: $("#buffet-expense-date").value };
   if (!item.description || !item.amount || !item.date) return showFeedback("Preencha descrição, valor e data.");
   persistBuffetEntry(item, id, $("#buffet-expense-dialog"), "Despesa do Buffet");
 });
@@ -1132,8 +1141,10 @@ $("#monthly-cash-closing-form").addEventListener("submit", (event) => {
   })).filter((item) => item.saleCount || item.totalAmount);
   if (!values.length) return showFeedback("Informe pelo menos um valor maior que zero.");
   monthlyCashClosings = monthlyCashClosings.filter((item) => item.month !== month || item.year !== year).concat(values);
-  saveMonthlyCashClosings(API_URL, values).then(() => {
+  saveMonthlyCashClosings(API_URL, values).then(async () => {
+    billings = await refreshBillings(API_URL);
     renderMonthlyCashClosings((rows) => [...rows].sort((a, b) => a.paymentMethod.localeCompare(b.paymentMethod, "pt-BR")));
+    renderBillings();
     $("#monthly-cash-closing-dialog").close();
     showFeedback("Fechamento mensal salvo.");
   }).catch((error) => {

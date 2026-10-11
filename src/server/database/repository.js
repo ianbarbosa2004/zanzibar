@@ -161,6 +161,12 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
     if (!found.total) await dbPool.query(`ALTER TABLE transactions ADD COLUMN ${column} VARCHAR(120) NULL`);
     else await dbPool.query(`ALTER TABLE transactions MODIFY COLUMN ${column} VARCHAR(120) NULL`);
   }
+  await dbPool.query(`CREATE TABLE IF NOT EXISTS buffet_observations (
+    transaction_id INT UNSIGNED PRIMARY KEY, observation VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_buffet_observations_transaction FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE
+  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
   await dbPool.query("UPDATE transactions t JOIN expense_types c ON c.name = t.expense_type SET t.expense_type_id = c.id WHERE t.expense_type_id IS NULL");
   await dbPool.query("UPDATE transactions t JOIN takers c ON c.name = t.taker SET t.taker_id = c.id WHERE t.taker_id IS NULL");
   await dbPool.query("UPDATE transactions t JOIN locations c ON c.name = t.location SET t.location_id = c.id WHERE t.location_id IS NULL");
@@ -211,7 +217,7 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
 }
 
 export async function readDatabase() {
-  const [rows] = await dbPool.query("SELECT t.id, t.client_id AS clientId, t.description, t.amount, t.type, et.name AS expenseType, et.slug AS expenseTypeSlug, tk.name AS taker, tk.slug AS takerSlug, l.name AS location, l.slug AS locationSlug, c.name AS creditor, c.slug AS creditorSlug, COALESCE(s.name, CASE WHEN t.type = 'income' AND t.client_id LIKE 'cash-closing-income-%' THEN 'Vendas' END) AS source, COALESCE(s.slug, CASE WHEN t.type = 'income' AND t.client_id LIKE 'cash-closing-income-%' THEN 'vendas' END) AS sourceSlug, DATE_FORMAT(t.transaction_date, '%Y-%m-%d') AS date, t.created_at AS createdAt, t.updated_at AS updatedAt FROM transactions t LEFT JOIN expense_types et ON et.id = t.expense_type_id LEFT JOIN takers tk ON tk.id = t.taker_id LEFT JOIN locations l ON l.id = t.location_id LEFT JOIN creditors c ON c.id = t.creditor_id LEFT JOIN income_sources s ON s.id = t.income_source_id ORDER BY t.transaction_date DESC, t.updated_at DESC");
+  const [rows] = await dbPool.query("SELECT t.id, t.client_id AS clientId, t.description, bo.observation, t.amount, t.type, et.name AS expenseType, et.slug AS expenseTypeSlug, tk.name AS taker, tk.slug AS takerSlug, l.name AS location, l.slug AS locationSlug, c.name AS creditor, c.slug AS creditorSlug, COALESCE(s.name, CASE WHEN t.type = 'income' AND t.client_id LIKE 'cash-closing-income-%' THEN 'Vendas' END) AS source, COALESCE(s.slug, CASE WHEN t.type = 'income' AND t.client_id LIKE 'cash-closing-income-%' THEN 'vendas' END) AS sourceSlug, DATE_FORMAT(t.transaction_date, '%Y-%m-%d') AS date, t.created_at AS createdAt, t.updated_at AS updatedAt FROM transactions t LEFT JOIN buffet_observations bo ON bo.transaction_id = t.id LEFT JOIN expense_types et ON et.id = t.expense_type_id LEFT JOIN takers tk ON tk.id = t.taker_id LEFT JOIN locations l ON l.id = t.location_id LEFT JOIN creditors c ON c.id = t.creditor_id LEFT JOIN income_sources s ON s.id = t.income_source_id ORDER BY t.transaction_date DESC, t.updated_at DESC");
   const [[settings]] = await dbPool.query("SELECT currency, schema_version AS schemaVersion FROM app_settings WHERE id = 1");
   const catalogRows = {};
   for (const table of ["expense_types", "takers", "locations", "creditors", "payment_methods", "income_sources"]) {
@@ -346,11 +352,16 @@ export async function saveTransaction(item) {
     const creditorId = income ? null : await lookup("creditors", item.creditor);
     const sourceId = income ? await lookup("income_sources", item.source) : null;
     const values = [item.description, Number(item.amount || 0), income ? "income" : "expense", income ? null : item.expenseType, income ? null : item.taker, income ? null : item.location, income ? null : item.creditor, expenseTypeId, takerId, locationId, creditorId, sourceId, item.date];
+    let transactionId;
     if (existing[0]) {
-      await connection.execute("UPDATE transactions SET description = ?, amount = ?, type = ?, expense_type = ?, taker = ?, location = ?, creditor = ?, expense_type_id = ?, taker_id = ?, location_id = ?, creditor_id = ?, income_source_id = ?, transaction_date = ? WHERE id = ?", [...values, existing[0].id]);
+      transactionId = existing[0].id;
+      await connection.execute("UPDATE transactions SET description = ?, amount = ?, type = ?, expense_type = ?, taker = ?, location = ?, creditor = ?, expense_type_id = ?, taker_id = ?, location_id = ?, creditor_id = ?, income_source_id = ?, transaction_date = ? WHERE id = ?", [...values, transactionId]);
     } else {
-      await connection.execute("INSERT INTO transactions (client_id, description, amount, type, expense_type, taker, location, creditor, expense_type_id, taker_id, location_id, creditor_id, income_source_id, transaction_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [clientId, ...values]);
+      const [result] = await connection.execute("INSERT INTO transactions (client_id, description, amount, type, expense_type, taker, location, creditor, expense_type_id, taker_id, location_id, creditor_id, income_source_id, transaction_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [clientId, ...values]);
+      transactionId = result.insertId;
     }
+    if (item.observation?.trim()) await connection.execute("INSERT INTO buffet_observations (transaction_id, observation) VALUES (?, ?) ON DUPLICATE KEY UPDATE observation = VALUES(observation), updated_at = CURRENT_TIMESTAMP", [transactionId, item.observation.trim()]);
+    else await connection.execute("DELETE FROM buffet_observations WHERE transaction_id = ?", [transactionId]);
     await connection.commit();
   } catch (error) {
     await connection.rollback();
@@ -441,6 +452,7 @@ export async function saveMonthlyCashClosings(items) {
       if (ids.length) await connection.query("DELETE FROM monthly_cash_closings WHERE closing_year = ? AND closing_month = ? AND id NOT IN (?)", [year, month, ids]);
       else await connection.execute("DELETE FROM monthly_cash_closings WHERE closing_year = ? AND closing_month = ?", [year, month]);
     }
+    await refreshBillings(connection);
     await connection.commit();
   } catch (error) {
     await connection.rollback();
