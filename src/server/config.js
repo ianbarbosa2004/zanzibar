@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { catalogDefaults } from "../shared/catalog-defaults.js";
@@ -23,6 +24,23 @@ export const databaseName = process.env.CLAREZA_DB_NAME?.trim();
 export const databaseUser = process.env.CLAREZA_DB_USER?.trim();
 export const localSnapshotMode = process.env.CLAREZA_LOCAL_SNAPSHOT === "1" || process.env.CLAREZA_LOCAL_SNAPSHOT === "true";
 export const databaseConfigured = !localSnapshotMode && Boolean(process.env.CLAREZA_DB_PASSWORD);
+const secretsFile = process.env.CLAREZA_SECRETS_FILE?.trim()
+  || join(process.env.HOME || process.env.USERPROFILE || root, "clareza-secrets.json");
+let fileSecrets = {};
+if (existsSync(secretsFile)) {
+  try {
+    fileSecrets = JSON.parse(readFileSync(secretsFile, "utf8").replace(/^\uFEFF/, ""));
+  } catch (error) {
+    throw new Error(`Não foi possível ler o arquivo de segredos do Clareza: ${error.message}`);
+  }
+}
+const secret = (name) => String(fileSecrets[name] ?? process.env[name] ?? "").trim();
+export const googleClientId = secret("GOOGLE_CLIENT_ID");
+export const googleClientSecret = secret("GOOGLE_CLIENT_SECRET");
+export const googleRedirectUri = secret("GOOGLE_REDIRECT_URI");
+export const sessionSecret = secret("CLAREZA_SESSION_SECRET");
+export const adminEmail = (secret("CLAREZA_ADMIN_EMAIL") || "pbsjr1@gmail.com").toLowerCase();
+export const cookieSecure = secret("CLAREZA_COOKIE_SECURE") === "1" || secret("CLAREZA_COOKIE_SECURE").toLowerCase() === "true";
 
 export const defaultSettings = {
   ...catalogDefaults,

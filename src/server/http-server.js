@@ -12,11 +12,11 @@ async function readBody(request) {
   return JSON.parse(raw || "{}");
 }
 
-function send(response, status, payload, contentType = "application/json") {
+function send(response, status, payload, contentType = "application/json", headers = {}) {
   const encodedContentType = /^(application\/json|text\/)/.test(contentType) && !contentType.includes("charset")
     ? `${contentType}; charset=utf-8`
     : contentType;
-  response.writeHead(status, { "Content-Type": encodedContentType, "Cache-Control": "no-store" });
+  response.writeHead(status, { "Content-Type": encodedContentType, "Cache-Control": "no-store", ...headers });
   const body = Buffer.isBuffer(payload) || payload instanceof Uint8Array
     ? payload
     : contentType === "application/json"
@@ -25,7 +25,7 @@ function send(response, status, payload, contentType = "application/json") {
   response.end(body);
 }
 
-export function createHttpServer({ basePath, readData, writeCashClosing, writeCatalog, writeLimit, writeMonthlyCashClosings, writeTransaction, writeBillings, readStaticFile, logger = console }) {
+export function createHttpServer({ basePath, readData, writeCashClosing, writeCatalog, writeLimit, writeMonthlyCashClosings, writeTransaction, writeBillings, readStaticFile, auth, logger = console }) {
   return createServer(async (request, response) => {
     try {
       const pathname = new URL(request.url || "/", "http://localhost").pathname;
@@ -34,7 +34,26 @@ export function createHttpServer({ basePath, readData, writeCashClosing, writeCa
         response.writeHead(308, { Location: `${basePath}/` });
         return response.end();
       }
+      if (auth && apiPath === "/auth/google" && request.method === "GET") return auth.begin(request, response);
+      if (auth && apiPath === "/auth/google/callback" && request.method === "GET") return await auth.callback(request, response);
+      if (auth && apiPath === "/api/auth/me" && request.method === "GET") {
+        const user = await auth.current(request);
+        return send(response, 200, { authenticated: Boolean(user), user: user ? { id: user.id, email: user.email, name: user.name, picture: user.picture, role: user.role, authorized: user.authorized } : null });
+      }
+      if (auth && apiPath === "/api/auth/logout" && request.method === "POST") return auth.logout(request, response);
+      const currentUser = auth ? await auth.current(request) : { role: "admin" };
+      const protectedApi = apiPath.startsWith("/api/");
+      if (auth && protectedApi && !currentUser) return send(response, 401, { error: "Autenticação necessária." });
       if (apiPath === "/api/data" && request.method === "GET") return send(response, 200, await readData());
+      if (apiPath === "/api/auth/users" && request.method === "GET") {
+        if (currentUser.role !== "admin") return send(response, 403, { error: "Acesso restrito ao administrador." });
+        return send(response, 200, { users: await auth.users() });
+      }
+      if (apiPath === "/api/auth/users" && request.method === "PUT") {
+        if (currentUser.role !== "admin") return send(response, 403, { error: "Acesso restrito ao administrador." });
+        const payload = await readBody(request);
+        return send(response, 200, { user: await auth.authorize(payload.email, payload.authorized) });
+      }
       if (apiPath === "/api/cash-closings" && request.method === "PUT") {
         const payload = await readBody(request);
         await writeCashClosing(payload.date, payload.items || []);

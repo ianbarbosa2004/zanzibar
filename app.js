@@ -1,4 +1,4 @@
-import { inMonth, groupTotals, summarize } from "./src/shared/finance.js";
+import { accumulatedBalance, inMonth, groupTotals, summarize } from "./src/shared/finance.js";
 import { currentMonth, localDate, todayLabel } from "./src/shared/dates.js";
 import { formatDate, formatInputAmount, formatLastTransactionUpdate, formatMoney, formatTransactionDate, parseInputAmount } from "./src/shared/formatters.js";
 import { canDeleteRegistry, hasRegistryName, registryDefinition, renameRegistry } from "./src/shared/registries.js";
@@ -12,6 +12,7 @@ import { importCashClosingsCsv } from "./src/shared/csv-cash-closings.js";
 import { catalogImportMarkdown } from "./src/shared/catalog-import-document.js";
 import { toSlug } from "./src/shared/slugs.js";
 import { refreshBillings, saveCashClosing, saveCatalog, saveLimit, saveMonthlyCashClosings, saveTransaction } from "./src/client/crud-api.js";
+import { buffetDailyClosings, buffetEntries, buffetMonthlyClosings, isBuffetExpense, isBuffetIncome } from "./src/shared/buffet.js";
 
 const { expenseTypes: defaultExpenseTypes, takers: defaultTakers, locations: defaultLocations, creditors: defaultCreditors, paymentMethods: defaultPaymentMethods, incomeSources: defaultIncomeSources } = catalogDefaults;
 const API_URL = new URL("api/data", document.baseURI).pathname;
@@ -30,6 +31,8 @@ let cashClosings = [];
 let monthlyCashClosings = [];
 let billings = [];
 let limits = [];
+let expenseStatus = "all";
+let authUser = null;
 const initialState = defaultAppState({
   expenseTypes: defaultExpenseTypes,
   takers: defaultTakers,
@@ -56,6 +59,16 @@ const selectedMonth = () => {
   const year = $("#month-filter-year")?.value;
   return month && year ? `${year}-${month}` : currentMonth();
 };
+function syncDayFilters() {
+  const month = selectedMonth();
+  const [year, monthNumber] = month.split("-");
+  const lastDay = new Date(Number(year), Number(monthNumber), 0).getDate();
+  document.querySelectorAll("[data-day-filter]").forEach((filter) => {
+    filter.min = `${month}-01`;
+    filter.max = `${month}-${String(lastDay).padStart(2, "0")}`;
+    if (filter.value && (filter.value < filter.min || filter.value > filter.max)) filter.value = "";
+  });
+}
 const reportSortState = {
   daily: { field: "date", direction: "desc" },
   type: { field: "value", direction: "desc" },
@@ -63,6 +76,32 @@ const reportSortState = {
   "income-daily": { field: "date", direction: "desc" },
   "income-source": { field: "value", direction: "desc" },
 };
+
+async function loadAuth() {
+  const response = await fetch(new URL("api/auth/me", document.baseURI).pathname);
+  if (!response.ok) throw new Error("Não foi possível verificar a autenticação.");
+  const result = await response.json();
+  authUser = result.user;
+  if (!result.authenticated) {
+    $("#auth-gate").hidden = false;
+    if (new URLSearchParams(window.location.search).get("auth") === "unauthorized") $("#auth-message").textContent = "Acesso pendente de aprovação do administrador. Aguarde a liberação da sua conta e tente novamente.";
+    return false;
+  }
+  $("#auth-gate").hidden = true;
+  return true;
+}
+
+async function renderAuthorizedUsers() {
+  const panel = $("#authorized-users-panel");
+  if (!panel || authUser?.role !== "admin") return;
+  panel.hidden = false;
+  const response = await fetch(new URL("api/auth/users", document.baseURI).pathname);
+  if (!response.ok) throw new Error("Não foi possível carregar os usuários autorizados.");
+  const { users } = await response.json();
+  const manageableUsers = users.filter((user) => user.role !== "admin");
+  $("#authorized-users-empty").hidden = manageableUsers.length > 0;
+  $("#authorized-users-list").innerHTML = manageableUsers.map((user) => `<div class="authorized-user-row"><div><strong>${escapeHtml(user.name || user.email)}</strong><span>${escapeHtml(user.email)}</span></div><button class="secondary-button" type="button" data-authorize-email="${escapeHtml(user.email)}" data-authorized="${user.authorized}">${user.authorized ? "Bloquear" : "Autorizar"}</button></div>`).join("");
+}
 
 async function loadData() {
   ({ transactions, incomes, cashClosings, monthlyCashClosings, billings, limits, expenseTypes, takers, locations, creditors, paymentMethods, incomeSources, catalogMetadata } = await loadAppState(API_URL, "./data.json", initialState));
@@ -89,7 +128,8 @@ function restoreState(previous) {
 function setupFormOptions() {
   const active = (kind, values) => values.filter((name) => catalogMetadata[kind]?.find((item) => item.name === name)?.isActive !== false).sort((a, b) => kind === "expense_types" ? a.localeCompare(b, "pt-BR") : (catalogMetadata[kind]?.find((item) => item.name === a)?.displayOrder || 0) - (catalogMetadata[kind]?.find((item) => item.name === b)?.displayOrder || 0) || a.localeCompare(b, "pt-BR"));
   if (!takers.some((taker) => taker.toLowerCase() === "zanzibar")) takers.push("Zanzibar");
-  const available = { expenseTypes: active("expense_types", expenseTypes), takers: active("takers", takers), locations: active("locations", locations), creditors: active("creditors", creditors), paymentMethods: active("payment_methods", paymentMethods), incomeSources: active("income_sources", incomeSources) };
+  const withoutBuffet = (values) => values.filter((value) => String(value).trim().toLocaleLowerCase("pt-BR") !== "buffet");
+  const available = { expenseTypes: withoutBuffet(active("expense_types", expenseTypes)), takers: withoutBuffet(active("takers", takers)), locations: withoutBuffet(active("locations", locations)), creditors: withoutBuffet(active("creditors", creditors)), paymentMethods: active("payment_methods", paymentMethods), incomeSources: withoutBuffet(active("income_sources", incomeSources)) };
   $("#expense-type").innerHTML = available.expenseTypes.map((type) => `<option>${escapeHtml(type)}</option>`).join("");
   $("#taker").innerHTML = available.takers.map((taker) => `<option>${escapeHtml(taker)}</option>`).join("");
   $("#creditor").innerHTML = available.creditors.map((creditor) => `<option>${escapeHtml(creditor)}</option>`).join("");
@@ -110,6 +150,7 @@ function setupFormOptions() {
   $("#month-filter-month").value = currentMonthNumber;
   $("#month-filter-year").value = currentYear;
   $("#report-period-select").value = currentMonth();
+  syncDayFilters();
   document.querySelectorAll("[data-type-filter]").forEach((filter) => {
     filter.innerHTML = `<option value="all">Todos os tipos</option>${available.expenseTypes.map((type) => `<option>${escapeHtml(type)}</option>`).join("")}`;
   });
@@ -121,16 +162,71 @@ function setupFormOptions() {
 }
 
 function monthTransactions() {
-  return inMonth(transactions, selectedMonth());
+  return inMonth(transactions.filter((item) => !isBuffetExpense(item)), selectedMonth());
 }
 function monthIncomes() {
-  return inMonth(incomes, selectedMonth());
+  return inMonth(incomes.filter((item) => !isBuffetIncome(item)), selectedMonth());
+}
+
+function selectedBuffetMonth() {
+  return $("#buffet-period-select")?.value || currentMonth();
+}
+
+function renderBuffet() {
+  const allEntries = buffetEntries(transactions, incomes);
+  const periods = [...new Set([currentMonth(), ...allEntries.map((item) => String(item.date || "").slice(0, 7))])].filter(Boolean).sort().reverse();
+  const buffetPeriod = $("#buffet-period-select");
+  const previousPeriod = buffetPeriod.value || currentMonth();
+  buffetPeriod.innerHTML = periods.map((item) => `<option value="${item}">${escapeHtml(new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date(`${item}-15T12:00:00`)))}</option>`).join("");
+  buffetPeriod.value = periods.includes(previousPeriod) ? previousPeriod : periods[0];
+  const period = selectedBuffetMonth();
+  const entries = allEntries.filter((item) => String(item.date || "").startsWith(period));
+  const incomeTotal = entries.filter(isBuffetIncome).reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const expenseTotal = entries.filter(isBuffetExpense).reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  $("#buffet-income-total").textContent = formatMoney(incomeTotal);
+  $("#buffet-expense-total").textContent = formatMoney(-expenseTotal);
+  $("#buffet-balance-total").textContent = formatMoney(incomeTotal - expenseTotal);
+  $("#buffet-income-count").textContent = `${entries.filter(isBuffetIncome).length} entradas`;
+  $("#buffet-expense-count").textContent = `${entries.filter(isBuffetExpense).length} saídas`;
+  const entryRows = (items, kind) => items.map((item) => `<tr><td>${escapeHtml(formatTransactionDate(item.date))}</td><td><div>${escapeHtml(item.description)}</div>${item.observation ? `<small>${escapeHtml(item.observation)}</small>` : ""}</td><td class="align-right ${kind === "income" ? "income-text" : "expense-text"}">${kind === "income" ? "+ " : "- "}${formatMoney(item.amount)}</td><td class="align-right"><button class="action-button" data-edit-buffet="${escapeHtml(String(item.id))}" aria-label="Editar ${escapeHtml(item.description)}">•••</button></td></tr>`).join("");
+  const incomesForPeriod = entries.filter(isBuffetIncome);
+  const expensesForPeriod = entries.filter(isBuffetExpense);
+  $("#buffet-income-list").innerHTML = entryRows(incomesForPeriod, "income");
+  $("#buffet-income-empty").hidden = incomesForPeriod.length > 0;
+  $("#buffet-expense-list").innerHTML = entryRows(expensesForPeriod, "expense");
+  $("#buffet-expense-empty").hidden = expensesForPeriod.length > 0;
+  const daily = buffetDailyClosings(entries);
+  $("#buffet-daily-list").innerHTML = daily.map((item) => `<tr><td>${escapeHtml(formatTransactionDate(item.date))}</td><td class="align-right income-text">${formatMoney(item.income)}</td><td class="align-right expense-text">${formatMoney(-item.expense)}</td><td class="align-right ${item.balance >= 0 ? "income-text" : "expense-text"}">${formatMoney(item.balance)}</td></tr>`).join("");
+  $("#buffet-daily-empty").hidden = daily.length > 0;
+  const monthly = buffetMonthlyClosings(allEntries);
+  $("#buffet-monthly-list").innerHTML = monthly.map((item) => `<tr><td>${escapeHtml(new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date(`${item.month}-15T12:00:00`)))}</td><td class="align-right income-text">${formatMoney(item.income)}</td><td class="align-right expense-text">${formatMoney(-item.expense)}</td><td class="align-right ${item.balance >= 0 ? "income-text" : "expense-text"}">${formatMoney(item.balance)}</td></tr>`).join("");
+  $("#buffet-monthly-empty").hidden = monthly.length > 0;
+  renderBuffetCalendar(entries, period);
+}
+
+function renderBuffetCalendar(entries, period) {
+  const [year, monthNumber] = period.split("-").map(Number);
+  const firstDay = new Date(Date.UTC(year, monthNumber - 1, 1)).getUTCDay();
+  const daysInMonth = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+  const daily = new Map(buffetDailyClosings(entries).map((item) => [item.date, item]));
+  const cells = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((day) => `<div class="calendar-weekday">${day}</div>`);
+  for (let index = 0; index < firstDay; index += 1) cells.push('<div class="calendar-day calendar-day-empty" aria-hidden="true"></div>');
+  let previousAccumulated = 0;
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const date = `${period}-${String(day).padStart(2, "0")}`;
+    const item = daily.get(date) || { income: 0, expense: 0, balance: 0 };
+    const accumulated = accumulatedBalance(previousAccumulated, item.balance);
+    const accumulatedClass = accumulated > 0 ? "calendar-balance-positive" : accumulated < 0 ? "calendar-balance-negative" : "calendar-balance-zero";
+    cells.push(`<article class="calendar-day"><strong class="calendar-date">${day}</strong><div class="calendar-values"><span class="calendar-income">Entradas <b>${formatMoney(item.income)}</b></span><span class="calendar-expense">Saídas <b>${formatMoney(-item.expense)}</b></span></div><div class="calendar-balance ${item.balance >= 0 ? "calendar-balance-positive" : "calendar-balance-negative"}"><span>Saldo</span><strong>${formatMoney(item.balance)}</strong></div><div class="calendar-accumulated ${accumulatedClass}"><span>Acumulado</span><strong>${formatMoney(accumulated)}</strong></div></article>`);
+    previousAccumulated = accumulated;
+  }
+  $("#buffet-calendar").innerHTML = cells.join("");
 }
 
 function renderSummary() {
-  const summary = summarize([...transactions, ...incomes], selectedMonth());
+  const summary = summarize([...monthTransactions(), ...monthIncomes()], selectedMonth());
   const [limitYear, limitMonth] = selectedMonth().split("-").map(Number);
-  const limit = limits.find((item) => item.year === limitYear && item.month === limitMonth);
+  const periodLimits = limits.filter((item) => item.year === limitYear && item.month === limitMonth);
   const incomeCount = summary.items.filter((item) => item.type === "income").length;
   const locationSummary = (location) => {
     const items = monthTransactions().filter((item) => item.location === location);
@@ -142,11 +238,12 @@ function renderSummary() {
   const home = locationSummary("Casa");
   const business = locationSummary("Zanzibar");
   const loans = locationSummary("Empréstimos");
-  $("#summary-limit-target").textContent = formatMoney(limit?.target || 0);
-  $("#summary-limit-budget").textContent = formatMoney(limit?.budget || 0);
-  $("#summary-limit-forecast").textContent = formatMoney(limit?.forecast || 0);
-  $("#summary-limit-patamar").textContent = formatMoney(limit?.patamar || 0);
-  $("#summary-limit-result").textContent = formatMoney(limit?.result || 0);
+  const ownerLimitText = (field, label) => `${label} R: ${formatMoney(periodLimits.find((item) => item.owner === "R")?.[field] || 0)}\n${label} P: ${formatMoney(periodLimits.find((item) => item.owner !== "R")?.[field] || 0)}`;
+  $("#summary-limit-target").textContent = ownerLimitText("target", "Meta");
+  $("#summary-limit-budget").textContent = ownerLimitText("budget", "Orçamento");
+  $("#summary-limit-forecast").textContent = ownerLimitText("forecast", "Previsão");
+  $("#summary-limit-patamar").textContent = ownerLimitText("patamar", "Patamar");
+  $("#summary-limit-result").textContent = ownerLimitText("result", "Resultado");
   $("#income-value").textContent = formatMoney(summary.income);
   $("#income-caption").textContent = `${incomeCount} ${incomeCount === 1 ? "entrada registrada" : "entradas registradas"}`;
   $("#home-expense-value").textContent = formatMoney(-home.amount);
@@ -190,6 +287,7 @@ function renderFinancialCalendar() {
   $("#calendar-period").textContent = monthLabel;
   const cells = weekdays.map((weekday) => `<div class="calendar-weekday">${weekday}</div>`);
   for (let index = 0; index < firstDay; index += 1) cells.push('<div class="calendar-day calendar-day-empty" aria-hidden="true"></div>');
+  let previousAccumulated = 0;
   for (let dayNumber = 1; dayNumber <= daysInMonth; dayNumber += 1) {
     const date = `${month}-${String(dayNumber).padStart(2, "0")}`;
     const values = entries.get(date) || { home: 0, zanzibar: 0, loans: 0, income: 0 };
@@ -197,8 +295,12 @@ function renderFinancialCalendar() {
     const balanceClass = balance > 0 ? "calendar-balance-positive" : balance < 0 ? "calendar-balance-negative" : "calendar-balance-zero";
     const balanceSign = balance > 0 ? "+ " : balance < 0 ? "− " : "";
     const balanceLabel = `${balanceSign}${formatMoney(Math.abs(balance))}`;
+    const accumulated = accumulatedBalance(previousAccumulated, balance);
+    const accumulatedClass = accumulated > 0 ? "calendar-balance-positive" : accumulated < 0 ? "calendar-balance-negative" : "calendar-balance-zero";
+    const accumulatedSign = accumulated > 0 ? "+ " : accumulated < 0 ? "− " : "";
+    const accumulatedLabel = `${accumulatedSign}${formatMoney(Math.abs(accumulated))}`;
     const weekday = new Date(Date.UTC(year, monthNumber - 1, dayNumber)).getUTCDay();
-    cells.push(`<article class="calendar-day ${weekday === 0 ? "calendar-day-sunday" : ""} ${weekday === 6 ? "calendar-day-saturday" : ""}">
+    cells.push(`<article class="calendar-day ${weekday === 0 ? "calendar-day-sunday" : ""} ${weekday === 6 ? "calendar-day-saturday" : ""}" data-calendar-date="${date}" role="button" tabindex="0" aria-label="Ver movimentações de ${formatTransactionDate(date)}">
       <strong class="calendar-date">${dayNumber}</strong>
       <div class="calendar-values">
         <span class="calendar-expense">Casa <b>${formatMoney(-values.home)}</b></span>
@@ -207,9 +309,33 @@ function renderFinancialCalendar() {
         <span class="calendar-income">Receitas <b>${formatMoney(values.income)}</b></span>
       </div>
       <div class="calendar-balance ${balanceClass}"><span>Saldo</span><strong>${balanceLabel}</strong></div>
+      <div class="calendar-accumulated ${accumulatedClass}"><span>Acumulado</span><strong>${accumulatedLabel}</strong></div>
     </article>`);
+    previousAccumulated = accumulated;
   }
   $("#financial-calendar").innerHTML = cells.join("");
+}
+
+function openCalendarDayDialog(date) {
+  const entries = [
+    ["Receitas", monthIncomes().filter((item) => item.date === date), "income"],
+    ["Despesas Casa", monthTransactions().filter((item) => item.date === date && item.location === "Casa"), "expense"],
+    ["Despesas Zanzibar", monthTransactions().filter((item) => item.date === date && item.location === "Zanzibar"), "expense"],
+    ["Empréstimos", monthTransactions().filter((item) => item.date === date && item.location === "Empréstimos"), "expense"],
+  ];
+  const renderItems = (items, type) => items.length
+    ? `<ul class="calendar-detail-list">${items.map((item) => {
+      const itemType = type === "income" ? item.source : item.expenseType;
+      return `<li><span>${escapeHtml(itemType || "Sem tipo")} - ${escapeHtml(item.description)}</span><strong class="${type === "income" ? "income-text" : "expense-text"}">${type === "income" ? "+ " : "- "}${formatMoney(item.amount)}</strong></li>`;
+    }).join("")}</ul>`
+    : '<p class="calendar-detail-empty">Nenhum registro.</p>';
+  $("#calendar-day-dialog-title").textContent = `Movimentações de ${formatTransactionDate(date)}`;
+  $("#calendar-day-dialog-content").innerHTML = entries.map(([title, items, type]) => {
+    const total = items.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const totalLabel = `(${formatMoney(total)})`;
+    return `<section class="calendar-detail-section"><h3><span>${title}</span><strong class="${type === "income" ? "income-text" : "expense-text"}">${totalLabel}</strong></h3>${renderItems(items, type)}</section>`;
+  }).join("");
+  $("#calendar-day-dialog").showModal();
 }
 
 function renderLocationTransactions(location) {
@@ -218,11 +344,22 @@ function renderLocationTransactions(location) {
   const query = panel.querySelector("[data-search]").value.toLowerCase().trim();
   const type = panel.querySelector("[data-type-filter]").value;
   const taker = panel.querySelector("[data-taker-filter]").value;
-  const filtered = sortByDateDescending(filterEntries(monthTransactions(), {
+  const month = selectedMonth();
+  const day = panel.querySelector("[data-day-filter]").value;
+  const today = localDate();
+  const statusFiltered = transactions.filter((item) => {
+    if (isBuffetExpense(item)) return false;
+    if (expenseStatus === "realized") return item.date <= today;
+    if (expenseStatus === "planned") return item.date > today;
+    return true;
+  });
+  const source = inMonth(statusFiltered, month);
+  const filtered = sortByDateDescending(filterEntries(day ? source.filter((item) => item.date === day) : source, {
     query,
     fields: ["description", "expenseType", "taker", "location", "creditor"],
     filters: { location, expenseType: type, taker },
   }));
+  const filteredTotal = filtered.reduce((sum, item) => sum + Number(item.amount || 0), 0);
   const paged = paginate(filtered, state.page, state.pageSize);
   state.page = paged.page;
   const { items: pageItems, totalPages } = paged;
@@ -231,6 +368,8 @@ function renderLocationTransactions(location) {
     <td><span class="tag">${escapeHtml(item.expenseType)}</span></td><td>${escapeHtml(item.taker)}</td><td>${escapeHtml(item.creditor)}</td>
     <td class="align-right expense-text">- ${formatMoney(item.amount)}</td>
     <td class="align-right"><button class="action-button" data-edit="${item.id}" aria-label="Editar ${escapeHtml(item.description)}">•••</button></td></tr>`).join("");
+  panel.querySelector("[data-location-total]").textContent = `(${formatMoney(filteredTotal)})`;
+  panel.querySelector("[data-location-total]").dataset.total = String(filteredTotal);
   panel.querySelector("[data-empty-state]").hidden = filtered.length > 0;
   panel.querySelector("[data-pagination-status]").textContent = `Página ${state.page} de ${totalPages}`;
   panel.querySelector("[data-pagination-prev]").disabled = state.page === 1;
@@ -240,6 +379,8 @@ function renderLocationTransactions(location) {
 function renderTransactions() {
   ["Casa", "Zanzibar", "Empréstimos"].forEach(renderLocationTransactions);
   renderIncomeTransactions();
+  const expenseTotal = [...document.querySelectorAll("[data-location-total]")].reduce((sum, element) => sum + Number(element.dataset.total || 0), 0);
+  $("#expense-section-total").textContent = `(${formatMoney(expenseTotal)})`;
 }
 
 function renderIncomeTransactions() {
@@ -247,7 +388,10 @@ function renderIncomeTransactions() {
   const state = paginationState.Receitas;
   const query = panel.querySelector("[data-income-search]").value.toLowerCase().trim();
   const source = panel.querySelector("[data-income-source-filter]").value;
-  const filtered = sortByDateDescending(filterEntries(monthIncomes(), {
+  const month = selectedMonth();
+  const day = panel.querySelector("[data-day-filter]").value;
+  const sourceEntries = inMonth(incomes.filter((item) => !isBuffetIncome(item)), month);
+  const filtered = sortByDateDescending(filterEntries(day ? sourceEntries.filter((item) => item.date === day) : sourceEntries, {
     query,
     fields: ["description", "source"],
     filters: { source },
@@ -257,6 +401,7 @@ function renderIncomeTransactions() {
   const { items: pageItems, totalPages } = paged;
   panel.querySelector("[data-income-list]").innerHTML = pageItems.map((item) => `<tr><td>${escapeHtml(formatTransactionDate(item.date))}</td><td><div class="transaction-description"><span class="transaction-icon income">↗</span>${escapeHtml(item.description)}</div></td><td>${escapeHtml(item.source)}</td><td class="align-right income-text">+ ${formatMoney(item.amount)}</td><td class="align-right"><button class="action-button" data-edit-income="${item.id}" aria-label="Editar ${escapeHtml(item.description)}">•••</button></td></tr>`).join("");
   panel.querySelector("[data-income-empty]").hidden = filtered.length > 0;
+  panel.closest(".income-section").querySelector("#income-section-total").textContent = `(${formatMoney(filtered.reduce((sum, item) => sum + Number(item.amount || 0), 0))})`;
   panel.querySelector("[data-income-pagination-status]").textContent = `Página ${state.page} de ${totalPages}`;
   panel.querySelector("[data-income-pagination-prev]").disabled = state.page === 1;
   panel.querySelector("[data-income-pagination-next]").disabled = state.page === totalPages;
@@ -273,7 +418,7 @@ function normalizeCatalogValue(value) {
   return repaired.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
-function render() { renderSummary(); renderFinancialCalendar(); renderTransactions(); }
+function render() { renderSummary(); renderFinancialCalendar(); renderTransactions(); renderBuffet(); }
 
 function renderReports() {
   const items = monthTransactions();
@@ -301,13 +446,16 @@ function renderReports() {
 }
 
 function renderRegistries() {
-  const renderList = (items, kind) => items.length ? items.map((item, index) => {
+  const renderList = (items, kind) => {
+    const visibleItems = items.map((item, index) => ({ item, index })).filter(({ item }) => String(item).trim().toLocaleLowerCase("pt-BR") !== "buffet");
+    return visibleItems.length ? visibleItems.map(({ item, index }) => {
     const table = { type: "expense_types", taker: "takers", location: "locations", creditor: "creditors", paymentMethod: "payment_methods", incomeSource: "income_sources" }[kind];
     const metadata = catalogMetadata[table]?.find((entry) => entry.name === item) || { displayOrder: 0, isActive: true };
     const sortable = ["taker", "creditor", "paymentMethod", "incomeSource"].includes(kind);
     const orderControl = sortable ? `<input class="registry-order" data-catalog-order="${kind}" data-registry-index="${index}" type="text" inputmode="numeric" pattern="[0-9]*" value="${metadata.displayOrder}" aria-label="Ordem de ${escapeHtml(item)}" />` : "";
     return `<li class="${sortable ? "registry-sortable" : ""}" ${sortable ? `draggable="true" data-registry-drag-kind="${kind}" data-registry-drag-index="${index}"` : ""}>${sortable ? `<span class="registry-drag-hint" aria-hidden="true">⠿</span>` : ""}<span class="registry-name">${orderControl}${escapeHtml(item)}</span><span class="registry-actions"><label class="switch" title="${metadata.isActive ? "Ativo" : "Inativo"}"><input data-catalog-status="${kind}" data-registry-index="${index}" type="checkbox" ${metadata.isActive ? "checked" : ""} aria-label="${metadata.isActive ? "Desativar" : "Ativar"} ${escapeHtml(item)}" /><span class="switch-track" aria-hidden="true"></span></label><button type="button" class="registry-action" data-edit-registry="${kind}" data-registry-index="${index}" aria-label="Editar ${escapeHtml(item)}">✎</button><button type="button" class="registry-action danger registry-delete" data-delete-registry="${kind}" data-registry-index="${index}" aria-label="Excluir ${escapeHtml(item)}">×</button></span></li>`;
-  }).join("") + (pendingRegistryOrderSaves.has(kind) ? `<li class="registry-order-save-row"><button type="button" class="small-button registry-order-save" data-save-registry-order="${kind}">Salvar Ordem</button></li>` : "") : `<li class="registry-empty">Nenhum cadastro criado.</li>`;
+    }).join("") + (pendingRegistryOrderSaves.has(kind) ? `<li class="registry-order-save-row"><button type="button" class="small-button registry-order-save" data-save-registry-order="${kind}">Salvar Ordem</button></li>` : "") : `<li class="registry-empty">Nenhum cadastro criado.</li>`;
+  };
   $("#type-registry-list").innerHTML = renderList(expenseTypes, "type");
   $("#taker-registry-list").innerHTML = renderList(takers, "taker");
   $("#creditor-registry-list").innerHTML = renderList(creditors, "creditor");
@@ -437,7 +585,7 @@ function renderLimits() {
   $("#limits-list").innerHTML = paged.items.map((item) => {
     const period = `${String(item.month).padStart(2, "0")}/${item.year}`;
     const status = item.closed ? '<span class="status-badge">Fechado</span>' : '<span class="status-badge status-open">Aberto</span>';
-    return `<tr><td>${period}</td><td class="align-right">${formatMoney(item.target)}</td><td class="align-right">${formatMoney(item.budget)}</td><td class="align-right">${formatMoney(item.forecast)}</td><td class="align-right">${formatMoney(item.patamar)}</td><td class="align-right">${formatMoney(item.result)}</td><td>${status}</td><td class="align-right"><button class="action-button" data-edit-limit="${item.id}" aria-label="Editar limite">•••</button></td></tr>`;
+    return `<tr><td>${period}</td><td>${item.owner === "R" ? "R" : "P"}</td><td class="align-right">${formatMoney(item.target)}</td><td class="align-right">${formatMoney(item.budget)}</td><td class="align-right">${formatMoney(item.forecast)}</td><td class="align-right">${formatMoney(item.patamar)}</td><td class="align-right">${formatMoney(item.result)}</td><td>${status}</td><td class="align-right"><button class="action-button" data-edit-limit="${item.id}" aria-label="Editar limite">•••</button></td></tr>`;
   }).join("");
   $("#limits-empty").hidden = limits.length > 0;
   $("#limit-pagination-status").textContent = `Página ${state.page} de ${paged.totalPages}`;
@@ -455,6 +603,7 @@ function activeCatalog(table, values) {
 }
 
 function openDialog(item) {
+  if (item && isBuffetExpense(item)) return showFeedback("Movimentações do Buffet devem ser editadas no menu Buffet.");
   $("#dialog-title").textContent = item ? "Editar despesa" : "Nova despesa";
   $("#transaction-id").value = item?.id || "";
   $("#description").value = item?.description || "";
@@ -472,6 +621,7 @@ function openDialog(item) {
 }
 
 function openIncomeDialog(item) {
+  if (item && isBuffetIncome(item)) return showFeedback("Receitas do Buffet devem ser editadas no menu Buffet.");
   $("#income-dialog-title").textContent = item ? "Editar receita" : "Nova receita";
   $("#income-id").value = item?.id || "";
   $("#income-description").value = item?.description || "";
@@ -528,10 +678,12 @@ $("#income-form").addEventListener("submit", (event) => {
 });
 function renderLocationOptions() {
   const selected = $("#location-options").dataset.value || "Casa";
+  const withoutBuffet = (values) => values.filter((value) => String(value).trim().toLocaleLowerCase("pt-BR") !== "buffet");
   const locationOrder = ["Casa", "Zanzibar", "Empréstimos"];
   const activeLocations = locationOrder
     .filter((name) => locations.includes(name) && catalogMetadata.locations?.find((item) => item.name === name)?.isActive !== false)
-    .concat(locations.filter((name) => !locationOrder.includes(name) && catalogMetadata.locations?.find((item) => item.name === name)?.isActive !== false));
+    .concat(locations.filter((name) => !locationOrder.includes(name) && catalogMetadata.locations?.find((item) => item.name === name)?.isActive !== false))
+    .filter((name) => withoutBuffet([name]).length);
   $("#location-options").innerHTML = activeLocations.map((location) => `<button type="button" class="location-option${location === selected ? " selected" : ""}" role="radio" aria-checked="${location === selected}" data-location="${escapeHtml(location)}"><span class="location-radio" aria-hidden="true"></span>${escapeHtml(location)}</button>`).join("");
 }
 function setLocation(location) {
@@ -563,12 +715,12 @@ function applyLocationRules(location) {
     expenseType.setAttribute("aria-disabled", "true");
     return;
   }
-  const availableExpenseTypes = activeCatalog("expense_types", expenseTypes).filter((item) => item !== "Empréstimo");
+  const availableExpenseTypes = activeCatalog("expense_types", expenseTypes).filter((item) => item !== "Empréstimo" && String(item).trim().toLocaleLowerCase("pt-BR") !== "buffet");
   expenseType.innerHTML = availableExpenseTypes.map((item) => `<option>${escapeHtml(item)}</option>`).join("");
   expenseType.disabled = false;
   expenseType.removeAttribute("aria-disabled");
   if (location === "Casa") {
-    const availableTakers = takers.filter((item) => item !== "Zanzibar");
+    const availableTakers = takers.filter((item) => item !== "Zanzibar" && String(item).trim().toLocaleLowerCase("pt-BR") !== "buffet");
     creditor.innerHTML = "<option>Caixa</option>";
     creditor.value = "Caixa";
     creditor.disabled = true;
@@ -590,7 +742,7 @@ function applyLocationRules(location) {
     creditor.setAttribute("aria-disabled", "true");
     return;
   }
-  taker.innerHTML = takers.map((item) => `<option>${escapeHtml(item)}</option>`).join("");
+  taker.innerHTML = takers.filter((item) => String(item).trim().toLocaleLowerCase("pt-BR") !== "buffet").map((item) => `<option>${escapeHtml(item)}</option>`).join("");
   creditor.innerHTML = creditors.map((item) => `<option>${escapeHtml(item)}</option>`).join("");
   taker.disabled = false;
   creditor.disabled = false;
@@ -831,6 +983,81 @@ $("#cash-import-confirm-form").addEventListener("submit", (event) => {
 $("#new-income").addEventListener("click", () => openIncomeDialog());
 $("#home-new-transaction").addEventListener("click", () => openDialog());
 $("#home-new-income").addEventListener("click", () => openIncomeDialog());
+function openBuffetIncomeDialog(item) {
+  $("#buffet-income-dialog-title").textContent = item ? "Editar receita" : "Nova receita";
+  $("#buffet-income-id").value = item?.id || "";
+  $("#buffet-income-client-id").value = item?.clientId || "";
+  $("#buffet-income-description").value = item?.description || "";
+  $("#buffet-income-observation").value = item?.observation || "";
+  $("#buffet-income-amount").value = item ? formatInputAmount(item.amount) : "";
+  $("#buffet-income-date").value = item?.date || localDate();
+  $("#buffet-income-dialog").showModal();
+}
+function openBuffetExpenseDialog(item) {
+  $("#buffet-expense-dialog-title").textContent = item ? "Editar despesa" : "Nova despesa";
+  $("#buffet-expense-id").value = item?.id || "";
+  $("#buffet-expense-client-id").value = item?.clientId || "";
+  $("#buffet-expense-description").value = item?.description || "";
+  $("#buffet-expense-observation").value = item?.observation || "";
+  $("#buffet-expense-amount").value = item ? formatInputAmount(item.amount) : "";
+  $("#buffet-expense-date").value = item?.date || localDate();
+  $("#buffet-expense-dialog").showModal();
+}
+function persistBuffetEntry(item, id, dialog, successMessage) {
+  const previous = captureState();
+  if (item.type === "income") incomes = upsertEntry(incomes, item);
+  else transactions = upsertEntry(transactions, item);
+  saveTransaction(API_URL, item).then(() => {
+    markTransactionsUpdated();
+    setupFormOptions();
+    render();
+    renderReports();
+    dialog.close();
+    showFeedback(id ? `${successMessage} atualizada.` : `${successMessage} adicionada.`);
+  }).catch((error) => {
+    console.error("Falha ao salvar movimentação do Buffet.", error);
+    restoreState(previous);
+    render();
+    showFeedback(error instanceof Error ? error.message : "Não foi possível salvar a movimentação do Buffet.");
+  });
+}
+$("#buffet-new-income").addEventListener("click", () => openBuffetIncomeDialog());
+$("#buffet-new-expense").addEventListener("click", () => openBuffetExpenseDialog());
+$("#close-buffet-income-dialog").addEventListener("click", () => $("#buffet-income-dialog").close());
+$("#cancel-buffet-income-dialog").addEventListener("click", () => $("#buffet-income-dialog").close());
+$("#close-buffet-expense-dialog").addEventListener("click", () => $("#buffet-expense-dialog").close());
+$("#cancel-buffet-expense-dialog").addEventListener("click", () => $("#buffet-expense-dialog").close());
+$("#buffet-income-amount").addEventListener("input", (event) => {
+  const amount = parseInputAmount(event.target.value);
+  event.target.value = amount ? formatInputAmount(amount) : "";
+});
+$("#buffet-expense-amount").addEventListener("input", (event) => {
+  const amount = parseInputAmount(event.target.value);
+  event.target.value = amount ? formatInputAmount(amount) : "";
+});
+$("#buffet-income-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const id = $("#buffet-income-id").value;
+  const item = { id: id || `buffet-income-${crypto.randomUUID()}`, clientId: $("#buffet-income-client-id").value || undefined, description: $("#buffet-income-description").value.trim(), observation: $("#buffet-income-observation").value.trim(), amount: parseInputAmount($("#buffet-income-amount").value), type: "income", source: "Buffet", product: "buffet", date: $("#buffet-income-date").value };
+  if (!item.description || !item.amount || !item.date) return showFeedback("Preencha descrição, valor e data.");
+  persistBuffetEntry(item, id, $("#buffet-income-dialog"), "Receita do Buffet");
+});
+$("#buffet-expense-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const id = $("#buffet-expense-id").value;
+  const item = { id: id || `buffet-expense-${crypto.randomUUID()}`, clientId: $("#buffet-expense-client-id").value || undefined, description: $("#buffet-expense-description").value.trim(), observation: $("#buffet-expense-observation").value.trim(), amount: parseInputAmount($("#buffet-expense-amount").value), type: "expense", location: "Buffet", expenseType: "Buffet", taker: "Buffet", creditor: "Caixa", product: "buffet", date: $("#buffet-expense-date").value };
+  if (!item.description || !item.amount || !item.date) return showFeedback("Preencha descrição, valor e data.");
+  persistBuffetEntry(item, id, $("#buffet-expense-dialog"), "Despesa do Buffet");
+});
+$("#buffet-period-select").addEventListener("change", renderBuffet);
+document.querySelector(".buffet-grid").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-edit-buffet]");
+  if (!button) return;
+  const item = buffetEntries(transactions, incomes).find((entry) => String(entry.id) === button.dataset.editBuffet);
+  if (!item) return;
+  if (item.type === "income") openBuffetIncomeDialog(item);
+  else openBuffetExpenseDialog(item);
+});
 $("#close-dialog").addEventListener("click", () => $("#transaction-dialog").close());
 $("#cancel-dialog").addEventListener("click", () => $("#transaction-dialog").close());
 $("#close-income-dialog").addEventListener("click", () => $("#income-dialog").close());
@@ -996,8 +1223,10 @@ $("#monthly-cash-closing-form").addEventListener("submit", (event) => {
   })).filter((item) => item.saleCount || item.totalAmount);
   if (!values.length) return showFeedback("Informe pelo menos um valor maior que zero.");
   monthlyCashClosings = monthlyCashClosings.filter((item) => item.month !== month || item.year !== year).concat(values);
-  saveMonthlyCashClosings(API_URL, values).then(() => {
+  saveMonthlyCashClosings(API_URL, values).then(async () => {
+    billings = await refreshBillings(API_URL);
     renderMonthlyCashClosings((rows) => [...rows].sort((a, b) => a.paymentMethod.localeCompare(b.paymentMethod, "pt-BR")));
+    renderBillings();
     $("#monthly-cash-closing-dialog").close();
     showFeedback("Fechamento mensal salvo.");
   }).catch((error) => {
@@ -1013,6 +1242,12 @@ function openLimitDialog(item) {
   $("#limit-month").innerHTML = Array.from({ length: 12 }, (_, index) => `<option value="${index + 1}">${new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(new Date(2020, index, 15))}</option>`).join("");
   $("#limit-month").value = String(item?.month || new Date().getMonth() + 1);
   $("#limit-year").value = item?.year || new Date().getFullYear();
+  const owner = item?.owner === "R" ? "R" : "P";
+  document.querySelectorAll("[data-limit-owner]").forEach((option) => {
+    const selected = option.dataset.limitOwner === owner;
+    option.classList.toggle("selected", selected);
+    option.setAttribute("aria-checked", String(selected));
+  });
   ["target", "budget", "forecast", "patamar", "result"].forEach((field) => { $(`#limit-${field}`).value = item ? formatInputAmount(item[field]) : ""; });
   updateLimitResult();
   $("#limit-dialog").showModal();
@@ -1021,6 +1256,15 @@ function openLimitDialog(item) {
 $("#new-limit").addEventListener("click", () => openLimitDialog());
 $("#close-limit-dialog").addEventListener("click", () => $("#limit-dialog").close());
 $("#cancel-limit-dialog").addEventListener("click", () => $("#limit-dialog").close());
+$("#limit-owner-options").addEventListener("click", (event) => {
+  const option = event.target.closest("[data-limit-owner]");
+  if (!option) return;
+  document.querySelectorAll("[data-limit-owner]").forEach((item) => {
+    const selected = item === option;
+    item.classList.toggle("selected", selected);
+    item.setAttribute("aria-checked", String(selected));
+  });
+});
 ["target", "budget", "forecast", "patamar", "result"].forEach((field) => {
   if (field === "result") return;
   $(`#limit-${field}`).addEventListener("input", (event) => {
@@ -1041,10 +1285,11 @@ $("#limit-form").addEventListener("submit", (event) => {
   const id = $("#limit-id").value;
   const month = Number($("#limit-month").value);
   const year = Number($("#limit-year").value);
-  if (limits.some((item) => item.month === month && item.year === year && String(item.id) !== String(id))) return showFeedback("Já existe limite para este mês.");
+  const owner = document.querySelector("[data-limit-owner].selected")?.dataset.limitOwner || "P";
+  if (limits.some((item) => item.month === month && item.year === year && item.owner === owner && String(item.id) !== String(id))) return showFeedback("Já existe limite para este mês e owner.");
   const existingLimit = limits.find((entry) => String(entry.id) === String(id));
   const item = {
-    id: id || crypto.randomUUID(), ...(existingLimit?.clientId ? { clientId: existingLimit.clientId } : {}), month, year,
+    id: id || crypto.randomUUID(), ...(existingLimit?.clientId ? { clientId: existingLimit.clientId } : {}), month, year, owner,
     target: parseInputAmount($("#limit-target").value),
     budget: parseInputAmount($("#limit-budget").value),
     forecast: parseInputAmount($("#limit-forecast").value),
@@ -1079,23 +1324,54 @@ $("#income-amount").addEventListener("input", (event) => {
   const amount = parseInputAmount(event.target.value);
   event.target.value = amount ? formatInputAmount(amount) : "";
 });
+$("#close-calendar-day-dialog").addEventListener("click", () => $("#calendar-day-dialog").close());
+$("#logout-button").addEventListener("click", async () => {
+  await fetch(new URL("api/auth/logout", document.baseURI).pathname, { method: "POST" });
+  window.location.reload();
+});
+$("#authorized-users-list")?.addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-authorize-email]");
+  if (!button) return;
+  const response = await fetch(new URL("api/auth/users", document.baseURI).pathname, {
+    method: "PUT", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: button.dataset.authorizeEmail, authorized: button.dataset.authorized !== "true" }),
+  });
+  if (!response.ok) return showFeedback("Não foi possível alterar a autorização.");
+  await renderAuthorizedUsers();
+});
+$("#calendar-day-dialog").addEventListener("click", (event) => {
+  if (event.target === event.currentTarget) event.currentTarget.close();
+});
+$("#financial-calendar").addEventListener("click", (event) => {
+  const day = event.target.closest("[data-calendar-date]");
+  if (day) openCalendarDayDialog(day.dataset.calendarDate);
+});
+$("#financial-calendar").addEventListener("keydown", (event) => {
+  if ((event.key === "Enter" || event.key === " ") && event.target.matches("[data-calendar-date]")) {
+    event.preventDefault();
+    openCalendarDayDialog(event.target.dataset.calendarDate);
+  }
+});
 document.querySelectorAll("[data-location-panel]").forEach((panel) => {
-  panel.querySelectorAll("[data-search], [data-type-filter], [data-taker-filter]").forEach((control) => control.addEventListener("input", () => {
+  panel.querySelectorAll("[data-search], [data-type-filter], [data-taker-filter], [data-day-filter]").forEach((control) => control.addEventListener("input", () => {
     paginationState[panel.dataset.locationPanel].page = 1;
     renderLocationTransactions(panel.dataset.locationPanel);
   }));
+  panel.querySelector("[data-day-filter]").addEventListener("change", () => {
+    paginationState[panel.dataset.locationPanel].page = 1;
+    renderLocationTransactions(panel.dataset.locationPanel);
+  });
+  panel.querySelector("[data-clear-day-filter]").addEventListener("click", () => {
+    panel.querySelector("[data-day-filter]").value = "";
+    paginationState[panel.dataset.locationPanel].page = 1;
+    renderLocationTransactions(panel.dataset.locationPanel);
+  });
   panel.querySelector("[data-page-size]").addEventListener("change", (event) => {
     const state = paginationState[panel.dataset.locationPanel];
     state.pageSize = Number(event.target.value);
     state.page = 1;
     renderLocationTransactions(panel.dataset.locationPanel);
   });
-  const incomePanel = $("[data-income-panel]");
-  incomePanel.querySelectorAll("[data-income-search], [data-income-source-filter]").forEach((control) => control.addEventListener("input", () => { paginationState.Receitas.page = 1; renderIncomeTransactions(); }));
-  incomePanel.querySelector("[data-income-page-size]").addEventListener("change", (event) => { paginationState.Receitas.pageSize = Number(event.target.value); paginationState.Receitas.page = 1; renderIncomeTransactions(); });
-  incomePanel.querySelector("[data-income-pagination-prev]").addEventListener("click", () => { if (paginationState.Receitas.page > 1) { paginationState.Receitas.page--; renderIncomeTransactions(); } });
-  incomePanel.querySelector("[data-income-pagination-next]").addEventListener("click", () => { paginationState.Receitas.page++; renderIncomeTransactions(); });
-  incomePanel.addEventListener("click", (event) => { const button = event.target.closest("[data-edit-income]");   if (button) openIncomeDialog(incomes.find((item) => String(item.id) === button.dataset.editIncome)); });
   panel.querySelector("[data-pagination-prev]").addEventListener("click", () => {
     const state = paginationState[panel.dataset.locationPanel];
     if (state.page > 1) { state.page -= 1; renderLocationTransactions(panel.dataset.locationPanel); }
@@ -1110,18 +1386,37 @@ document.querySelectorAll("[data-location-panel]").forEach((panel) => {
     if (button) openDialog(transactions.find((item) => String(item.id) === button.dataset.edit));
   });
 });
+const incomePanel = $("[data-income-panel]");
+incomePanel.querySelectorAll("[data-income-search], [data-income-source-filter], [data-day-filter]").forEach((control) => control.addEventListener("input", () => { paginationState.Receitas.page = 1; renderIncomeTransactions(); }));
+incomePanel.querySelector("[data-day-filter]").addEventListener("change", () => { paginationState.Receitas.page = 1; renderIncomeTransactions(); });
+incomePanel.querySelector("[data-clear-day-filter]").addEventListener("click", () => { incomePanel.querySelector("[data-day-filter]").value = ""; paginationState.Receitas.page = 1; renderIncomeTransactions(); });
+incomePanel.querySelector("[data-income-page-size]").addEventListener("change", (event) => { paginationState.Receitas.pageSize = Number(event.target.value); paginationState.Receitas.page = 1; renderIncomeTransactions(); });
+incomePanel.querySelector("[data-income-pagination-prev]").addEventListener("click", () => { if (paginationState.Receitas.page > 1) { paginationState.Receitas.page--; renderIncomeTransactions(); } });
+incomePanel.querySelector("[data-income-pagination-next]").addEventListener("click", () => { paginationState.Receitas.page++; renderIncomeTransactions(); });
+incomePanel.addEventListener("click", (event) => { const button = event.target.closest("[data-edit-income]");   if (button) openIncomeDialog(incomes.find((item) => String(item.id) === button.dataset.editIncome)); });
+document.querySelectorAll("[data-expense-status]").forEach((button) => button.addEventListener("click", () => {
+  expenseStatus = button.dataset.expenseStatus;
+  document.querySelectorAll("[data-expense-status]").forEach((option) => option.classList.toggle("selected", option.dataset.expenseStatus === expenseStatus));
+  paginationState.Casa.page = 1;
+  paginationState.Zanzibar.page = 1;
+  paginationState.Empréstimos.page = 1;
+  renderTransactions();
+}));
 document.querySelectorAll("[data-month-select]").forEach((select) => select.addEventListener("change", (event) => {
   const [year, month] = event.target.value.split("-");
   $("#month-filter-month").value = month;
   $("#month-filter-year").value = year;
   $("#report-period-select").value = event.target.value;
+  syncDayFilters();
   render();
   renderReports();
+  document.querySelectorAll("[data-day-filter]").forEach((dayFilter) => { dayFilter.value = ""; });
 }));
 document.querySelectorAll("#month-filter-month, #month-filter-year").forEach((select) => select.addEventListener("change", () => {
   const month = `${$("#month-filter-year").value}-${$("#month-filter-month").value}`;
   document.querySelectorAll("[data-month-select]").forEach((other) => { other.value = month; });
   $("#report-period-select").value = month;
+  syncDayFilters();
   render();
   renderReports();
 }));
@@ -1130,6 +1425,7 @@ $("#report-period-select").addEventListener("change", (event) => {
   $("#month-filter-month").value = month;
   $("#month-filter-year").value = year;
   document.querySelectorAll("[data-month-select]").forEach((other) => { other.value = event.target.value; });
+  syncDayFilters();
   render();
   renderReports();
 });
@@ -1310,7 +1606,7 @@ $("#registry-lists").addEventListener("change", (event) => {
   if (statusInput) entry.isActive = statusInput.checked;
   saveCatalog(API_URL, { action: "rename", kind, current: name, name, displayOrder: entry.displayOrder, isActive: entry.isActive }).then(() => { setupFormOptions(); renderRegistries(); showFeedback("Cadastro atualizado."); }).catch(() => { restoreState(previous); setupFormOptions(); renderRegistries(); showFeedback("Não foi possível atualizar o cadastro."); });
 });
-const pages = ["resumo", "lancamentos", "vendas", "faturamento", "relatorios", "cadastros", "ferramentas"];
+const pages = ["resumo", "lancamentos", "vendas", "faturamento", "relatorios", "cadastros", "ferramentas", "buffet"];
 function renderPage() {
   const page = pages.includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : "resumo";
   document.querySelectorAll("[data-page]").forEach((section) => { section.hidden = section.dataset.page !== page; });
@@ -1320,4 +1616,25 @@ function renderPage() {
 window.addEventListener("hashchange", renderPage);
 
 renderPage();
-loadData().then(() => { transactions = transactions.map((item) => ({ ...item, expenseType: item.expenseType || item.category || "Outros", taker: item.taker || "Pessoal", location: item.location || "Casa", creditor: item.creditor || "Caixa" })); $("#today-label").textContent = todayLabel(); $("#last-update").textContent = formatLastTransactionUpdate(lastTransactionUpdate); setupFormOptions(); render(); renderReports(); renderRegistries(); renderCashClosings(); renderBillings(); renderLimits(); renderPage(); }).catch((error) => { console.error("Falha ao inicializar a aplicação.", error); showFeedback(`Não foi possível carregar os dados iniciais: ${error.message}`); });
+loadAuth().then((authenticated) => authenticated ? loadData() : null).then(() => {
+  if (!authUser) return;
+  transactions = transactions.map((item) => ({ ...item, expenseType: item.expenseType || item.category || "Outros", taker: item.taker || "Pessoal", location: item.location || "Casa", creditor: item.creditor || "Caixa" }));
+  $("#today-label").textContent = todayLabel();
+  const accountName = String(authUser.name || authUser.email).trim();
+  $("#account-avatar-fallback").textContent = accountName.charAt(0).toUpperCase();
+  const accountPicture = $("#account-avatar-image");
+  if (accountPicture && /^https:\/\//i.test(String(authUser.picture || ""))) {
+    accountPicture.src = authUser.picture;
+    accountPicture.hidden = false;
+    $("#account-avatar-fallback").hidden = true;
+    accountPicture.addEventListener("error", () => {
+      accountPicture.hidden = true;
+      $("#account-avatar-fallback").hidden = false;
+    }, { once: true });
+  }
+  $("#account-trigger-name").textContent = accountName;
+  $("#account-name").textContent = accountName;
+  $("#account-email").textContent = authUser.email;
+  $("#last-update").textContent = formatLastTransactionUpdate(lastTransactionUpdate);
+  setupFormOptions(); render(); renderReports(); renderRegistries(); renderCashClosings(); renderBillings(); renderLimits(); renderAuthorizedUsers(); renderPage();
+}).catch((error) => { console.error("Falha ao inicializar a aplicação.", error); showFeedback(`Não foi possível carregar os dados iniciais: ${error.message}`); });

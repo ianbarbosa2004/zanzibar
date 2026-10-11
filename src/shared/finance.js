@@ -16,3 +16,7 @@ export function groupTotals(transactions, property) {
     return result;
   }, {})).sort((a, b) => b[1] - a[1]);
 }
+
+export function accumulatedBalance(previousAccumulated, balance) {
+  return Number(previousAccumulated || 0) + Number(balance || 0);
+}

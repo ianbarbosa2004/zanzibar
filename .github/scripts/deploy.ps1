@@ -58,6 +58,17 @@ function Invoke-OnlineRequest {
   }
 }
 
+function Get-OnlineStatus {
+  param([string]$Uri)
+  try {
+    return [int](Invoke-WebRequest -Uri $Uri -UseBasicParsing -TimeoutSec 30 -ErrorAction Stop).StatusCode
+  }
+  catch {
+    if ($_.Exception.Response) { return [int]$_.Exception.Response.StatusCode }
+    throw
+  }
+}
+
 try {
   if (-not (Test-Path -LiteralPath "package.json")) { throw "package.json não encontrado." }
   if (-not (Get-Command ssh -ErrorAction SilentlyContinue)) { throw "ssh não encontrado." }
@@ -96,8 +107,9 @@ bye
   Invoke-Checked "ssh" @($connectionOptions + @($remoteTarget, "cd $remoteRoot && /home1/itsitescom/nodevenv/public_html/clareza/22/bin/npm ci --omit=dev && touch tmp/restart.txt"))
 
   $page = Invoke-OnlineRequest "https://itsites.com.br/clareza/"
-  $api = Invoke-OnlineRequest "https://itsites.com.br/clareza/api/data"
-  if ($page.StatusCode -ne 200 -or $api.StatusCode -ne 200) { throw "Validação online retornou status inesperado." }
+  $auth = Invoke-OnlineRequest "https://itsites.com.br/clareza/api/auth/me"
+  $dataStatus = Get-OnlineStatus "https://itsites.com.br/clareza/api/data"
+  if ($page.StatusCode -ne 200 -or $auth.StatusCode -ne 200 -or $dataStatus -ne 401) { throw "Validação online retornou status inesperado." }
   $version = Invoke-OnlineRequest "https://itsites.com.br/clareza/deploy-version.json"
   if ($version.StatusCode -ne 200) { throw "Não foi possível ler a versão publicada." }
   $versionJson = Convert-ResponseContentToUtf8 $version.Content
