@@ -1326,8 +1326,16 @@ $("#income-amount").addEventListener("input", (event) => {
 });
 $("#close-calendar-day-dialog").addEventListener("click", () => $("#calendar-day-dialog").close());
 $("#logout-button").addEventListener("click", async () => {
+  $("#account-menu").open = false;
   await fetch(new URL("api/auth/logout", document.baseURI).pathname, { method: "POST" });
   window.location.reload();
+});
+document.addEventListener("click", (event) => {
+  const accountMenu = $("#account-menu");
+  if (accountMenu?.open && !accountMenu.contains(event.target)) accountMenu.open = false;
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") $("#account-menu").open = false;
 });
 $("#authorized-users-list")?.addEventListener("click", async (event) => {
   const button = event.target.closest("[data-authorize-email]");
@@ -1627,10 +1635,18 @@ loadAuth().then((authenticated) => authenticated ? loadData() : null).then(() =>
     accountPicture.src = authUser.picture;
     accountPicture.hidden = false;
     $("#account-avatar-fallback").hidden = true;
+    const accountMenuPicture = $("#account-menu-avatar-image");
+    accountMenuPicture.src = authUser.picture;
+    accountMenuPicture.hidden = false;
+    $("#account-menu-avatar-fallback").hidden = true;
     accountPicture.addEventListener("error", () => {
       accountPicture.hidden = true;
       $("#account-avatar-fallback").hidden = false;
+      accountMenuPicture.hidden = true;
+      $("#account-menu-avatar-fallback").hidden = false;
     }, { once: true });
+  } else {
+    $("#account-menu-avatar-fallback").textContent = accountName.charAt(0).toUpperCase();
   }
   $("#account-trigger-name").textContent = accountName;
   $("#account-name").textContent = accountName;

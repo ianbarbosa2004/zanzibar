@@ -57,15 +57,17 @@ a { color: inherit; text-decoration: none; }
 .account-trigger:hover, .account-menu[open] .account-trigger { border-color: var(--line); background: #fff; }
 .avatar { display: grid; width: 41px; height: 41px; place-items: center; overflow: hidden; border-radius: 50%; color: #236649; background: #d9efe2; font-weight: 800; }
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
-.account-trigger-copy { display: grid; gap: 2px; min-width: 70px; }
+.account-trigger-copy { display: grid; min-width: 70px; }
 .account-trigger-copy strong { overflow: hidden; color: var(--ink); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-.account-trigger-copy small { color: var(--muted); font-size: 9px; }
-.account-menu-panel { position: absolute; z-index: 5; top: calc(100% + 8px); right: 0; display: grid; min-width: 220px; gap: 4px; padding: 15px; border: 1px solid var(--line); border-radius: 12px; background: #fff; box-shadow: var(--shadow-card); }
-.account-menu-panel .eyebrow { margin: 0 0 5px; }
-.account-menu-panel > strong { color: var(--ink); font-size: 12px; }
-.account-menu-panel > span { overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; }
-.account-logout { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 9px 0 0; border: 0; border-top: 1px solid var(--line); color: #a34b43; background: transparent; font: inherit; font-size: 11px; font-weight: 700; text-align: left; cursor: pointer; }
-.account-logout:hover { color: #7e302a; }
+.account-menu-panel { position: absolute; z-index: 5; top: calc(100% + 8px); right: 0; display: grid; min-width: 310px; gap: 5px; padding: 18px; border: 1px solid #dadce0; border-radius: 16px; background: #fff; box-shadow: 0 4px 16px #3c404326; text-align: center; }
+.account-menu-title { margin: 0 0 9px; color: #5f6368; font-family: Arial, sans-serif; font-size: 11px; }
+.account-menu-avatar { margin: 0 auto 8px; width: 52px; height: 52px; }
+.account-menu-panel > strong { color: #202124; font-family: Arial, sans-serif; font-size: 14px; }
+.account-menu-panel > span:not(.avatar) { overflow: hidden; color: #5f6368; font-family: Arial, sans-serif; font-size: 12px; text-overflow: ellipsis; }
+.google-account-link { justify-self: center; margin: 12px 0 5px; padding: 9px 17px; border: 1px solid #dadce0; border-radius: 18px; color: #1a73e8; font-family: Arial, sans-serif; font-size: 12px; font-weight: 500; text-decoration: none; }
+.google-account-link:hover { background: #f8fafd; border-color: #c6dafc; }
+.account-logout { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 10px -18px -18px; padding: 13px 18px; border: 0; border-top: 1px solid #dadce0; border-radius: 0 0 16px 16px; color: #3c4043; background: #fff; font-family: Arial, sans-serif; font-size: 12px; font-weight: 500; text-align: center; cursor: pointer; }
+.account-logout:hover { background: #f8fafd; color: #202124; }
 .overview { margin-bottom: 28px; }
 .summary-panel, .panel { border: 1px solid var(--line); border-radius: var(--radius-card); background: #fff; box-shadow: var(--shadow-card); }
 .summary-panel { padding: 22px 25px 25px; }
@@ -314,7 +316,10 @@ dialog { width: min(480px, calc(100% - 32px)); padding: 0; border: 0; border-rad
 .auth-card { width: min(420px, 100%); padding: 32px; border: 1px solid var(--line); border-radius: 18px; background: #fff; box-shadow: 0 20px 60px #193b3718; }
 .auth-card h1 { margin: 6px 0 12px; color: var(--ink); font-size: 27px; }
 .auth-card p:not(.eyebrow) { margin: 0 0 22px; color: var(--muted); font-size: 12px; line-height: 1.6; }
-.auth-google-button { display: inline-block; text-decoration: none; }
+.auth-google-button { display: inline-flex; align-items: center; justify-content: center; gap: 11px; width: 100%; min-height: 44px; padding: 0 18px; border: 1px solid #dadce0; border-radius: 4px; color: #3c4043; background: #fff; box-shadow: 0 1px 2px #0000001a; font-family: Arial, sans-serif; font-size: 14px; font-weight: 500; text-decoration: none; transition: background .15s ease, box-shadow .15s ease; }
+.auth-google-button:hover { background: #f8fafd; box-shadow: 0 1px 3px #00000033; }
+.auth-google-button:focus-visible { outline: 3px solid #8ab4f8; outline-offset: 2px; }
+.google-logo { width: 18px; height: 18px; flex: 0 0 18px; }
 .authorized-users-list { display: grid; gap: 8px; }
 .authorized-user-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 9px; background: #fff; }
 .authorized-user-row strong { display: block; color: var(--ink); font-size: 12px; }
