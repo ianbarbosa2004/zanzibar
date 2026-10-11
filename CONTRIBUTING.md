@@ -2,14 +2,16 @@
 
 ## Fluxo de trabalho
 
-1. Ao pausar neste computador, execute `sincronizar desenvolvimento` para
-   validar, criar um checkpoint e enviar as alterações para `origin/main`. Ao
-   iniciar em outro computador, execute a mesma automação com checkout limpo
-   para baixar com `git pull --ff-only`; ela nunca apaga alterações locais.
+1. Ao iniciar em outro computador ou após perder uma sessão/worktree, execute
+   `sincronizar desenvolvimento` para alinhar com `origin/main` sem apagar
+   alterações locais e conferir as diretrizes operacionais.
 2. Faça uma alteração pequena e focada, preservando o contrato da API.
 3. Leia os módulos existentes antes de duplicar regras. Regras compartilhadas ficam em `src/shared`, integrações do navegador em `src/client` e integrações do servidor em `src/server`.
 4. Atualize ou crie testes para o comportamento alterado.
-5. Não inclua credenciais, dados de produção, arquivos JSON de runtime (`data.json`, `settings.json`, `incomes.json`, `cash-closings.json` e `limits.json`), `node_modules/` ou `dist/`.
+5. Não inclua credenciais, dados de produção, arquivos JSON de runtime
+   (`data.json`, `settings.json`, `incomes.json`, `cash-closings.json`,
+   `monthly-cash-closings.json` e `limits.json`), snapshots, `node_modules/` ou
+   `dist/`.
 
 ## Validação local
 
@@ -22,9 +24,6 @@ node --check app.js
 node --check server.js
 git diff --check
 ```
-
-No Windows, prefira `npm.cmd run build` e `npm.cmd test` quando a política de
-execução bloquear `npm.ps1`.
 
 Para mudanças específicas, os testes também podem ser executados por camada:
 
@@ -41,7 +40,15 @@ Ao adicionar paginação a uma nova listagem, mantenha seu estado separado dos e
 
 ## Persistência e produção
 
-O banco de produção é MySQL. O fallback local usa `data.json`, `settings.json`, `incomes.json` e `cash-closings.json`; esses arquivos são runtime e não devem ser commitados. Alterações de schema, foreign keys, exclusão ou migração devem preservar dados existentes e ser enviadas diretamente para `main` somente após as validações locais. O deploy não é disparado automaticamente: só publique quando o usuário solicitar, usando exclusivamente `.github/scripts/deploy.ps1`, e considere a alteração operacionalmente concluída somente após a validação remota documentada em [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+O banco de produção é MySQL. O fallback local usa `data.json`, `settings.json`,
+`incomes.json`, `cash-closings.json`, `monthly-cash-closings.json` e
+`limits.json`; esses arquivos são runtime e não devem ser commitados.
+Alterações de schema, foreign keys, exclusão ou migração devem preservar dados
+existentes e ser enviadas diretamente para `main` somente após as validações
+locais. O deploy não é disparado automaticamente: só publique quando o
+usuário solicitar, usando exclusivamente `.github/scripts/deploy.ps1`, e
+considere a alteração operacionalmente concluída somente após a validação
+remota documentada em [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 O procedimento de publicação está em [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 

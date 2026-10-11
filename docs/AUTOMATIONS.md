@@ -10,7 +10,7 @@ permanecer coerente com este documento e com o contrato em
 
 | Nome | Modo | Workspace | Fonte | Responsabilidade |
 | --- | --- | --- | --- | --- |
-| `sincronizar desenvolvimento` | `autopilot` | `branch` | `main` | Fechar o trabalho neste computador ou retomar o trabalho em outro |
+| `sincronizar desenvolvimento` | `autopilot` | `branch` | `main` | Alinhar o checkout local com `origin/main`, recuperar contexto e auditar continuidade |
 | `atualizar readme` | `autopilot` | `branch` | `main` | Atualizar Markdown afetado e enviar diretamente para `main` |
 | `atualizar repositorio` | `autopilot` | `branch` | `main` | Integrar código, testes, configuração e documentação diretamente em `main` |
 | `publicar online` | `autopilot` | `branch` | `main` | Publicar no cPanel, sem PR ou merge |
@@ -57,12 +57,10 @@ As automações devem:
 - iniciar com `git status --short`, `git diff --cached` e `git diff`, para
   identificar alterações staged ou não staged deixadas por uma execução
   anterior;
-- tratar o checkout local como fonte prioritária: classificar staged, não
-  staged e não rastreados antes de consultar ou aplicar o remoto; incorporar
-  alterações locais seguras, inclusive staged deixado por outra sessão,
-  preservando seu conteúdo; retirar do escopo arquivos de runtime, segredos,
-  `dist/`, `node_modules/` e `.htaccess`; interromper se a origem ou a
-  intenção forem ambíguas;
+- classificar todo staged antes de validar: incorporar somente arquivos
+  seguros pertencentes à alteração atual, preservando o conteúdo; retirar do
+  escopo arquivos de runtime, segredos, `dist/`, `node_modules/` e
+  `.htaccess`; interromper se a origem ou a intenção forem ambíguas;
 - executar as validações previstas no prompt antes de declarar sucesso;
 - interromper em caso de erro, divergência, segredo ou arquivo de runtime
   inesperado, preservando a saída completa;
@@ -82,53 +80,28 @@ do usuário, respeitando a responsabilidade de cada automação abaixo.
 
 ## `sincronizar desenvolvimento`
 
-Esta é uma automação de **duas operações simples**, executada manualmente.
-Ela não atualiza a documentação nem recria automações durante a sincronização.
-Antes de executar qualquer comando, pergunta qual operação o usuário deseja:
-**Finalizar trabalho neste computador** ou **Retomar/continuar trabalho neste
-computador**. O estado do Git é usado como trava de segurança, não para
-adivinhar a intenção do usuário.
+É a primeira automação a executar ao trocar de computador, recuperar uma
+sessão/worktree perdida ou suspeitar que o checkout local está desatualizado.
+Ela consulta `origin/main`, verifica a identidade do repositório, branch,
+remoto e estado do índice, e só aplica uma atualização fast-forward quando não
+há alterações locais ambíguas. Nunca sobrescreve, reseta ou remove arquivos
+locais. Alterações locais seguras devem ser preservadas e alterações
+staged/não staged que possam ser trabalho do usuário interrompem a
+sincronização para análise explícita.
 
-Quando o usuário estiver trabalhando em uma sessão já aberta, pode acionar o
-mesmo procedimento diretamente no chat com uma destas frases exatas:
-`Finalizar trabalho neste computador` ou
-`Retomar/continuar trabalho neste computador`. Nesse caso, a sessão atual
-executa o procedimento sem iniciar a automação pelo painel. Isso evita uma
-pergunta interativa em uma sessão separada, cuja resposta não retornaria a este
-chat.
-Depois de sincronizar, porém, ela lê os Markdown operacionais recém obtidos e
-assume suas diretrizes como contexto da sessão/worktree. Em seguida, compara
-as automações locais com a configuração canônica desses arquivos e corrige
-somente divergências: atualiza prompts/parâmetros das quatro automações
-oficiais, recria uma oficial ausente e não cria duplicatas. Ler e incorporar
-diretrizes significa aplicar o conteúdo às decisões da execução; não significa
-editar, reformatar ou substituir os arquivos Markdown.
+Depois de alinhar o código, ela lê `README.md`, `CONTRIBUTING.md`,
+`docs/CONTINUITY-PROMPT.md`, `docs/AUTOMATIONS.md`,
+`docs/AUTOMATION-PROMPTS.md` e a documentação de deploy, verifica a presença
+das quatro automações oficiais e compara seus nomes, projeto, modo, workspace,
+intervalo e prompts com o contrato versionado. Se a plataforma permitir
+recriação no contexto da execução, deve recriar somente automações ausentes
+com esses parâmetros; caso contrário, deve produzir um relatório preciso para
+recriação manual, sem criar duplicatas. Ela também instala dependências apenas
+se necessário, valida o projeto e registra divergências que exigem decisão.
 
-**Para interromper o trabalho neste computador:** execute-a enquanto houver
-alterações do desenvolvimento. Ela verifica os arquivos, executa build/testes,
-faz um commit de checkpoint com o trailer padrão e executa
-`git push origin main`. Ao terminar, informa o SHA que o outro computador deve
-usar. Arquivos de runtime, segredos, `dist/`, `node_modules/` e `.htaccess`
-nunca entram no checkpoint.
-
-**Para continuar o trabalho em outro computador:** execute-a com o checkout
-limpo. Ela verifica remoto e branch, executa `git fetch origin main` e usa
-somente `git pull --ff-only origin main` quando o computador local estiver
-atrás. Depois lê `README.md`, `CONTRIBUTING.md`, `docs/CONTINUITY-PROMPT.md`,
-`docs/AUTOMATIONS.md`, `docs/AUTOMATION-PROMPTS.md` e `docs/DEPLOYMENT.md`,
-resume as regras novas ou alteradas e passa a obedecê-las no restante da
-sessão. Em seguida, compara e sincroniza as automações `sincronizar
-desenvolvimento`, `atualizar readme`, `atualizar repositorio` e `publicar
-online`, usando projeto, branch, modo, workspace, intervalo e prompts
-versionados. Mantém a automação `DESATIVADA - atualizar readme` excluída e
-nunca a executa. Não modifica os arquivos Markdown como parte da
-sincronização. Em seguida roda as validações e informa o SHA sincronizado. Se houver
-qualquer alteração local, ela não faz pull nem sobrescreve arquivos: informa
-os caminhos para que o usuário execute primeiro a operação de interrupção.
-
-Ela nunca usa `reset --hard`, `checkout --`, `restore`, `clean`, force push,
-PR, merge ou deploy. A sincronização das automações altera somente a
-configuração delas na plataforma; não altera o checkout nem publica código.
+Essa automação não faz commit, push, PR, merge ou deploy. A atualização de
+`main` é feita apenas quando o checkout está seguro e por `git pull --ff-only`;
+a publicação online continua exigindo autorização explícita.
 
 ## `atualizar readme`
 
@@ -160,8 +133,8 @@ credenciais, chaves privadas ou `node_modules`.
 
 Quando o usuário solicitar integração e publicação, a ordem é:
 
-1. `sincronizar desenvolvimento`, para fechar o trabalho atual ou retomá-lo
-   em outro computador;
+1. `sincronizar desenvolvimento`, ao iniciar em outra máquina ou após perda
+   de sessão/worktree;
 2. `atualizar readme`, se houver documentação a atualizar;
 3. `atualizar repositorio`, para enviar alterações a `main`;
 4. `publicar online`, somente após autorização explícita.

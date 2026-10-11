@@ -11,6 +11,7 @@ Aplicação web para organização financeira pessoal e empresarial. O sistema r
 - Saldo mensal calculado como receitas menos despesas.
 - Categorias, tomadores, locais, credores e fontes de receita.
 - Interface organizada por resumo, movimentações, vendas, relatórios e cadastros, incluindo a área de Empréstimos.
+- Área Buffet separada para receitas, despesas, observações e calendário financeiro do produto.
 - Limites e metas mensais com meta, orçamento, previsão, patamar, resultado e status de fechamento.
 - Persistência MySQL com migração da estrutura legada de receitas.
 - Leitura de fallback JSON para desenvolvimento local, sem gravação CRUD quando o MySQL está indisponível.
@@ -80,14 +81,6 @@ node --check server.js
 git diff --check
 ```
 
-No Windows, use `npm.cmd` quando a política de execução bloquear
-`npm.ps1`:
-
-```powershell
-npm.cmd run build
-npm.cmd test
-```
-
 ## Diretrizes operacionais vigentes
 
 - O checkout de desenvolvimento é a fonte única para alterações e
@@ -107,20 +100,9 @@ npm.cmd test
   [`docs/AUTOMATIONS.md`](docs/AUTOMATIONS.md) e
   [`docs/AUTOMATION-PROMPTS.md`](docs/AUTOMATION-PROMPTS.md).
 - Ao trocar de computador ou recuperar uma sessão perdida, execute primeiro
-  `sincronizar desenvolvimento`. Ela pergunta se a intenção é finalizar o
-  trabalho neste computador ou retomar/continuar o trabalho. Para pausar, ela
-  cria um checkpoint, valida e envia o trabalho para `origin/main`; para
-  retomar, exige checkout limpo,
-  baixa com `git pull --ff-only`, lê os Markdown operacionais e incorpora suas
-  diretrizes à sessão antes de continuar. Ela nunca sobrescreve trabalho local,
-  usa force push ou faz deploy. Depois, compara e sincroniza as quatro
-  automações oficiais com os prompts e parâmetros versionados, sem duplicar
-  automações nem executar a marcada `DESATIVADA -`; incorporar diretrizes não
-  altera os arquivos Markdown.
-- Em uma sessão do Copilot já aberta, o mesmo procedimento pode ser acionado
-  diretamente pelo chat com `Finalizar trabalho neste computador` ou
-  `Retomar/continuar trabalho neste computador`. Isso evita depender de uma
-  pergunta interativa em uma execução separada da automação.
+  `sincronizar desenvolvimento`. Ela usa somente fast-forward seguro para
+  alinhar `main` com `origin/main`, preserva alterações locais e audita os
+  arquivos Markdown e as automações antes das validações.
 
 ## Arquitetura
 
@@ -151,11 +133,6 @@ Formulários CRUD não enviam mais um snapshot completo do estado. Cada operaç�
 As operações compostas usam transações MySQL. Falhas retornam `503` e não são representadas como sucesso no navegador. Não existe endpoint global de escrita: o estado só pode ser alterado pelos endpoints CRUD específicos.
 
 A tabela `billings` consolida vendas por mês e ano. Períodos históricos usam `monthly_cash_closings`; o mês corrente usa `cash_closings`. O campo `average_ticket` é calculado como `amount / sale_count` (zero quando não há vendas). O fechamento diário recalcula automaticamente o período correspondente, e a página **Faturamento** oferece o botão **Atualizar faturamento** para uma recomposição completa. Alterações nessa funcionalidade que envolvam schema ou persistência MySQL devem ser integradas em `main` e publicadas pelo script oficial somente após autorização explícita, com validação remota.
-
-Receitas técnicas criadas a partir de fechamentos diários podem não ter uma
-linha correspondente em `income_sources`. Nessa leitura, a API apresenta a
-origem técnica `Vendas`/`vendas`, sem criar catálogo duplicado nem alterar o
-CRUD direto no MySQL.
 
 A refatoração da aplicação é incremental. Regras de domínio devem ficar em `src/shared`, integrações de navegador em `src/client` e integrações de servidor em `src/server`. Novas funcionalidades devem preservar o contrato da API e incluir testes na camada adequada.
 
@@ -199,8 +176,9 @@ O cadastro `payment_methods` mantém formas de pagamento comuns, como Dinheiro, 
 A tabela `cash_closings` registra os fechamentos diários com data, forma de recebimento, quantidade de vendas e valor total, vinculando cada registro ao catálogo `payment_methods`.
 A tabela `monthly_cash_closings` é independente de `cash_closings`: armazena mês, ano, forma de recebimento, quantidade de vendas e valor total, e só é alterada pelo formulário próprio de fechamento mensal. Não existe sincronização automática entre as duas tabelas.
 A tabela `limits` registra o planejamento mensal com `month`, `year`, `target`, `budget`, `forecast`, `patamar`, `result` e `closed`. Os cinco valores financeiros usam `DECIMAL(12,2)`, o fechamento usa `TINYINT(1)` com padrão `0`, e cada período (`year` + `month`) é único. O `result` é calculado como `target - budget - forecast - patamar`. A tabela também mantém `id`, `client_id`, `created_at` e `updated_at`.
-Na interface, os limites ficam na seção **Ferramentas**, com o formulário **Limites e Metas**, valores de meta, orçamento, previsão e resultado, status de fechamento controlado pela lógica, edição e paginação.
+Na interface, os limites ficam na seção **Ferramentas**, com o formulário **Limites e Metas**, valores de meta, orçamento, previsão e resultado, proprietário `P` (pessoal) ou `R` (resultado), status de fechamento controlado pela lógica, edição e paginação.
 Os cadastros auxiliares usam `display_order` e `is_active` quando aplicável. Registros inativos não aparecem em formulários ou filtros; a exclusão física só ocorre quando não há referência em `transactions` ou `cash_closings`.
+A área **Buffet** usa as transações com produto `buffet`, mantém receitas e despesas fora dos totais gerais e permite registrar uma observação de até 255 caracteres. No MySQL, a observação fica em `buffet_observations`, vinculada à transação e removida automaticamente quando ela é excluída.
 
 Nunca versionar senhas, arquivos de produção ou dumps do banco.
 
