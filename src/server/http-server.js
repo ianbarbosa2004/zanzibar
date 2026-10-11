@@ -25,6 +25,12 @@ function send(response, status, payload, contentType = "application/json", heade
   response.end(body);
 }
 
+function staticCacheHeaders(file) {
+  if (file.contentType === "text/html") return { "Cache-Control": "no-cache, no-store, must-revalidate", Pragma: "no-cache", Expires: "0" };
+  if (/\.[a-f0-9_-]{6,}\.(?:js|css)$/i.test(file.name || "")) return { "Cache-Control": "public, max-age=31536000, immutable" };
+  return { "Cache-Control": "no-cache" };
+}
+
 export function createHttpServer({ basePath, readData, writeCashClosing, writeCatalog, writeLimit, writeMonthlyCashClosings, writeTransaction, writeBillings, readStaticFile, auth, logger = console }) {
   return createServer(async (request, response) => {
     try {
@@ -83,7 +89,7 @@ export function createHttpServer({ basePath, readData, writeCashClosing, writeCa
       const requested = apiPath === "/" ? "index.html" : apiPath.replace(/^\/+/, "");
       const file = await readStaticFile(requested);
       if (!file) return send(response, 404, { error: "Não encontrado." });
-      return send(response, 200, file.body, file.contentType);
+      return send(response, 200, file.body, file.contentType, staticCacheHeaders(file));
     } catch (error) {
       logger.error(error);
       return send(response, 503, { error: error.message || "MySQL indisponível. Dados não foram gravados." });

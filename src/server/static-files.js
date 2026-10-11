@@ -21,5 +21,6 @@ export async function readStaticFile(requestedPath) {
   return {
     body: await fs.readFile(file),
     contentType: contentTypes[extname(file)] || "application/octet-stream",
+    name: file,
   };
 }
