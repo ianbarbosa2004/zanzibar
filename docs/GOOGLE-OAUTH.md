@@ -87,3 +87,9 @@ salve dentro do diretório publicado.
 O aplicativo valida o código OAuth no servidor, consulta o endpoint OpenID
 UserInfo do Google, armazena somente identidade, autorização e sessões
 hash-adas no MySQL e nunca armazena o token de acesso do Google.
+
+O menu autenticado apresenta o nome, o e-mail e a foto oficial retornados pelo
+Google. A foto é guardada em `authorized_users.picture_url`; se a imagem
+estiver indisponível, o frontend exibe a inicial do nome. O quadro da conta
+também oferece um link para **Gerenciar sua Conta do Google** e a ação segura
+de **Sair**.

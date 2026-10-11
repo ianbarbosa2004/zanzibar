@@ -16,6 +16,10 @@ Aplicação web para organização financeira pessoal e empresarial. O sistema r
 - Leitura de fallback JSON para desenvolvimento local, sem gravação CRUD quando o MySQL está indisponível.
 - Interface compilada pelo Vite e servida pelo Node.js.
 - Autenticação OAuth do Google com sessões HttpOnly e autorização administrativa.
+- Menu de conta autenticada com nome, e-mail e foto oficial do perfil Google,
+  além das ações de gerenciamento da conta e saída.
+- Assets do frontend versionados pelo hash do Vite; o HTML é revalidado a cada
+  acesso para disponibilizar atualizações sem limpeza manual do cache.
 
 ## Stack
 
@@ -88,6 +92,12 @@ variáveis obrigatórias estão em [`docs/GOOGLE-OAUTH.md`](docs/GOOGLE-OAUTH.md
 O administrador inicial é `pbsjr1@gmail.com`; a autorização de outras contas
 é feita em **Ferramentas > Autorização de usuários**.
 
+Após o login, o menu da conta usa os dados `name`, `email` e `picture`
+retornados pelo endpoint OpenID UserInfo do Google. A foto é armazenada no
+cadastro autorizado para reaparecer nas sessões seguintes; se não puder ser
+carregada, a interface usa a inicial do nome como fallback. O administrador
+não aparece na lista de contas gerenciáveis.
+
 No Windows, use `npm.cmd` quando a política de execução bloquear
 `npm.ps1`:
 
@@ -109,6 +119,9 @@ npm.cmd test
 - A publicação usa exclusivamente `.github/scripts/deploy.ps1`, preserva
   dados MySQL, arquivos de runtime, backups e `.htaccess`, e nunca envia
   `data.json`, `settings.json`, `node_modules`, credenciais ou chaves privadas.
+- O servidor envia `index.html` com `no-cache` e os arquivos JS/CSS hashados
+  pelo Vite com cache imutável de longo prazo. A troca do nome do asset a cada
+  build evita que o navegador mantenha código antigo após uma publicação.
 - As automações oficiais são `sincronizar desenvolvimento`, `atualizar
   readme`, `atualizar repositorio` e `publicar online`; a configuração
   reproduzível está em
