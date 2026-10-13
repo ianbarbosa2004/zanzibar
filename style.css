@@ -237,6 +237,9 @@ td:first-child { color: var(--ink); font-weight: 650; }
 .import-transactions-panel .section-heading { margin-bottom: 0; }
 .import-transactions-panel .section-description { max-width: 580px; }
 .csv-download-button { display: inline-flex; align-items: center; white-space: nowrap; }
+.export-panel { border-color: #c9d9f2; background: #f5f8fe; }
+.export-options { display: flex; flex-wrap: wrap; gap: 10px; }
+.export-button { display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; }
 .transactions-section .table-wrap { box-shadow: 0 8px 22px #1e4a3910; }
 .billing-summary-row { background: #e7f4eb; font-weight: 700; }
 .billing-summary-row td { font-weight: 700; }
@@ -321,9 +324,15 @@ dialog { width: min(480px, calc(100% - 32px)); padding: 0; border: 0; border-rad
 .auth-google-button:focus-visible { outline: 3px solid #8ab4f8; outline-offset: 2px; }
 .google-logo { width: 18px; height: 18px; flex: 0 0 18px; }
 .authorized-users-list { display: grid; gap: 8px; }
-.authorized-user-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 9px; background: #fff; }
+.authorized-user-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(145px, auto) auto; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 9px; background: #fff; }
+.authorized-user-identity { min-width: 0; }
 .authorized-user-row strong { display: block; color: var(--ink); font-size: 12px; }
 .authorized-user-row span { color: var(--muted); font-size: 10px; }
+.authorized-user-session { white-space: nowrap; }
+.authorized-user-status { display: inline-flex; align-items: center; gap: 6px; color: var(--muted) !important; font-size: 10px; }
+.authorized-user-status i { width: 7px; height: 7px; border-radius: 50%; background: #9aa0a6; }
+.authorized-user-status.online { color: #188038 !important; font-weight: 700; }
+.authorized-user-status.online i { background: #34a853; }
 dialog::backdrop { background: #193b3766; }
 #transaction-form, #income-form, #buffet-income-form, #buffet-expense-form, #cash-closing-form, #monthly-cash-closing-form, #limit-form, #import-form { padding: 25px; }
 .import-summary { margin: 0 0 13px; color: var(--accent-dark); font-size: 11px; }
@@ -425,6 +434,9 @@ dialog { overscroll-behavior: contain; }
   .topbar-actions { gap: 8px; }
   .avatar { width: 32px; height: 32px; }
   .account-trigger-copy { display: none; }
+  .authorized-user-row { grid-template-columns: 1fr auto; }
+  .authorized-user-session { grid-column: 1 / -1; grid-row: 2; }
+  .authorized-user-row .secondary-button { grid-column: 2; grid-row: 1; }
   .balance-card { min-height: 144px; padding: 19px; }
   .balance-value { margin-top: 14px; font-size: 29px; }
   .balance-decoration { right: 3px; transform: scale(.75) rotate(-17deg); transform-origin: bottom right; }

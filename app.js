@@ -100,7 +100,15 @@ async function renderAuthorizedUsers() {
   const { users } = await response.json();
   const manageableUsers = users.filter((user) => user.role !== "admin");
   $("#authorized-users-empty").hidden = manageableUsers.length > 0;
-  $("#authorized-users-list").innerHTML = manageableUsers.map((user) => `<div class="authorized-user-row"><div><strong>${escapeHtml(user.name || user.email)}</strong><span>${escapeHtml(user.email)}</span></div><button class="secondary-button" type="button" data-authorize-email="${escapeHtml(user.email)}" data-authorized="${user.authorized}">${user.authorized ? "Bloquear" : "Autorizar"}</button></div>`).join("");
+  const formatLastLogin = (value) => value
+    ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(String(value).replace(" ", "T")))
+    : "Nunca acessou";
+  $("#authorized-users-list").innerHTML = manageableUsers.map((user) => {
+    const status = user.online
+      ? `<span class="authorized-user-status online"><i aria-hidden="true"></i>Online</span>`
+      : `<span class="authorized-user-status"><i aria-hidden="true"></i>Último login: ${escapeHtml(formatLastLogin(user.lastLoginAt))}</span>`;
+    return `<div class="authorized-user-row"><div class="authorized-user-identity"><strong>${escapeHtml(user.name || user.email)}</strong><span>${escapeHtml(user.email)}</span></div><div class="authorized-user-session">${status}</div><button class="secondary-button" type="button" data-authorize-email="${escapeHtml(user.email)}" data-authorized="${user.authorized}">${user.authorized ? "Bloquear" : "Autorizar"}</button></div>`;
+  }).join("");
 }
 
 async function loadData() {
@@ -471,6 +479,78 @@ $("#download-auxiliary-tables").addEventListener("click", () => {
   link.download = "tabelas-auxiliares-importacao.md";
   link.click();
   URL.revokeObjectURL(link.href);
+});
+
+function downloadCsv(filename, headers, rows) {
+  const csvValue = (value) => {
+    const text = String(value ?? "");
+    return /[;"\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
+  const csv = [headers, ...rows].map((row) => row.map(csvValue).join(";")).join("\r\n");
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(new Blob([`\uFEFF${csv}\r\n`], { type: "text/csv;charset=utf-8" }));
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+function exportMovementRows(location) {
+  return sortByDateDescending(inMonth(transactions.filter((item) => !isBuffetExpense(item) && item.location === location), selectedMonth()))
+    .map((item) => [formatTransactionDate(item.date), item.description, item.expenseType, item.taker, item.creditor, formatMoney(item.amount)]);
+}
+
+function exportIncomeRows() {
+  return sortByDateDescending(monthIncomes()).map((item) => [formatTransactionDate(item.date), item.description, item.source, formatMoney(item.amount)]);
+}
+
+function exportDailySalesRows() {
+  return [...cashClosings].sort((a, b) => `${b.date}${b.paymentMethod}`.localeCompare(`${a.date}${a.paymentMethod}`, "pt-BR"))
+    .map((item) => [formatTransactionDate(item.date), item.paymentMethod, item.saleCount, formatMoney(item.totalAmount)]);
+}
+
+function exportMonthlySalesRows() {
+  const currentPeriod = currentMonth();
+  const currentRows = cashClosings
+    .filter((item) => String(item.date || "").slice(0, 7) === currentPeriod)
+    .reduce((rows, item) => {
+      const key = normalizeCatalogValue(item.paymentMethod);
+      const current = rows.get(key) || { year: Number(currentPeriod.slice(0, 4)), month: Number(currentPeriod.slice(5, 7)), paymentMethod: item.paymentMethod, saleCount: 0, totalAmount: 0 };
+      current.saleCount += Number(item.saleCount || 0);
+      current.totalAmount += Number(item.totalAmount || 0);
+      rows.set(key, current);
+      return rows;
+    }, new Map());
+  const billing = billings.find((item) => `${item.year}-${String(item.month).padStart(2, "0")}` === currentPeriod);
+  const currentExportRows = currentRows.size
+    ? [...currentRows.values()]
+    : billing
+      ? [{ year: billing.year, month: billing.month, paymentMethod: "Total do mês", saleCount: billing.saleCount, totalAmount: billing.amount }]
+      : monthlyCashClosings.filter((item) => `${item.year}-${String(item.month).padStart(2, "0")}` === currentPeriod);
+  const historicalRows = monthlyCashClosings.filter((item) => `${item.year}-${String(item.month).padStart(2, "0")}` !== currentPeriod);
+  return [...currentExportRows, ...historicalRows]
+    .sort((a, b) => `${b.year}-${String(b.month).padStart(2, "0")}${b.paymentMethod}`.localeCompare(`${a.year}-${String(a.month).padStart(2, "0")}${a.paymentMethod}`, "pt-BR"))
+    .map((item) => [
+      new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date(`${item.year}-${String(item.month).padStart(2, "0")}-15T12:00:00`)),
+      item.paymentMethod,
+      item.saleCount,
+      formatMoney(item.totalAmount),
+    ]);
+}
+
+const exportDefinitions = {
+  income: ["receitas.csv", ["Data", "Descrição", "Fonte", "Valor"], exportIncomeRows],
+  Casa: ["despesas-casa.csv", ["Data", "Descrição", "Tipo", "Tomador", "Credor", "Valor"], () => exportMovementRows("Casa")],
+  Zanzibar: ["despesas-zanzibar.csv", ["Data", "Descrição", "Tipo", "Tomador", "Credor", "Valor"], () => exportMovementRows("Zanzibar")],
+  Empréstimos: ["emprestimos.csv", ["Data", "Descrição", "Tipo", "Tomador", "Credor", "Valor"], () => exportMovementRows("Empréstimos")],
+  "daily-sales": ["fechamentos-diarios.csv", ["Data", "Forma de recebimento", "Vendas", "Valor"], exportDailySalesRows],
+  "monthly-sales": ["fechamentos-mensais.csv", ["Mês", "Forma de recebimento", "Vendas", "Valor"], exportMonthlySalesRows],
+};
+
+document.querySelectorAll("[data-export]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const definition = exportDefinitions[button.dataset.export];
+    if (definition) downloadCsv(definition[0], definition[1], definition[2]());
+  });
 });
 
 function renderCashClosings() {

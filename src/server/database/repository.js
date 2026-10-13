@@ -257,9 +257,17 @@ export async function saveAuthUser(user) {
 }
 
 export async function listAuthUsers() {
-  if (!dbPool) return [...memoryAuthUsers.values()];
-  const [rows] = await dbPool.query("SELECT id, email, display_name AS name, picture_url AS picture, google_sub AS googleSub, authorized, role, last_login_at AS lastLoginAt, created_at AS createdAt FROM authorized_users ORDER BY email");
-  return rows.map((row) => ({ ...row, authorized: Boolean(row.authorized) }));
+  if (!dbPool) {
+    const onlineUserIds = new Set([...memoryAuthSessions.values()]
+      .filter((session) => session.expiresAt && new Date(session.expiresAt) > new Date())
+      .map((session) => session.userId));
+    return [...memoryAuthUsers.values()].map((user) => ({ ...user, online: onlineUserIds.has(user.id) }));
+  }
+  const [rows] = await dbPool.query(`SELECT id, email, display_name AS name, picture_url AS picture,
+    google_sub AS googleSub, authorized, role, last_login_at AS lastLoginAt, created_at AS createdAt,
+    EXISTS (SELECT 1 FROM auth_sessions s WHERE s.user_id = authorized_users.id AND s.expires_at > CURRENT_TIMESTAMP) AS online
+    FROM authorized_users ORDER BY email`);
+  return rows.map((row) => ({ ...row, authorized: Boolean(row.authorized), online: Boolean(row.online) }));
 }
 
 export async function saveAuthSession({ tokenHash, userId, expiresAt }) {
