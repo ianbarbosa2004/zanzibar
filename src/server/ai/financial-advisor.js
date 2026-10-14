@@ -78,7 +78,12 @@ function providerRequest({ provider, apiKey, model, systemPrompt, userContent, m
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: systemPrompt }] },
           contents: [{ role: "user", parts: [{ text: userContent }] }],
-          generationConfig: { temperature: 0.2, maxOutputTokens, responseMimeType: "application/json" },
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens,
+            responseMimeType: "application/json",
+            thinkingConfig: { thinkingBudget: 0 },
+          },
         }),
       },
     };

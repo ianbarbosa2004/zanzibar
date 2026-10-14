@@ -165,7 +165,9 @@ test("usa Gemini quando o provedor está configurado", async () => {
   assert.match(request.url, /generativelanguage\.googleapis\.com/);
   assert.equal(request.options.headers["x-goog-api-key"], "gemini-secret");
   assert.equal(request.url.includes("gemini-secret"), false);
-  assert.equal(JSON.parse(request.options.body).generationConfig.responseMimeType, "application/json");
+  const generationConfig = JSON.parse(request.options.body).generationConfig;
+  assert.equal(generationConfig.responseMimeType, "application/json");
+  assert.equal(generationConfig.thinkingConfig.thinkingBudget, 0);
   assert.equal(JSON.stringify(request.options.body).includes("gemini-secret"), false);
 });
 
