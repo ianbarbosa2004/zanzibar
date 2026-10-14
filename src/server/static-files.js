@@ -31,7 +31,7 @@ async function collectMarkdownFiles(directory, current = directory) {
   const entries = await fs.readdir(current, { withFileTypes: true });
   const files = [];
   for (const entry of entries) {
-    if (entry.name.startsWith(".") && entry.name !== ".github") continue;
+    if (entry.name.startsWith(".") && ![".agents", ".github"].includes(entry.name)) continue;
     if (entry.isDirectory() && markdownExcludedDirectories.has(entry.name)) continue;
     const fullPath = join(current, entry.name);
     if (entry.isDirectory()) files.push(...await collectMarkdownFiles(directory, fullPath));
