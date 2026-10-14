@@ -70,6 +70,26 @@ test("remove HTML de textos retornados pelo provedor", async () => {
   assert.equal(result.recommendations[0].action, "review");
 });
 
+test("aceita JSON Gemini em bloco Markdown e ignora partes de pensamento", async () => {
+  const advisor = createFinancialAdvisor({
+    enabled: true,
+    provider: "gemini",
+    apiKey: "secret",
+    fetchImpl: async () => response({
+      candidates: [{
+        content: {
+          parts: [
+            { text: "Analisando os indicadores...", thought: true },
+            { text: `\`\`\`json\n${JSON.stringify(valid)}\n\`\`\`` },
+          ],
+        },
+      }],
+    }),
+  });
+  const result = await advisor.analyze(insights);
+  assert.equal(result.summary, "Resumo");
+});
+
 test("responde perguntas usando indicadores agregados e valida a resposta", async () => {
   let request;
   const advisor = createFinancialAdvisor({
@@ -93,7 +113,7 @@ test("usa Gemini quando o provedor está configurado", async () => {
     enabled: true,
     provider: "gemini",
     apiKey: "gemini-secret",
-    model: "gemini-2.5-flash",
+    model: "gemini-3.8-flash",
     fetchImpl: async (url, options) => {
       request = { url, options };
       return response({ candidates: [{ content: { parts: [{ text: JSON.stringify(valid) }] } }] });
@@ -102,7 +122,20 @@ test("usa Gemini quando o provedor está configurado", async () => {
   const result = await advisor.analyze(insights);
   assert.equal(result.provider, "gemini");
   assert.match(request.url, /generativelanguage\.googleapis\.com/);
-  assert.match(request.url, /key=gemini-secret/);
+  assert.equal(request.options.headers["x-goog-api-key"], "gemini-secret");
+  assert.equal(request.url.includes("gemini-secret"), false);
   assert.equal(JSON.parse(request.options.body).generationConfig.responseMimeType, "application/json");
   assert.equal(JSON.stringify(request.options.body).includes("gemini-secret"), false);
+});
+
+test("explica quando o modelo Gemini não está disponível", async () => {
+  const advisor = createFinancialAdvisor({
+    enabled: true,
+    provider: "gemini",
+    apiKey: "secret",
+    model: "modelo-inexistente",
+    fetchImpl: async () => response({}, 404),
+    logger: { error: () => {} },
+  });
+  await assert.rejects(() => advisor.analyze(insights), /modelo-inexistente.*CLAREZA_AI_MODEL/);
 });

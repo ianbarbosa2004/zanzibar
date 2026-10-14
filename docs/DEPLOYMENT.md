@@ -12,7 +12,7 @@ Na Fase 2, a interpretação por IA permanece desabilitada por padrão. Para
 habilitá-la, configure `CLAREZA_AI_ENABLED=1` e `CLAREZA_AI_PROVIDER` como
 `openai` ou `gemini`. Use `CLAREZA_AI_API_KEY` para OpenAI ou
 `CLAREZA_GEMINI_API_KEY` para Gemini. O modelo padrão do Gemini é
-`gemini-2.5-flash`; os limites opcionais são `CLAREZA_AI_MODEL`,
+`gemini-3.8-flash`; os limites opcionais são `CLAREZA_AI_MODEL`,
 `CLAREZA_AI_TIMEOUT_MS`, `CLAREZA_AI_MAX_OUTPUT_TOKENS` e
 `CLAREZA_AI_MAX_PAYLOAD_BYTES`. Nunca versionar ou registrar chaves.
 

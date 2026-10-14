@@ -33,7 +33,7 @@ export const cookieSecure = secret("CLAREZA_COOKIE_SECURE") === "1" || secret("C
 export const aiEnabled = secret("CLAREZA_AI_ENABLED") === "1" || secret("CLAREZA_AI_ENABLED").toLowerCase() === "true";
 export const aiProvider = (secret("CLAREZA_AI_PROVIDER") || "openai").toLowerCase();
 export const aiApiKey = aiProvider === "gemini" ? secret("CLAREZA_GEMINI_API_KEY") : secret("CLAREZA_AI_API_KEY");
-export const aiModel = secret("CLAREZA_AI_MODEL") || (aiProvider === "gemini" ? "gemini-2.5-flash" : "gpt-4o-mini");
+export const aiModel = secret("CLAREZA_AI_MODEL") || (aiProvider === "gemini" ? "gemini-3.8-flash" : "gpt-4o-mini");
 export const aiTimeoutMs = Math.min(Math.max(Number(secret("CLAREZA_AI_TIMEOUT_MS")) || 20000, 5000), 60000);
 export const aiMaxOutputTokens = Math.min(Math.max(Number(secret("CLAREZA_AI_MAX_OUTPUT_TOKENS")) || 800, 200), 2000);
 export const aiMaxPayloadBytes = Math.min(Math.max(Number(secret("CLAREZA_AI_MAX_PAYLOAD_BYTES")) || 24000, 4000), 100000);

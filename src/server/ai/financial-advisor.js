@@ -19,13 +19,41 @@ function safeInsights(insights) {
   };
 }
 
+function extractJsonObject(content) {
+  const source = content.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  const start = source.indexOf("{");
+  if (start < 0) throw new Error("O provedor retornou JSON inválido.");
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = start; index < source.length; index += 1) {
+    const character = source[index];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === "\"") inString = false;
+      continue;
+    }
+    if (character === "\"") {
+      inString = true;
+    } else if (character === "{") {
+      depth += 1;
+    } else if (character === "}") {
+      depth -= 1;
+      if (depth === 0) return source.slice(start, index + 1);
+    }
+  }
+  throw new Error("O provedor retornou JSON inválido.");
+}
+
 function parseProviderResponse(payload, provider) {
   const content = provider === "gemini"
-    ? payload?.candidates?.[0]?.content?.parts?.[0]?.text
+    ? [...(payload?.candidates?.[0]?.content?.parts || [])].reverse().find((part) => typeof part?.text === "string" && !part.thought)?.text
+      || [...(payload?.candidates?.[0]?.content?.parts || [])].reverse().find((part) => typeof part?.text === "string")?.text
     : payload?.choices?.[0]?.message?.content;
   if (typeof content !== "string") throw new Error("O provedor não retornou conteúdo textual.");
   try {
-    return JSON.parse(content);
+    return JSON.parse(extractJsonObject(content));
   } catch {
     throw new Error("O provedor retornou JSON inválido.");
   }
@@ -34,10 +62,10 @@ function parseProviderResponse(payload, provider) {
 function providerRequest({ provider, apiKey, model, systemPrompt, userContent, maxOutputTokens }) {
   if (provider === "gemini") {
     return {
-      url: `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
+      url: `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
       options: {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: systemPrompt }] },
           contents: [{ role: "user", parts: [{ text: userContent }] }],
@@ -103,14 +131,18 @@ async function callProvider({ fetchImpl, provider, apiKey, model, timeoutMs, max
   }
 }
 
-async function providerJson({ response, provider }) {
+async function providerJson({ response, provider, model }) {
   if (response.status === 429) {
     const error = new Error("O provedor de IA atingiu o limite de requisições.");
     error.statusCode = 429;
     throw error;
   }
   if (!response.ok) {
-    const error = new Error(`O provedor de IA retornou HTTP ${response.status}.`);
+    const providerName = provider === "gemini" ? "Gemini" : "OpenAI";
+    const detail = response.status === 404 && provider === "gemini"
+      ? ` Modelo "${model}" não encontrado ou não disponível para esta chave/projeto; confira CLAREZA_AI_MODEL.`
+      : "";
+    const error = new Error(`O provedor ${providerName} retornou HTTP ${response.status}.${detail}`);
     error.statusCode = 502;
     throw error;
   }
@@ -129,7 +161,7 @@ export function createFinancialAdvisor({ fetchImpl = fetch, enabled = aiEnabled,
       if (Buffer.byteLength(analysis, "utf8") > maxPayloadBytes) throw new Error("O payload da análise excede o limite configurado.");
       try {
         const response = await callProvider({ fetchImpl, provider: activeProvider, apiKey, model, timeoutMs, maxOutputTokens, systemPrompt: financialAdvisorSystemPrompt, userContent: analysis });
-        return { enabled: true, provider: activeProvider, promptVersion: financialAdvisorPromptVersion, ...validateResponse(await providerJson({ response, provider: activeProvider })) };
+        return { enabled: true, provider: activeProvider, promptVersion: financialAdvisorPromptVersion, ...validateResponse(await providerJson({ response, provider: activeProvider, model })) };
       } catch (error) {
         if (error.name === "AbortError") {
           const timeoutError = new Error("A análise por IA excedeu o tempo limite.");
@@ -149,7 +181,7 @@ export function createFinancialAdvisor({ fetchImpl = fetch, enabled = aiEnabled,
       if (Buffer.byteLength(request, "utf8") > maxPayloadBytes) throw new Error("O payload da pergunta excede o limite configurado.");
       try {
         const response = await callProvider({ fetchImpl, provider: activeProvider, apiKey, model, timeoutMs, maxOutputTokens, systemPrompt: financialAdvisorQuestionPrompt, userContent: request });
-        return { enabled: true, provider: activeProvider, promptVersion: financialAdvisorPromptVersion, ...validateAnswer(await providerJson({ response, provider: activeProvider })) };
+        return { enabled: true, provider: activeProvider, promptVersion: financialAdvisorPromptVersion, ...validateAnswer(await providerJson({ response, provider: activeProvider, model })) };
       } catch (error) {
         if (error.name === "AbortError") {
           const timeoutError = new Error("A análise por IA excedeu o tempo limite.");

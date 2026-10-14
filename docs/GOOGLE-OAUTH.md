@@ -40,8 +40,7 @@ segredos existem somente no servidor. Depois de salvar as variáveis, reinicie
 o aplicativo Passenger.
 
 O Clareza lê essas configurações exclusivamente do ambiente do processo
-Node/Passenger. Não é necessário criar arquivo JSON de segredos nem configurar
-`CLAREZA_SECRETS_FILE`.
+Node/Passenger. Não é necessário criar arquivo JSON de segredos.
 
 ## Primeiro acesso e autorização
 

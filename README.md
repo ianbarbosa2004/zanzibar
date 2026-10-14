@@ -224,6 +224,12 @@ Eles são arquivos de runtime ignorados pelo Git. Os arquivos `*.example.json`, 
 
 ## Banco MySQL
 
+O assistente financeiro e sua evolução por fases estão documentados em
+[docs/FINANCIAL-INSIGHTS.md](docs/FINANCIAL-INSIGHTS.md). O recurso usa
+indicadores determinísticos server-side, histórico opcional no MySQL,
+comparações, alertas e interpretação assistida por OpenAI ou Gemini, sempre
+sem alterar lançamentos automaticamente.
+
 Configure as variáveis no ambiente do processo Node.js:
 
 ```text

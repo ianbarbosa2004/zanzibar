@@ -90,6 +90,11 @@ fechamento, atualize a documentação e valide a saída com os testes e o build
 existentes.
 ### Indicadores financeiros
 
+O guia completo de arquitetura, endpoints, configuração de OpenAI/Gemini,
+privacidade, fases e validação está em
+[docs/FINANCIAL-INSIGHTS.md](docs/FINANCIAL-INSIGHTS.md). Consulte-o antes de
+alterar qualquer superfície do assistente.
+
 Os indicadores da tela de análise são determinísticos e calculados no servidor.
 O escopo geral exclui Buffet; a análise Buffet é solicitada separadamente.
 Não exponha descrições ou PII desnecessária na resposta. Mudanças nessa área
