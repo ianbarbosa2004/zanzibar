@@ -39,6 +39,29 @@ Toda operação de escrita da interface — despesa, receita ou cadastro auxilia
 
 Ao adicionar paginação a uma nova listagem, mantenha seu estado separado dos estados de filtros e listagens existentes. Não use a coleção inteira de `paginationState` para renderizar uma família específica de componentes: um estado de paginação sem painel correspondente pode lançar uma exceção após uma gravação bem-sucedida e mascarar o sucesso da API.
 
+## Skills recomendadas para o Clareza
+
+Estas referências podem orientar a evolução do repositório e o uso de
+assistentes de IA:
+
+As instruções persistentes para assistência de IA ficam em
+[`.github/copilot-instructions.md`](.github/copilot-instructions.md). Elas
+complementam este documento e `docs/CONTINUITY-PROMPT.md`, sem substituí-los.
+
+- **AI Ready** — [skill](https://github.com/github/awesome-copilot/blob/main/skills/ai-ready/SKILL.md):
+  manter o repositório preparado para IA, com contexto e práticas adequadas
+  para agentes.
+- **Code Review** — [skill](https://github.com/coderabbitai/skills/blob/main/skills/code-review/SKILL.md):
+  apoiar revisões de qualidade, riscos e manutenção do código.
+- **Javascript Typescript Jest** — [skill](https://github.com/github/awesome-copilot/blob/main/skills/javascript-typescript-jest/SKILL.md):
+  opção futura para o projeto. O Clareza usa `node:test` atualmente e não deve
+  migrar para Jest sem decisão explícita.
+
+As URLs acima são referências de instalação e consulta; nenhum recurso externo
+deve ser instalado automaticamente. Antes de instalar ou habilitar qualquer
+skill, ferramenta ou integração, valide sua origem, compatibilidade, escopo e
+impacto no projeto.
+
 ## Persistência e produção
 
 O banco de produção é MySQL. O fallback local usa `data.json`, `settings.json`, `incomes.json` e `cash-closings.json`; esses arquivos são runtime e não devem ser commitados. Alterações de schema, foreign keys, exclusão ou migração devem preservar dados existentes e ser enviadas diretamente para `main` somente após as validações locais. O deploy não é disparado automaticamente: só publique quando o usuário solicitar, usando exclusivamente `.github/scripts/deploy.ps1`, e considere a alteração operacionalmente concluída somente após a validação remota documentada em [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
