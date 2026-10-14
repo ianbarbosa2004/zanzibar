@@ -23,6 +23,16 @@ test("calcula agregados, variações, concentração e dias sem misturar Buffet"
   assert.equal(result.previousTotals.expense, 20);
 });
 
+test("não duplica receitas quando transactions também contém incomes", () => {
+  const income = { id: "income-1", date: "2026-05-02", amount: 100, type: "income", source: "Salário" };
+  const result = analyzeFinancialPeriod({
+    transactions: [income, { id: "expense-1", date: "2026-05-03", amount: 40, type: "expense", expenseType: "Casa" }],
+    incomes: [income],
+    month: "2026-05",
+  });
+  assert.deepEqual(result.totals, { income: 100, expense: 40, balance: 60, count: 2 });
+});
+
 test("mantém recorrência agregada sem expor descrições", () => {
   const result = analyzeFinancialPeriod({ transactions: [...transactions, { id: "7", date: "2026-05-12", amount: 40, type: "expense", expenseType: "Mercado", location: "Casa", description: "nome sensível" }], incomes, month: "2026-05" });
   assert.equal(result.recurrence[0].label, "Mercado");

@@ -1,4 +1,5 @@
 import { isBuffetEntry } from "./buffet.js";
+import { mergeTransactions } from "./transactions.js";
 
 const monthPattern = /^\d{4}-\d{2}$/;
 const amountOf = (item) => Math.max(0, Number(item?.amount || 0));
@@ -85,7 +86,7 @@ const buildAlerts = ({ totals, previousTotals, variations, anomalies: detectedAn
 export function analyzeFinancialPeriod({ transactions = [], incomes = [], month, scope = "general" }) {
   if (!validMonth(month)) throw new Error("Informe um período no formato YYYY-MM.");
   if (!["general", "buffet"].includes(scope)) throw new Error("Escopo de análise inválido.");
-  const all = [...transactions, ...incomes].filter((item) => !item?.id || item.id);
+  const all = mergeTransactions(transactions, incomes).filter((item) => !item?.id || item.id);
   const selected = all.filter((item) => inPeriod(item, month));
   const scoped = scope === "buffet" ? selected.filter(isBuffetEntry) : selected.filter((item) => !isBuffetEntry(item));
   const previous = all.filter((item) => inPeriod(item, previousMonth(month)) && (scope === "buffet" ? isBuffetEntry(item) : !isBuffetEntry(item)));
