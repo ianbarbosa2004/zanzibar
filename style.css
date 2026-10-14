@@ -49,6 +49,7 @@ html { overflow-y: scroll; }
 .messaging-layout { display: grid; grid-template-columns: minmax(220px, .7fr) minmax(0, 1.5fr); gap: 20px; }
 .messaging-sidebar, .messaging-thread { min-width: 0; }
 .messaging-sidebar-heading, .messaging-thread-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.messaging-sidebar-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .messaging-sidebar-heading h3, .messaging-thread-heading h3 { margin: 0; color: var(--ink); font-size: 15px; }
 .messaging-sidebar-heading .secondary-button { padding: 8px 10px; font-size: 10px; }
 .messaging-conversations, .messaging-users { display: grid; gap: 7px; margin-top: 15px; }

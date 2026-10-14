@@ -15,6 +15,10 @@ download.
 - `POST /api/messaging/files`: recebe um arquivo multipart de até 10 MB.
 - `GET /api/messaging/files/:id`: baixa um arquivo somente quando o usuário é
   dono ou membro da conversa que o utiliza.
+- `POST /api/telegram/link-code`: gera um código de vinculação válido por 15
+  minutos para o usuário autenticado.
+- `POST /api/telegram/webhook`: recebe `/vincular CÓDIGO` do bot Telegram,
+  protegido pelo header `X-Telegram-Bot-Api-Secret-Token`.
 
 ## Persistência e proteção
 
@@ -24,10 +28,17 @@ No MySQL, as tabelas `messaging_conversations`,
 arquivos ficam em `CLAREZA_MESSAGING_FILES_DIR` ou, por padrão, em
 `.messaging-files/`, fora da raiz pública.
 
-O envio de cada mensagem cria uma entrada em
-`messaging_notification_outbox` com o canal `whatsapp`. Nesta fase não há
-credencial, chamada externa ou worker de WhatsApp: o outbox apenas prepara o
-fluxo para uma integração futura com WhatsApp Cloud API ou Twilio.
+O envio de mensagens cria entradas em `messaging_notification_outbox` separadas
+por evento: `new_message` para texto e `new_file` para anexos. O canal
+`telegram` fica preparado, mas o envio externo e o worker ainda não são
+ativados nesta etapa.
+
+Configure, somente no ambiente do Passenger, sem versionar valores:
+
+- `CLAREZA_TELEGRAM_BOT_TOKEN`: token do BotFather, reservado para o worker
+  futuro.
+- `CLAREZA_TELEGRAM_WEBHOOK_SECRET`: segredo usado para validar o webhook.
+- `CLAREZA_TELEGRAM_NOTIFICATIONS_ENABLED=0`: mantém os envios desativados.
 
 O modo local sem MySQL mantém os registros apenas em memória para testes e
 desenvolvimento. Ele não transforma o fallback JSON em destino de gravações

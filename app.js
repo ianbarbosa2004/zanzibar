@@ -154,6 +154,7 @@ async function loadData() {
 }
 
 const MESSAGING_URL = API_URL.replace(/data$/, "messaging");
+const TELEGRAM_URL = API_URL.replace(/data$/, "telegram");
 async function messagingRequest(path = "", options = {}) {
   const response = await fetch(`${MESSAGING_URL}${path}`, options);
   const result = response.headers.get("content-type")?.includes("application/json") ? await response.json() : null;
@@ -204,6 +205,17 @@ async function initializeMessaging() {
   } catch (error) {
     $("#messaging-status").textContent = error.message;
   }
+  $("#messaging-telegram-link")?.addEventListener("click", async () => {
+    try {
+      const response = await fetch(`${TELEGRAM_URL}/link-code`, { method: "POST" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Não foi possível gerar o código Telegram.");
+      const { code, expiresAt } = result;
+      $("#messaging-status").textContent = `Envie /vincular ${code} ao bot Telegram antes de ${new Intl.DateTimeFormat("pt-BR", { timeStyle: "short" }).format(new Date(expiresAt))}.`;
+    } catch (error) {
+      $("#messaging-status").textContent = error.message;
+    }
+  });
 }
 function markTransactionsUpdated() {
   lastTransactionUpdate = new Date().toISOString();

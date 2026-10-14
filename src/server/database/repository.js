@@ -1,6 +1,7 @@
 import { dbPool } from "./pool.js";
 import { databaseName, databaseUser } from "../config.js";
 import { readMessageFile, writeMessageFile } from "../messaging-files.js";
+import { createHash, randomBytes } from "node:crypto";
 import { toSlug, uniqueSlug } from "../../shared/slugs.js";
 export { dbPool };
 
@@ -10,6 +11,8 @@ const memoryMessagingConversations = new Map();
 const memoryMessagingMessages = new Map();
 const memoryMessagingFiles = new Map();
 let nextMessagingId = 1;
+const memoryTelegramLinks = new Map();
+const memoryTelegramCodes = new Map();
 
 export async function initializeDatabase({ readJson, dataFile, settingsFile, incomesFile, cashClosingsFile, monthlyCashClosingsFile, limitsFile, defaultSettings }) {
   if (!dbPool) return;
@@ -263,6 +266,29 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uq_messaging_outbox_message_channel (message_id, channel),
     CONSTRAINT fk_messaging_outbox_message FOREIGN KEY (message_id) REFERENCES messaging_messages(id) ON DELETE CASCADE
+  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+  const [[outboxEventColumn]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'messaging_notification_outbox' AND column_name = 'event_type'");
+  if (!outboxEventColumn.total) await dbPool.query("ALTER TABLE messaging_notification_outbox ADD COLUMN event_type ENUM('new_message', 'new_file') NOT NULL DEFAULT 'new_message' AFTER message_id");
+  const [[outboxUniqueKey]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'messaging_notification_outbox' AND index_name = 'uq_messaging_outbox_message_channel'");
+  if (outboxUniqueKey.total) {
+    await dbPool.query("ALTER TABLE messaging_notification_outbox DROP INDEX uq_messaging_outbox_message_channel");
+    await dbPool.query("ALTER TABLE messaging_notification_outbox ADD UNIQUE KEY uq_messaging_outbox_message_channel_event (message_id, channel, event_type)");
+  }
+  const [[outboxTelegramChannel]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'messaging_notification_outbox' AND column_name = 'channel'");
+  if (outboxTelegramChannel.total) await dbPool.query("ALTER TABLE messaging_notification_outbox MODIFY COLUMN channel ENUM('whatsapp', 'telegram') NOT NULL");
+  await dbPool.query(`CREATE TABLE IF NOT EXISTS telegram_accounts (
+    user_id INT UNSIGNED PRIMARY KEY,
+    chat_id VARCHAR(80) NOT NULL UNIQUE,
+    username VARCHAR(120) NULL,
+    linked_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_telegram_accounts_user FOREIGN KEY (user_id) REFERENCES authorized_users(id) ON DELETE CASCADE
+  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+  await dbPool.query(`CREATE TABLE IF NOT EXISTS telegram_link_codes (
+    code_hash CHAR(64) PRIMARY KEY,
+    user_id INT UNSIGNED NOT NULL,
+    expires_at DATETIME NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_telegram_link_codes_user FOREIGN KEY (user_id) REFERENCES authorized_users(id) ON DELETE CASCADE
   ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
   await dbPool.query("UPDATE transactions t JOIN expense_types c ON c.name = t.expense_type SET t.expense_type_id = c.id WHERE t.expense_type_id IS NULL");
   await dbPool.query("UPDATE transactions t JOIN takers c ON c.name = t.taker SET t.taker_id = c.id WHERE t.taker_id IS NULL");
@@ -578,7 +604,8 @@ export async function saveMessage({ userId, conversationId, body = "", fileIds =
     }
     const [result] = await connection.execute("INSERT INTO messaging_messages (conversation_id, sender_id, body) VALUES (?, ?, ?)", [conversationId, userId, text]);
     if (ids.length) await connection.query("INSERT INTO messaging_message_files (message_id, file_id) VALUES ?", [ids.map((id) => [result.insertId, id])]);
-    await connection.execute("INSERT INTO messaging_notification_outbox (message_id, channel) VALUES (?, 'whatsapp')", [result.insertId]);
+    if (ids.length) await connection.execute("INSERT INTO messaging_notification_outbox (message_id, channel, event_type) VALUES (?, 'telegram', 'new_file')", [result.insertId]);
+    if (text) await connection.execute("INSERT INTO messaging_notification_outbox (message_id, channel, event_type) VALUES (?, 'telegram', 'new_message')", [result.insertId]);
     await connection.commit();
     return { id: Number(result.insertId), conversationId: Number(conversationId), senderId: Number(userId), body: text, fileIds: ids, createdAt: new Date().toISOString() };
   } catch (error) {
@@ -586,6 +613,48 @@ export async function saveMessage({ userId, conversationId, body = "", fileIds =
     throw error;
   } finally {
     connection.release();
+  }
+}
+
+const telegramCodeHash = (code) => createHash("sha256").update(String(code)).digest("hex");
+
+export async function createTelegramLinkCode(userId) {
+    const code = randomBytes(4).toString("hex").toUpperCase();
+    const codeHash = telegramCodeHash(code);
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    if (!dbPool) {
+      memoryTelegramCodes.set(codeHash, { userId: Number(userId), expiresAt });
+      return { code, expiresAt: expiresAt.toISOString() };
+    }
+    await dbPool.execute("DELETE FROM telegram_link_codes WHERE user_id = ? OR expires_at <= CURRENT_TIMESTAMP", [userId]);
+    await dbPool.execute("INSERT INTO telegram_link_codes (code_hash, user_id, expires_at) VALUES (?, ?, ?)", [codeHash, userId, expiresAt]);
+    return { code, expiresAt: expiresAt.toISOString() };
+  }
+
+export async function consumeTelegramLink({ code, chatId, username = null }) {
+    const hash = telegramCodeHash(String(code || "").trim().toUpperCase());
+    if (!hash || !chatId) throw new Error("Código de vinculação inválido.");
+    if (!dbPool) {
+      const link = memoryTelegramCodes.get(hash);
+      if (!link || new Date(link.expiresAt) <= new Date()) throw new Error("Código expirado ou inválido.");
+      memoryTelegramCodes.delete(hash);
+      memoryTelegramLinks.set(Number(link.userId), { userId: Number(link.userId), chatId: String(chatId), username });
+      return { userId: Number(link.userId) };
+    }
+    const connection = await dbPool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [[link]] = await connection.query("SELECT user_id AS userId FROM telegram_link_codes WHERE code_hash = ? AND expires_at > CURRENT_TIMESTAMP", [hash]);
+      if (!link) throw new Error("Código expirado ou inválido.");
+      await connection.execute("INSERT INTO telegram_accounts (user_id, chat_id, username) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE chat_id = VALUES(chat_id), username = VALUES(username), linked_at = CURRENT_TIMESTAMP", [link.userId, String(chatId), username]);
+      await connection.execute("DELETE FROM telegram_link_codes WHERE code_hash = ?", [hash]);
+      await connection.commit();
+      return { userId: Number(link.userId) };
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
   }
 }
 

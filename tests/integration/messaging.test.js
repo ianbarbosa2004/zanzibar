@@ -67,3 +67,31 @@ test("rejeita mensagens sem autenticação", async (t) => {
   const response = await fetch(`http://localhost:${server.address().port}/clareza/api/messaging/conversations`);
   assert.equal(response.status, 401);
 });
+
+test("gera código protegido e valida webhook Telegram por segredo", async (t) => {
+  const linked = [];
+  const server = createHttpServer({
+    basePath: "/clareza",
+    auth: { current: async () => ({ id: 7, role: "user", authorized: true }) },
+    createTelegramLinkCode: async (userId) => ({ code: "A1B2C3D4", userId, expiresAt: "2026-10-14T04:00:00.000Z" }),
+    consumeTelegramLink: async (input) => { linked.push(input); },
+    telegramWebhookSecret: "secret",
+    readData: async () => ({}),
+    readStaticFile: async () => null,
+    logger: { error: () => {} },
+  });
+  t.after(() => server.close());
+  server.listen(0);
+  await once(server, "listening");
+  const base = `http://localhost:${server.address().port}/clareza`;
+  const codeResponse = await fetch(`${base}/api/telegram/link-code`, { method: "POST" });
+  assert.equal(codeResponse.status, 200);
+  assert.equal((await codeResponse.json()).code, "A1B2C3D4");
+  const webhook = await fetch(`${base}/api/telegram/webhook`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Telegram-Bot-Api-Secret-Token": "secret" },
+    body: JSON.stringify({ message: { text: "/vincular A1B2C3D4", chat: { id: 99 }, from: { username: "paulo" } } }),
+  });
+  assert.equal(webhook.status, 200);
+  assert.deepEqual(linked[0], { code: "A1B2C3D4", chatId: 99, username: "paulo" });
+});

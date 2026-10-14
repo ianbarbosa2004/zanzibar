@@ -1,5 +1,5 @@
-import { basePath, port } from "./src/server/config.js";
-import { deleteAuthSession, dbPool, findAuthSession, findAuthUser, initializeDataStore, listAuthUsers, listMessagingUsers, readData, readFinancialInsightHistory, readMessagingConversations, readMessagingFile, readMessagingMessages, saveAuthSession, saveAuthUser, saveFinancialInsightHistory, saveMessage, saveMessageFile, saveMessagingConversation, touchAuthSession, writeBillings, writeCashClosing, writeCatalog, writeLimit, writeMonthlyCashClosings, writeTransaction } from "./src/server/data-store.js";
+import { basePath, port, telegramWebhookSecret } from "./src/server/config.js";
+import { consumeTelegramLink, createTelegramLinkCode, deleteAuthSession, dbPool, findAuthSession, findAuthUser, initializeDataStore, listAuthUsers, listMessagingUsers, readData, readFinancialInsightHistory, readMessagingConversations, readMessagingFile, readMessagingMessages, saveAuthSession, saveAuthUser, saveFinancialInsightHistory, saveMessage, saveMessageFile, saveMessagingConversation, touchAuthSession, writeBillings, writeCashClosing, writeCatalog, writeLimit, writeMonthlyCashClosings, writeTransaction } from "./src/server/data-store.js";
 import { createAuth } from "./src/server/auth.js";
 import { createHttpServer } from "./src/server/http-server.js";
 import { readStaticFile } from "./src/server/static-files.js";
@@ -32,7 +32,7 @@ const askFinancialQuestion = async ({ data, month, scope = "general", question }
   const deterministic = analyzeFinancialInsights({ data, month, scope });
   return { deterministic, ai: await financialAdvisor.ask(question, deterministic) };
 };
-const server = createHttpServer({ basePath, auth, analyzeFinancialInsights: requestFinancialInsights, compareFinancialInsights, askFinancialQuestion, listMessagingUsers, readData, readFinancialInsightHistory, readMessagingConversations, readMessagingFile, readMessagingMessages, saveFinancialInsightHistory, saveMessage, saveMessageFile, saveMessagingConversation, writeBillings, writeCashClosing, writeCatalog, writeLimit, writeMonthlyCashClosings, writeTransaction, readStaticFile });
+const server = createHttpServer({ basePath, auth, analyzeFinancialInsights: requestFinancialInsights, compareFinancialInsights, askFinancialQuestion, consumeTelegramLink, createTelegramLinkCode, listMessagingUsers, readData, readFinancialInsightHistory, readMessagingConversations, readMessagingFile, readMessagingMessages, saveFinancialInsightHistory, saveMessage, saveMessageFile, saveMessagingConversation, telegramWebhookSecret, writeBillings, writeCashClosing, writeCatalog, writeLimit, writeMonthlyCashClosings, writeTransaction, readStaticFile });
 
 initializeDataStore().then(() => {
   server.listen(port, () => console.log(`Clareza disponível em http://localhost:${port}${dbPool ? " (MySQL)" : ""}`));

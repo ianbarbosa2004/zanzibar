@@ -38,6 +38,9 @@ export const aiModel = secret("CLAREZA_AI_MODEL") || (aiProvider === "gemini" ? 
 export const aiTimeoutMs = Math.min(Math.max(Number(secret("CLAREZA_AI_TIMEOUT_MS")) || 20000, 5000), 60000);
 export const aiMaxOutputTokens = Math.min(Math.max(Number(secret("CLAREZA_AI_MAX_OUTPUT_TOKENS")) || 800, 200), 2000);
 export const aiMaxPayloadBytes = Math.min(Math.max(Number(secret("CLAREZA_AI_MAX_PAYLOAD_BYTES")) || 24000, 4000), 100000);
+export const telegramBotToken = secret("CLAREZA_TELEGRAM_BOT_TOKEN");
+export const telegramWebhookSecret = secret("CLAREZA_TELEGRAM_WEBHOOK_SECRET");
+export const telegramNotificationsEnabled = secret("CLAREZA_TELEGRAM_NOTIFICATIONS_ENABLED") === "1" || secret("CLAREZA_TELEGRAM_NOTIFICATIONS_ENABLED").toLowerCase() === "true";
 
 export const defaultSettings = {
   ...catalogDefaults,

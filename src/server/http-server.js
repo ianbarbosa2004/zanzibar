@@ -71,7 +71,7 @@ function staticCacheHeaders(file) {
   return { "Cache-Control": "no-cache" };
 }
 
-export function createHttpServer({ basePath, readData, writeCashClosing, writeCatalog, writeLimit, writeMonthlyCashClosings, writeTransaction, writeBillings, readStaticFile, auth, analyzeFinancialInsights, compareFinancialInsights, askFinancialQuestion, saveFinancialInsightHistory, readFinancialInsightHistory, listMessagingUsers, readMessagingConversations, readMessagingFile, readMessagingMessages, saveMessageFile, saveMessage, saveMessagingConversation, logger = console }) {
+export function createHttpServer({ basePath, readData, writeCashClosing, writeCatalog, writeLimit, writeMonthlyCashClosings, writeTransaction, writeBillings, readStaticFile, auth, analyzeFinancialInsights, compareFinancialInsights, askFinancialQuestion, saveFinancialInsightHistory, readFinancialInsightHistory, listMessagingUsers, readMessagingConversations, readMessagingFile, readMessagingMessages, saveMessageFile, saveMessage, saveMessagingConversation, createTelegramLinkCode, consumeTelegramLink, telegramWebhookSecret = "", logger = console }) {
   return createServer(async (request, response) => {
     try {
       const pathname = new URL(request.url || "/", "http://localhost").pathname;
@@ -93,9 +93,18 @@ export function createHttpServer({ basePath, readData, writeCashClosing, writeCa
         response.writeHead(204, { "Cache-Control": "no-store" });
         return response.end();
       }
+      if (consumeTelegramLink && apiPath === "/api/telegram/webhook" && request.method === "POST") {
+        if (!telegramWebhookSecret || request.headers["x-telegram-bot-api-secret-token"] !== telegramWebhookSecret) return send(response, 403, { error: "Webhook Telegram não autorizado." });
+        const update = await readBody(request);
+        const text = update.message?.text || "";
+        const match = String(text).match(/^\/vincular(?:@\w+)?\s+([A-Z0-9]{8})$/i);
+        if (match) await consumeTelegramLink({ code: match[1], chatId: update.message.chat.id, username: update.message.from?.username || null });
+        return send(response, 200, { ok: true });
+      }
       const currentUser = auth ? await auth.current(request) : { role: "admin" };
       const protectedApi = apiPath.startsWith("/api/");
       if (auth && protectedApi && !currentUser) return send(response, 401, { error: "Autenticação necessária." });
+      if (createTelegramLinkCode && apiPath === "/api/telegram/link-code" && request.method === "POST") return send(response, 200, await createTelegramLinkCode(currentUser.id));
       if (listMessagingUsers && apiPath === "/api/messaging/users" && request.method === "GET") return send(response, 200, { users: await listMessagingUsers(currentUser.id) });
       if (readMessagingConversations && apiPath === "/api/messaging/conversations" && request.method === "GET") return send(response, 200, { conversations: await readMessagingConversations(currentUser.id) });
       if (saveMessagingConversation && apiPath === "/api/messaging/conversations" && request.method === "POST") {
