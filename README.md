@@ -18,6 +18,8 @@ Aplicação web para organização financeira pessoal e empresarial. O sistema r
 - Autenticação OAuth do Google com sessões HttpOnly e autorização administrativa.
 - Menu de conta autenticada com nome, e-mail e foto oficial do perfil Google,
   além das ações de gerenciamento da conta e saída.
+- Exportação em CSV de receitas, despesas por área, empréstimos e fechamentos
+  diários ou mensais, usando os nomes exibidos na interface.
 - Assets do frontend versionados pelo hash do Vite; o HTML é revalidado a cada
   acesso para disponibilizar atualizações sem limpeza manual do cache.
 
@@ -97,6 +99,13 @@ retornados pelo endpoint OpenID UserInfo do Google. A foto é armazenada no
 cadastro autorizado para reaparecer nas sessões seguintes; se não puder ser
 carregada, a interface usa a inicial do nome como fallback. O administrador
 não aparece na lista de contas gerenciáveis.
+
+Cada sessão HttpOnly dura no máximo sete dias e também expira após 15 minutos
+sem atividade. Enquanto a página está visível, interações do usuário e o
+retorno à aba ativa enviam heartbeat para `POST /api/auth/heartbeat`; se a
+sessão perder a validade, o acesso é solicitado novamente. A administração de
+usuários exibe **Online** quando existe uma sessão autorizada vigente e, nos
+demais casos, mostra a data do último login.
 
 No Windows, use `npm.cmd` quando a política de execução bloquear
 `npm.ps1`:
@@ -187,6 +196,17 @@ Na página **Ferramentas**, use **Importar transações** para carregar lançame
 Na mesma página, **Importar fechamentos de caixa** recebe uma linha por forma de recebimento, com as colunas `data`, `forma_de_recebimento`, `vendas` e `valor` (`id` é opcional). O arquivo de exemplo está disponível em `public/modelo-fechamentos-caixa.csv`. As linhas podem conter várias datas; os totais de vendas são sincronizados com as receitas de vendas de cada dia.
 
 O modelo também está disponível diretamente em [`modelo-transacoes.csv`](./modelo-transacoes.csv).
+
+### Exportação CSV
+
+Na seção **Ferramentas > Exportação**, os botões baixam os registros atualmente
+disponíveis para receitas, despesas de **Casa**, **Zanzibar**, **Empréstimos**,
+fechamentos diários e fechamentos mensais. Os arquivos são gerados no
+navegador, usam `;` como separador, codificação UTF-8 com BOM e valores
+formatados para leitura (`pt-BR`); não incluem IDs de relacionamento. As
+despesas respeitam os dados exibidos na área correspondente, e os fechamentos
+mensais combinam o mês corrente com os registros históricos conforme a regra de
+`cash_closings` e `monthly_cash_closings`.
 
 Os cadastros auxiliares mantêm `name` para exibição e um `slug` técnico único, gerado automaticamente (por exemplo, `Alimentação` → `alimentacao`). A importação pode informar os nomes visíveis ou as colunas correspondentes com sufixo `_slug`.
 

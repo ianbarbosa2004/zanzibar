@@ -97,6 +97,10 @@ de **Sair**.
 O perfil básico persistido em `authorized_users` inclui e-mail, nome completo,
 nome e sobrenome, identificador Google, foto, autorização e `last_login_at`.
 Cada sessão possui validade máxima de sete dias e `last_activity_at`. Enquanto
-o usuário interage com o aplicativo, o frontend envia heartbeats periódicos.
-Após 15 minutos sem atividade, a sessão deixa de ser válida e o usuário precisa
-entrar novamente.
+o usuário interage com o aplicativo, o frontend envia heartbeats periódicos
+para `POST /clareza/api/auth/heartbeat` somente enquanto a página está visível.
+O heartbeat também é enviado quando a aba volta a ficar ativa. Após 15 minutos
+sem atividade, a sessão deixa de ser válida e o usuário precisa entrar
+novamente. A lista administrativa calcula o estado **Online** a partir de
+sessões autorizadas ainda válidas; isso não substitui a verificação de
+autorização em cada requisição.

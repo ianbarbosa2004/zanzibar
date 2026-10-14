@@ -9,7 +9,10 @@
 2. Faça uma alteração pequena e focada, preservando o contrato da API.
 3. Leia os módulos existentes antes de duplicar regras. Regras compartilhadas ficam em `src/shared`, integrações do navegador em `src/client` e integrações do servidor em `src/server`.
 4. Atualize ou crie testes para o comportamento alterado.
-5. Não inclua credenciais, dados de produção, arquivos JSON de runtime (`data.json`, `settings.json`, `incomes.json`, `cash-closings.json` e `limits.json`), `node_modules/` ou `dist/`.
+5. Não inclua credenciais, dados de produção, arquivos JSON de runtime
+   (`data.json`, `settings.json`, `incomes.json`, `cash-closings.json`,
+   `monthly-cash-closings.json`, `limits.json` e snapshots), `node_modules/` ou
+   `dist/`.
 
 ## Validação local
 
@@ -47,6 +50,8 @@ assistentes de IA:
 As instruções persistentes para assistência de IA ficam em
 [`.github/copilot-instructions.md`](.github/copilot-instructions.md). Elas
 complementam este documento e `docs/CONTINUITY-PROMPT.md`, sem substituí-los.
+O inventário de skills, configuração do Copilot, CodeRabbit e SkillDB está em
+[`docs/AI-TOOLS.md`](docs/AI-TOOLS.md).
 
 - **AI Ready** — [skill](https://github.com/github/awesome-copilot/blob/main/skills/ai-ready/SKILL.md):
   manter o repositório preparado para IA, com contexto e práticas adequadas
@@ -77,3 +82,9 @@ Para testar dados reais localmente, use somente o snapshot descartável
 documentado em [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), com
 `CLAREZA_LOCAL_SNAPSHOT=1`. Esse modo não pode ser usado em produção e
 bloqueia gravações.
+
+As exportações CSV são uma operação local de leitura: os arquivos são montados
+no navegador a partir dos dados já carregados e não criam gravações ou rotas
+adicionais no servidor. Ao alterar seus campos, filtros ou regras de
+fechamento, atualize a documentação e valide a saída com os testes e o build
+existentes.
