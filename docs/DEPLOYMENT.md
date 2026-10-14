@@ -34,6 +34,13 @@ agende o worker conforme [docs/MESSAGING.md](MESSAGING.md). O diretório de
 anexos (`CLAREZA_MESSAGING_FILES_DIR` ou `.messaging-files/`) e o outbox devem
 ser preservados entre reinícios.
 
+O visualizador interno de documentação lê os Markdown enviados pelo deploy.
+O script publica `README.md`, `CONTRIBUTING.md`, `docs/`, `.github/` e
+`.agents/` junto com o código, para que a documentação exibida em
+**Ferramentas > Documentação** corresponda ao checkout validado. Diretórios de
+dependências, build, Git e backups não são listados pelo endpoint; não coloque
+segredos ou dados de runtime em Markdown.
+
 O `.htaccess` é administrado pelo cPanel e não deve ser sobrescrito. Dados de produção ficam no MySQL; os arquivos `data.json`, `settings.json`, `incomes.json`, `cash-closings.json` e `monthly-cash-closings.json` não são enviados e devem ser preservados. O CRUD de produção grava somente por SQL no MySQL.
 
 ## Procedimento oficial
@@ -64,6 +71,11 @@ O script publica o checkout local escolhido, sem criar, mesclar ou aguardar PR.
 Depois do upload, ele publica `deploy-version.json` com o SHA do commit e
 confirma por HTTP que o cPanel está servindo esse mesmo SHA. A saída
 `CLAREZA_DEPLOY_COMMIT` é a referência da versão efetivamente publicada.
+
+A documentação publicada não é uma cópia editável independente: qualquer
+correção deve ser feita no checkout local, validada e incluída no mesmo
+processo de publicação. O HTML continua sem cache; os documentos são lidos
+sob demanda pela API autenticada.
 
 O script oficial:
 

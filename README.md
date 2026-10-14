@@ -13,6 +13,8 @@ Aplicação web para organização financeira pessoal e empresarial. O sistema r
 - Interface organizada por resumo, movimentações, vendas, relatórios e cadastros, incluindo a área de Empréstimos.
 - Menu **Análise IA** para indicadores financeiros, comparações, histórico e perguntas assistidas, sem mutações automáticas.
 - Mensagens privadas entre usuários autorizados, com anexos protegidos e integração opcional com Telegram.
+- Visualizador autenticado de Markdown dentro do menu **Ferramentas**, usando
+  os documentos versionados do próprio checkout.
 - Limites e metas mensais com meta, orçamento, previsão, patamar, resultado e status de fechamento.
 - Persistência MySQL com migração da estrutura legada de receitas.
 - Leitura de fallback JSON para desenvolvimento local, sem gravação CRUD quando o MySQL está indisponível.
@@ -171,6 +173,13 @@ dist/                     # Saída gerada pelo Vite, não versionada
 
 `src/server/http-server.js` é uma fábrica testável do servidor HTTP. `server.js` permanece pequeno para manter a compatibilidade com o Passenger. O carregamento usa MySQL quando configurado; se o MySQL estiver indisponível, o sistema pode ler os arquivos JSON locais, mas bloqueia qualquer gravação para evitar perda ou divergência de dados. O menu **Mensagens** restringe conversas e downloads ao usuário autenticado e aos membros da conversa; anexos de até 10 MB ficam fora da raiz pública.
 
+O menu **Ferramentas > Documentação** lista e exibe os arquivos Markdown
+versionados no checkout por meio de endpoints protegidos. A lista percorre os
+documentos do projeto, incluindo `.github/` e `.agents/`, mas exclui diretórios
+de dependências, build, Git e backups. O conteúdo é escapado antes da
+renderização no navegador; a visualização é informativa e não substitui os
+arquivos Markdown canônicos.
+
 Formulários CRUD não enviam mais um snapshot completo do estado. Cada operação chama um endpoint específico, que executa SQL parametrizado e confirma a transação antes de atualizar a interface:
 
 - `/api/transactions`: despesas e receitas;
@@ -239,6 +248,11 @@ notificações estão documentados em [docs/MESSAGING.md](docs/MESSAGING.md).
 Quando habilitado, o worker `scripts/process-telegram-outbox.js` deve ser
 executado por cron no ambiente do Passenger; o token e o segredo do webhook
 ficam somente nas variáveis de ambiente.
+
+O visualizador interno de documentação não cria uma cópia de conteúdo nem uma
+fonte de configuração: ele lê os Markdown publicados pelo deploy. Alterações
+operacionais devem ser feitas nos arquivos canônicos e validadas pelo fluxo
+normal de documentação.
 
 Configure as variáveis no ambiente do processo Node.js:
 
@@ -334,7 +348,16 @@ As principais rotas são:
 | Método | Rota | Descrição |
 | --- | --- | --- |
 | `GET` | `/clareza/api/data` | Lê transações, receitas derivadas e configurações |
+| `GET` | `/clareza/api/documentation` | Lista os Markdown publicados para o visualizador interno |
+| `GET` | `/clareza/api/documentation/:path` | Lê um Markdown publicado, com validação de caminho |
+| `GET` | `/clareza/api/financial-insights` | Calcula indicadores determinísticos do período |
+| `POST` | `/clareza/api/financial-insights` | Calcula indicadores e, opcionalmente, chama IA ou salva histórico |
+| `GET` | `/clareza/api/financial-insights/history` | Lista o histórico do usuário autenticado |
+| `GET` | `/clareza/api/financial-insights/compare` | Compara períodos mensais do mesmo escopo |
+| `POST` | `/clareza/api/financial-insights/ask` | Envia pergunta assistida com indicadores agregados |
 | `GET` | `/clareza/api/messaging/conversations` | Lista as conversas privadas do usuário autenticado |
+| `POST` | `/clareza/api/messaging/files` | Recebe anexo multipart de até 10 MB |
+| `GET` | `/clareza/api/messaging/files/:id` | Baixa anexo autorizado da conversa |
 | `POST` | `/clareza/api/messaging/conversations/:id/messages` | Envia texto e anexos autorizados |
 | `POST` | `/clareza/api/telegram/link-code` | Gera código temporário para vincular o Telegram |
 | `POST` | `/clareza/api/telegram/test` | Envia teste autenticado ao Telegram vinculado |

@@ -14,6 +14,12 @@
    `monthly-cash-closings.json`, `limits.json` e snapshots), a pasta
    `.messaging-files/`, `node_modules/`, `dist/` ou arquivos de anexos locais.
 
+Documentação exibida no menu **Ferramentas > Documentação** deve ser alterada
+nos arquivos Markdown canônicos do checkout, não no navegador nem em arquivos
+gerados. O servidor publica esses documentos por endpoints autenticados e o
+visualizador escapa o conteúdo antes de renderizá-lo; não use Markdown como
+fonte para configuração operacional ou como local para segredos.
+
 ## Validação local
 
 Execute os comandos abaixo antes de enviar a alteração:
@@ -37,6 +43,11 @@ npm run test:integration
 ```
 
 Mudanças que envolvem banco de dados devem ser verificadas no fluxo completo: interface, payload da API, repositório e leitura posterior. Não use dados reais para criar testes locais.
+
+Mudanças em rotas de documentação, mensagens, Telegram ou análise financeira
+devem atualizar o Markdown correspondente e manter o contrato HTTP descrito no
+`README.md`. Para documentação somente, confirme também que nenhum arquivo
+funcional ou gerado entrou no diff.
 
 Toda operação de escrita da interface — despesa, receita ou cadastro auxiliar — deve tratar a persistência como transacional também no estado visual: preserve o estado anterior antes da mutação, confirme o sucesso do `PUT` antes de apresentar a operação como concluída e restaure o estado anterior quando a API falhar. A regra vale igualmente para edição, exclusão, ordenação e ativação de cadastros.
 
