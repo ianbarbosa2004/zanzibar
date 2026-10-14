@@ -1,10 +1,15 @@
 import { dbPool } from "./pool.js";
 import { databaseName, databaseUser } from "../config.js";
+import { readMessageFile, writeMessageFile } from "../messaging-files.js";
 import { toSlug, uniqueSlug } from "../../shared/slugs.js";
 export { dbPool };
 
 const memoryAuthUsers = new Map();
 const memoryAuthSessions = new Map();
+const memoryMessagingConversations = new Map();
+const memoryMessagingMessages = new Map();
+const memoryMessagingFiles = new Map();
+let nextMessagingId = 1;
 
 export async function initializeDatabase({ readJson, dataFile, settingsFile, incomesFile, cashClosingsFile, monthlyCashClosingsFile, limitsFile, defaultSettings }) {
   if (!dbPool) return;
@@ -204,6 +209,61 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
     CONSTRAINT fk_financial_insight_history_user FOREIGN KEY (user_id) REFERENCES authorized_users(id) ON DELETE CASCADE,
     INDEX ix_financial_insight_history_user_created (user_id, created_at)
   ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+  await dbPool.query(`CREATE TABLE IF NOT EXISTS messaging_conversations (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    created_by INT UNSIGNED NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_messaging_conversations_creator FOREIGN KEY (created_by) REFERENCES authorized_users(id) ON DELETE CASCADE
+  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+  await dbPool.query(`CREATE TABLE IF NOT EXISTS messaging_conversation_members (
+    conversation_id BIGINT UNSIGNED NOT NULL,
+    user_id INT UNSIGNED NOT NULL,
+    joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (conversation_id, user_id),
+    CONSTRAINT fk_messaging_members_conversation FOREIGN KEY (conversation_id) REFERENCES messaging_conversations(id) ON DELETE CASCADE,
+    CONSTRAINT fk_messaging_members_user FOREIGN KEY (user_id) REFERENCES authorized_users(id) ON DELETE CASCADE
+  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+  await dbPool.query(`CREATE TABLE IF NOT EXISTS messaging_files (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    owner_id INT UNSIGNED NOT NULL,
+    original_name VARCHAR(255) NOT NULL,
+    stored_name VARCHAR(300) NOT NULL UNIQUE,
+    mime_type VARCHAR(120) NOT NULL,
+    byte_size INT UNSIGNED NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_messaging_files_owner FOREIGN KEY (owner_id) REFERENCES authorized_users(id) ON DELETE CASCADE
+  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+  await dbPool.query(`CREATE TABLE IF NOT EXISTS messaging_messages (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    conversation_id BIGINT UNSIGNED NOT NULL,
+    sender_id INT UNSIGNED NOT NULL,
+    body TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_messaging_messages_conversation FOREIGN KEY (conversation_id) REFERENCES messaging_conversations(id) ON DELETE CASCADE,
+    CONSTRAINT fk_messaging_messages_sender FOREIGN KEY (sender_id) REFERENCES authorized_users(id) ON DELETE CASCADE,
+    INDEX ix_messaging_messages_conversation_created (conversation_id, created_at, id)
+  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+  await dbPool.query(`CREATE TABLE IF NOT EXISTS messaging_message_files (
+    message_id BIGINT UNSIGNED NOT NULL,
+    file_id BIGINT UNSIGNED NOT NULL,
+    PRIMARY KEY (message_id, file_id),
+    CONSTRAINT fk_messaging_message_files_message FOREIGN KEY (message_id) REFERENCES messaging_messages(id) ON DELETE CASCADE,
+    CONSTRAINT fk_messaging_message_files_file FOREIGN KEY (file_id) REFERENCES messaging_files(id) ON DELETE CASCADE
+  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+  await dbPool.query(`CREATE TABLE IF NOT EXISTS messaging_notification_outbox (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    message_id BIGINT UNSIGNED NOT NULL,
+    channel ENUM('whatsapp') NOT NULL,
+    status ENUM('pending', 'sent', 'failed') NOT NULL DEFAULT 'pending',
+    attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    available_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    sent_at DATETIME NULL,
+    last_error VARCHAR(500) NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_messaging_outbox_message_channel (message_id, channel),
+    CONSTRAINT fk_messaging_outbox_message FOREIGN KEY (message_id) REFERENCES messaging_messages(id) ON DELETE CASCADE
+  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
   await dbPool.query("UPDATE transactions t JOIN expense_types c ON c.name = t.expense_type SET t.expense_type_id = c.id WHERE t.expense_type_id IS NULL");
   await dbPool.query("UPDATE transactions t JOIN takers c ON c.name = t.taker SET t.taker_id = c.id WHERE t.taker_id IS NULL");
   await dbPool.query("UPDATE transactions t JOIN locations c ON c.name = t.location SET t.location_id = c.id WHERE t.location_id IS NULL");
@@ -349,6 +409,184 @@ export async function readFinancialInsightHistory(userId, limit = 20) {
     promptVersion: row.promptVersion,
     createdAt: row.createdAt,
   }));
+}
+
+export async function listMessagingUsers(userId) {
+  if (!dbPool) return [...memoryAuthUsers.values()]
+    .filter((user) => user.authorized && user.id !== userId)
+    .map(({ id, email, name, picture }) => ({ id, email, name, picture }));
+  const [rows] = await dbPool.query(
+    "SELECT id, email, display_name AS name, picture_url AS picture FROM authorized_users WHERE authorized = 1 AND id <> ? ORDER BY display_name, email",
+    [userId],
+  );
+  return rows;
+}
+
+export async function saveMessagingConversation({ userId, participantId }) {
+  if (!Number.isInteger(Number(participantId)) || Number(participantId) === Number(userId)) throw new Error("Destinatário inválido.");
+  if (!dbPool) {
+    const ids = [Number(userId), Number(participantId)].sort((a, b) => a - b);
+    const participant = memoryAuthUsers.get([...memoryAuthUsers.keys()].find((email) => memoryAuthUsers.get(email)?.id === Number(participantId)));
+    if (!participant?.authorized) throw new Error("Destinatário não autorizado.");
+    const key = ids.join(":");
+    const existing = [...memoryMessagingConversations.values()].find((conversation) => conversation.key === key);
+    if (existing) return existing;
+    const conversation = { id: nextMessagingId++, key, createdBy: Number(userId), createdAt: new Date().toISOString(), members: ids };
+    memoryMessagingConversations.set(conversation.id, conversation);
+    return conversation;
+  }
+  const [[participant]] = await dbPool.query("SELECT id FROM authorized_users WHERE id = ? AND authorized = 1", [participantId]);
+  if (!participant) throw new Error("Destinatário não autorizado.");
+  const [existing] = await dbPool.query(
+    `SELECT c.id FROM messaging_conversations c
+     JOIN messaging_conversation_members m1 ON m1.conversation_id = c.id AND m1.user_id = ?
+     JOIN messaging_conversation_members m2 ON m2.conversation_id = c.id AND m2.user_id = ?
+     WHERE (SELECT COUNT(*) FROM messaging_conversation_members mx WHERE mx.conversation_id = c.id) = 2
+     LIMIT 1`,
+    [userId, participantId],
+  );
+  if (existing[0]) return readMessagingConversations(userId).then((items) => items.find((item) => item.id === Number(existing[0].id)));
+  const connection = await dbPool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [result] = await connection.execute("INSERT INTO messaging_conversations (created_by) VALUES (?)", [userId]);
+    await connection.execute("INSERT INTO messaging_conversation_members (conversation_id, user_id) VALUES (?, ?), (?, ?)", [result.insertId, userId, result.insertId, participantId]);
+    await connection.commit();
+    return { id: Number(result.insertId), members: [Number(userId), Number(participantId)] };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+export async function readMessagingConversations(userId) {
+  if (!dbPool) return [...memoryMessagingConversations.values()]
+    .filter((conversation) => conversation.members.includes(Number(userId)))
+    .map((conversation) => {
+      const participantId = [...conversation.members].find((id) => id !== Number(userId));
+      const participant = [...memoryAuthUsers.values()].find((user) => user.id === participantId);
+      return { id: conversation.id, participant: participant ? { id: participant.id, email: participant.email, name: participant.name, picture: participant.picture } : { id: participantId }, lastMessage: [...memoryMessagingMessages.values()].filter((message) => message.conversationId === conversation.id).sort((a, b) => b.id - a.id)[0] || null };
+    });
+  const [rows] = await dbPool.query(
+    `SELECT c.id, u.id AS participant_id, u.email AS participant_email, u.display_name AS participant_name, u.picture_url AS participant_picture,
+      lm.body AS last_body, lm.created_at AS last_created_at
+     FROM messaging_conversations c
+     JOIN messaging_conversation_members mine ON mine.conversation_id = c.id AND mine.user_id = ?
+     JOIN messaging_conversation_members other ON other.conversation_id = c.id AND other.user_id <> ?
+     JOIN authorized_users u ON u.id = other.user_id
+     LEFT JOIN messaging_messages lm ON lm.id = (
+       SELECT m2.id FROM messaging_messages m2 WHERE m2.conversation_id = c.id ORDER BY m2.created_at DESC, m2.id DESC LIMIT 1
+     )
+     ORDER BY COALESCE(lm.created_at, c.created_at) DESC, c.id DESC`,
+    [userId, userId],
+  );
+  return rows.map((row) => ({
+    id: Number(row.id),
+    participant: { id: Number(row.participant_id), email: row.participant_email, name: row.participant_name, picture: row.participant_picture },
+    lastMessage: row.last_body === null ? null : { body: row.last_body, createdAt: row.last_created_at },
+  }));
+}
+
+async function assertConversationMember(userId, conversationId, connection = dbPool) {
+  if (!dbPool) {
+    const conversation = memoryMessagingConversations.get(Number(conversationId));
+    if (!conversation || !conversation.members.includes(Number(userId))) throw new Error("Conversa não encontrada.");
+    return conversation;
+  }
+  const [[member]] = await connection.query("SELECT conversation_id FROM messaging_conversation_members WHERE conversation_id = ? AND user_id = ?", [conversationId, userId]);
+  if (!member) throw new Error("Conversa não encontrada.");
+  return member;
+}
+
+export async function readMessagingMessages(userId, conversationId, limit = 50) {
+  const boundedLimit = Math.min(Math.max(Number(limit) || 50, 1), 100);
+  if (!dbPool) {
+    await assertConversationMember(userId, conversationId);
+    return [...memoryMessagingMessages.values()].filter((message) => message.conversationId === Number(conversationId)).slice(-boundedLimit);
+  }
+  await assertConversationMember(userId, conversationId);
+  const [rows] = await dbPool.query(
+    `SELECT m.id, m.body, m.created_at AS createdAt, m.sender_id AS senderId, u.display_name AS senderName,
+      COALESCE(JSON_ARRAYAGG(JSON_OBJECT('id', f.id, 'name', f.original_name, 'mimeType', f.mime_type, 'size', f.byte_size)), JSON_ARRAY()) AS files
+     FROM messaging_messages m
+     JOIN authorized_users u ON u.id = m.sender_id
+     LEFT JOIN messaging_message_files mf ON mf.message_id = m.id
+     LEFT JOIN messaging_files f ON f.id = mf.file_id
+     WHERE m.conversation_id = ?
+     GROUP BY m.id, m.body, m.created_at, m.sender_id, u.display_name
+     ORDER BY m.created_at DESC, m.id DESC LIMIT ?`,
+    [conversationId, boundedLimit],
+  );
+  return rows.reverse().map((row) => ({ ...row, id: Number(row.id), senderId: Number(row.senderId), files: typeof row.files === "string" ? JSON.parse(row.files).filter((file) => file.id !== null) : row.files }));
+}
+
+export async function saveMessageFile({ userId, originalName, mimeType, data }) {
+  const file = await writeMessageFile(data, originalName);
+  if (!dbPool) {
+    const record = { id: nextMessagingId++, ownerId: Number(userId), originalName: String(originalName), storedName: file.storedName, mimeType: String(mimeType || "application/octet-stream"), byteSize: data.length, createdAt: new Date().toISOString() };
+    memoryMessagingFiles.set(record.id, record);
+    return { id: record.id, name: record.originalName, mimeType: record.mimeType, size: record.byteSize };
+  }
+  const [result] = await dbPool.execute(
+    "INSERT INTO messaging_files (owner_id, original_name, stored_name, mime_type, byte_size) VALUES (?, ?, ?, ?, ?)",
+    [userId, String(originalName), file.storedName, String(mimeType || "application/octet-stream"), data.length],
+  );
+  return { id: Number(result.insertId), name: String(originalName), mimeType: String(mimeType || "application/octet-stream"), size: data.length };
+}
+
+export async function readMessagingFile(userId, fileId) {
+  let row;
+  if (!dbPool) {
+    row = memoryMessagingFiles.get(Number(fileId));
+    if (!row || row.ownerId !== Number(userId)) throw new Error("Arquivo não encontrado.");
+  } else {
+    [[row]] = await dbPool.query("SELECT id, owner_id AS ownerId, original_name AS originalName, stored_name AS storedName, mime_type AS mimeType FROM messaging_files WHERE id = ?", [fileId]);
+    if (!row) throw new Error("Arquivo não encontrado.");
+    const [shared] = await dbPool.query(
+      `SELECT 1 FROM messaging_message_files mf
+       JOIN messaging_messages m ON m.id = mf.message_id
+       JOIN messaging_conversation_members cm ON cm.conversation_id = m.conversation_id
+       WHERE mf.file_id = ? AND cm.user_id = ? LIMIT 1`,
+      [fileId, userId],
+    );
+    if (Number(row.ownerId) !== Number(userId) && !shared[0]) throw new Error("Arquivo não encontrado.");
+  }
+  return { ...row, data: await readMessageFile(row.storedName) };
+}
+
+export async function saveMessage({ userId, conversationId, body = "", fileIds = [] }) {
+  const text = String(body || "").trim();
+  const ids = [...new Set((fileIds || []).map(Number).filter(Number.isInteger))];
+  if (!text && !ids.length) throw new Error("A mensagem precisa ter texto ou arquivo.");
+  if (!dbPool) {
+    await assertConversationMember(userId, conversationId);
+    const ownedFiles = ids.map((id) => memoryMessagingFiles.get(id)).filter((file) => file?.ownerId === Number(userId));
+    if (ownedFiles.length !== ids.length) throw new Error("Anexo inválido.");
+    const message = { id: nextMessagingId++, conversationId: Number(conversationId), senderId: Number(userId), body: text, files: ownedFiles.map((file) => ({ id: file.id, name: file.originalName, mimeType: file.mimeType, size: file.byteSize })), createdAt: new Date().toISOString() };
+    memoryMessagingMessages.set(message.id, message);
+    return message;
+  }
+  const connection = await dbPool.getConnection();
+  try {
+    await connection.beginTransaction();
+    await assertConversationMember(userId, conversationId, connection);
+    if (ids.length) {
+      const [files] = await connection.query("SELECT id FROM messaging_files WHERE owner_id = ? AND id IN (?)", [userId, ids]);
+      if (files.length !== ids.length) throw new Error("Anexo inválido.");
+    }
+    const [result] = await connection.execute("INSERT INTO messaging_messages (conversation_id, sender_id, body) VALUES (?, ?, ?)", [conversationId, userId, text]);
+    if (ids.length) await connection.query("INSERT INTO messaging_message_files (message_id, file_id) VALUES ?", [ids.map((id) => [result.insertId, id])]);
+    await connection.execute("INSERT INTO messaging_notification_outbox (message_id, channel) VALUES (?, 'whatsapp')", [result.insertId]);
+    await connection.commit();
+    return { id: Number(result.insertId), conversationId: Number(conversationId), senderId: Number(userId), body: text, fileIds: ids, createdAt: new Date().toISOString() };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }
 
 export async function readDatabase() {

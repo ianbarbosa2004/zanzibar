@@ -22,16 +22,62 @@
 
 * { box-sizing: border-box; }
 html { overflow-y: scroll; }
-.financial-advisor-panel { margin-top: 1.25rem; }
-.financial-advisor-controls { display: flex; align-items: end; flex-wrap: wrap; gap: .75rem; }
-.financial-advisor-controls label { display: grid; gap: .25rem; }
-.financial-advisor-output { display: grid; gap: .35rem; margin-top: 1rem; }
-.financial-advisor-output p, .financial-advisor-output h3 { margin: 0; }
-.financial-advisor-question { display: flex; align-items: end; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
-.financial-advisor-question label { display: grid; gap: .25rem; flex: 1 1 20rem; }
-.financial-advisor-question input { min-width: 0; }
+.financial-advisor-panel { margin-top: 1.25rem; padding: 22px 24px 24px; }
+.financial-advisor-panel .panel-heading { display: grid; gap: 16px; }
+.financial-advisor-controls { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 9px; }
+.financial-advisor-controls label { display: grid; min-width: 128px; gap: 5px; color: var(--muted); font-size: 10px; font-weight: 700; }
+.financial-advisor-controls select,
+.financial-advisor-question input { width: 100%; height: 42px; min-height: 42px; padding: 0 12px; border: 1px solid var(--line); border-radius: 9px; color: var(--ink); background: #fbfcfb; font-size: 12px; font-weight: 600; letter-spacing: 0; line-height: 1.2; }
+.financial-advisor-controls select { height: 42px; margin-top: 5px; }
+.financial-advisor-controls button,
+.financial-advisor-question button { height: 42px; min-height: 42px; margin-top: 25px; padding: 11px 15px; white-space: nowrap; font-size: 12px; font-weight: 750; line-height: 1.2; }
+.financial-advisor-controls .secondary-button { color: #3c6f58; background: #f7fbf8; }
+.financial-advisor-controls .secondary-button:hover,
+.financial-advisor-question .secondary-button:hover { border-color: #9acfb0; color: var(--accent-dark); background: #eaf7ee; }
+.financial-advisor-panel > .muted { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid #b9ddc6; border-radius: 0 8px 8px 0; color: #64756c; background: #f5faf6; line-height: 1.5; }
+.financial-advisor-output { display: grid; gap: .55rem; margin-top: 14px; }
+.financial-advisor-output p,
+.financial-advisor-output h3 { margin: 0; }
+.financial-advisor-output h3 { color: var(--ink); font-size: 14px; letter-spacing: -.2px; }
+.financial-advisor-output p { padding: 11px 13px; border: 1px solid #edf1ee; border-radius: 9px; color: #53625b; background: #fbfdfb; font-size: 11px; line-height: 1.6; }
+.financial-advisor-question { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 12px; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+.financial-advisor-question label { display: grid; gap: 5px; color: var(--muted); font-size: 10px; font-weight: 700; }
+.financial-advisor-question input { min-width: 0; background: #fff; }
+.financial-advisor-question input::placeholder { color: #a1ada6; font-size: 11px; font-weight: 400; letter-spacing: 0; text-transform: none; }
+.financial-advisor-question input:focus-visible,
+.financial-advisor-controls select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-color: #87c49f; }
+.messaging-layout { display: grid; grid-template-columns: minmax(220px, .7fr) minmax(0, 1.5fr); gap: 20px; }
+.messaging-sidebar, .messaging-thread { min-width: 0; }
+.messaging-sidebar-heading, .messaging-thread-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.messaging-sidebar-heading h3, .messaging-thread-heading h3 { margin: 0; color: var(--ink); font-size: 15px; }
+.messaging-sidebar-heading .secondary-button { padding: 8px 10px; font-size: 10px; }
+.messaging-conversations, .messaging-users { display: grid; gap: 7px; margin-top: 15px; }
+.messaging-conversation, .messaging-user { display: grid; gap: 4px; width: 100%; padding: 11px; border: 1px solid var(--line); border-radius: 9px; color: var(--ink); background: #fff; text-align: left; }
+.messaging-conversation:hover, .messaging-user:hover, .messaging-conversation.selected { border-color: #9acfb0; background: #f1faf4; }
+.messaging-conversation strong, .messaging-user strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.messaging-conversation span, .messaging-user span { overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.messaging-messages { display: grid; align-content: start; gap: 10px; min-height: 300px; max-height: 52vh; overflow-y: auto; margin-top: 15px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: #f8fbf9; }
+.messaging-message { max-width: 82%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 11px 11px 11px 3px; background: #fff; }
+.messaging-message.own { justify-self: end; border-color: #b9ddc6; border-radius: 11px 11px 3px 11px; background: #eaf7ee; }
+.messaging-message-meta { color: var(--muted); font-size: 9px; }
+.messaging-message p { margin: 5px 0 0; color: #53625b; font-size: 11px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.messaging-file { display: block; margin-top: 7px; color: var(--accent-dark); font-size: 10px; overflow-wrap: anywhere; }
+.messaging-composer { display: grid; gap: 10px; margin-top: 14px; }
+.messaging-composer textarea { width: 100%; resize: vertical; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; color: var(--ink); background: #fff; font-size: 11px; line-height: 1.5; }
+.messaging-composer textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-color: #87c49f; }
+.messaging-composer-actions { display: flex; justify-content: flex-end; gap: 9px; }
+.messaging-file-label { cursor: pointer; }
 @media (max-width: 700px) {
-  .financial-advisor-controls { align-items: stretch; flex-direction: column; }
+  .financial-advisor-panel { padding: 18px; }
+  .financial-advisor-controls { display: grid; grid-template-columns: 1fr; align-items: stretch; }
+  .financial-advisor-controls label,
+  .financial-advisor-controls button { width: 100%; }
+  .financial-advisor-controls button,
+  .financial-advisor-question button { margin-top: 0; }
+  .financial-advisor-question { grid-template-columns: 1fr; }
+  .financial-advisor-question button { width: 100%; }
+  .messaging-layout { grid-template-columns: 1fr; }
+  .messaging-message { max-width: 92%; }
 }
 body { margin: 0; background: #f6f8f7; }
 button, input, select, textarea { font: inherit; }

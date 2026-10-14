@@ -39,6 +39,7 @@ test("envia somente indicadores agregados e valida resposta estruturada", async 
   const result = await advisor.analyze(insights);
   const body = JSON.parse(request.options.body);
   assert.equal(result.summary, "Resumo");
+  assert.equal(body.messages[1].content.includes("2026-05"), false);
   assert.equal(body.messages[1].content.includes("description"), false);
   assert.equal(body.messages[1].content.includes("secret"), false);
   assert.equal(request.options.headers.Authorization, "Bearer secret");

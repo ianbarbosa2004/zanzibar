@@ -33,6 +33,7 @@
           <a class="nav-link" href="#buffet"><span>▦</span> Buffet</a>
           <a class="nav-link" href="#cadastros"><span>⚙</span> Cadastros</a>
           <a class="nav-link" href="#ferramentas"><span>⚒</span> Ferramentas</a>
+          <a class="nav-link" href="#mensagens"><span>✉</span> Mensagens</a>
         </nav>
       </aside>
 
@@ -130,13 +131,35 @@ P: R$ 0,00</strong></div>
             <div id="financial-advisor-output" class="financial-advisor-output" aria-live="polite"></div>
             <div class="financial-advisor-question">
               <label for="financial-advisor-question-input">Pergunte sobre os indicadores
-                <input id="financial-advisor-question-input" type="text" maxlength="500" autocomplete="off" placeholder="Ex.: por que as despesas variaram?">
+                <input id="financial-advisor-question-input" type="text" maxlength="500" autocomplete="off" placeholder="Ex.: por que as despesas variaram…">
               </label>
               <button class="secondary-button" id="financial-advisor-ask" type="button">Perguntar à IA</button>
             </div>
             <div id="financial-advisor-answer-output" class="financial-advisor-output" aria-live="polite"></div>
             <div id="financial-advisor-history-output" class="financial-advisor-output" aria-live="polite" hidden></div>
           </section>
+        </section>
+
+        <section id="mensagens" class="messaging-section" data-page="mensagens" hidden>
+          <div class="section-heading">
+            <div><p class="eyebrow">Comunicação privada</p><h2>Mensagens</h2><p class="section-description">Troque mensagens e arquivos somente com usuários autorizados.</p></div>
+          </div>
+          <div class="messaging-layout">
+            <aside class="messaging-sidebar panel">
+              <div class="messaging-sidebar-heading"><h3>Conversas</h3><button class="secondary-button" id="messaging-new" type="button">Nova conversa</button></div>
+              <div id="messaging-conversations" class="messaging-conversations" aria-live="polite"></div>
+              <div id="messaging-users" class="messaging-users" hidden></div>
+            </aside>
+            <section class="messaging-thread panel" aria-labelledby="messaging-thread-title">
+              <div class="messaging-thread-heading"><h3 id="messaging-thread-title">Selecione uma conversa</h3><span id="messaging-status" class="muted" role="status" aria-live="polite"></span></div>
+              <div id="messaging-messages" class="messaging-messages" aria-live="polite"></div>
+              <form id="messaging-composer" class="messaging-composer">
+                <label class="sr-only" for="messaging-body">Mensagem</label>
+                <textarea id="messaging-body" rows="3" maxlength="5000" placeholder="Escreva uma mensagem…" disabled></textarea>
+                <div class="messaging-composer-actions"><label class="secondary-button messaging-file-label">Anexar arquivo<input id="messaging-file" type="file" hidden disabled></label><button class="primary-button" type="submit" disabled>Enviar</button></div>
+              </form>
+            </section>
+          </div>
         </section>
 
         <section id="buffet" class="buffet-section" data-page="buffet">

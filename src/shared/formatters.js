@@ -8,6 +8,13 @@ export function formatTransactionDate(value) {
   return year && month && day ? `${day}/${month}/${year}` : value;
 }
 
+export function formatPeriod(value) {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})$/);
+  if (!match) return value;
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 1));
+  return new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" }).format(date);
+}
+
 export const formatInputAmount = (value) => formatMoney(value);
 
 export function parseInputAmount(value) {

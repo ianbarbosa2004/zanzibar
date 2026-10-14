@@ -9,3 +9,4 @@ settings.json
 limits.json
 cash-closings.json
 monthly-cash-closings.json
+.messaging-files/

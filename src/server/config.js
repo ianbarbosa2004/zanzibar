@@ -10,6 +10,7 @@ export const cashClosingsFile = join(root, "cash-closings.json");
 export const monthlyCashClosingsFile = join(root, "monthly-cash-closings.json");
 export const limitsFile = join(root, "limits.json");
 export const localSnapshotFile = join(root, "local-snapshot.json");
+export const messagingFilesDir = process.env.CLAREZA_MESSAGING_FILES_DIR?.trim() || join(root, ".messaging-files");
 export const port = Number(process.env.PORT) || 4173;
 export const contentTypes = {
   ".css": "text/css",

@@ -1,6 +1,6 @@
 import { accumulatedBalance, inMonth, groupTotals, summarize } from "./src/shared/finance.js";
 import { currentMonth, localDate, todayLabel } from "./src/shared/dates.js";
-import { formatDate, formatInputAmount, formatLastTransactionUpdate, formatMoney, formatTransactionDate, parseInputAmount } from "./src/shared/formatters.js";
+import { formatDate, formatInputAmount, formatLastTransactionUpdate, formatMoney, formatPeriod, formatTransactionDate, parseInputAmount } from "./src/shared/formatters.js";
 import { canDeleteRegistry, hasRegistryName, registryDefinition, renameRegistry } from "./src/shared/registries.js";
 import { defaultAppState } from "./src/client/state-persistence.js";
 import { createExpenseEntry, createIncomeEntry, upsertEntry } from "./src/shared/entry-factories.js";
@@ -36,6 +36,8 @@ let expenseStatus = "all";
 let authUser = null;
 let financialAdvisorBusy = false;
 let latestFinancialInsightResult = null;
+let messagingConversationId = null;
+let messagingPendingFileIds = [];
 const initialState = defaultAppState({
   expenseTypes: defaultExpenseTypes,
   takers: defaultTakers,
@@ -149,6 +151,59 @@ async function loadData() {
   }, null);
   const catalogs = { type: ["expense_types", expenseTypes], taker: ["takers", takers], location: ["locations", locations], creditor: ["creditors", creditors], paymentMethod: ["payment_methods", paymentMethods], incomeSource: ["income_sources", incomeSources] };
   Object.values(catalogs).forEach(([key, values]) => { catalogMetadata[key] ||= values.map((name, displayOrder) => ({ name, displayOrder, isActive: true })); });
+}
+
+const MESSAGING_URL = API_URL.replace(/data$/, "messaging");
+async function messagingRequest(path = "", options = {}) {
+  const response = await fetch(`${MESSAGING_URL}${path}`, options);
+  const result = response.headers.get("content-type")?.includes("application/json") ? await response.json() : null;
+  if (!response.ok) throw new Error(result?.error || "Não foi possível concluir a operação de mensagens.");
+  return result;
+}
+function renderMessagingMessages(messages = []) {
+  const target = $("#messaging-messages");
+  if (!target) return;
+  target.innerHTML = messages.length ? messages.map((message) => `<article class="messaging-message ${Number(message.senderId) === Number(authUser?.id) ? "own" : ""}"><div class="messaging-message-meta">${escapeHtml(message.senderName || (Number(message.senderId) === Number(authUser?.id) ? "Você" : "Usuário"))} · ${escapeHtml(new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(String(message.createdAt).replace(" ", "T"))))}</div><p>${escapeHtml(message.body || "")}</p>${(message.files || []).map((file) => `<a class="messaging-file" href="${MESSAGING_URL}/files/${encodeURIComponent(file.id)}" target="_blank" rel="noopener noreferrer">📎 ${escapeHtml(file.name)}</a>`).join("")}</article>`).join("") : '<p class="empty-state">Nenhuma mensagem nesta conversa.</p>';
+  target.scrollTop = target.scrollHeight;
+}
+async function loadMessagingMessages() {
+  if (!messagingConversationId) return;
+  const { messages } = await messagingRequest(`/conversations/${messagingConversationId}/messages`);
+  renderMessagingMessages(messages);
+}
+function renderMessagingConversations(conversations = []) {
+  const target = $("#messaging-conversations");
+  if (!target) return;
+  target.innerHTML = conversations.length ? conversations.map((conversation) => `<button class="messaging-conversation ${Number(conversation.id) === Number(messagingConversationId) ? "selected" : ""}" type="button" data-messaging-conversation="${conversation.id}"><strong>${escapeHtml(conversation.participant?.name || conversation.participant?.email || "Usuário")}</strong><span>${escapeHtml(conversation.lastMessage?.body || "Sem mensagens")}</span></button>`).join("") : '<p class="empty-state">Nenhuma conversa iniciada.</p>';
+}
+async function loadMessagingConversations() {
+  const { conversations } = await messagingRequest("/conversations");
+  renderMessagingConversations(conversations);
+  if (messagingConversationId && conversations.some((conversation) => Number(conversation.id) === Number(messagingConversationId))) await loadMessagingMessages();
+}
+async function openMessagingUsers() {
+  const { users } = await messagingRequest("/users");
+  const target = $("#messaging-users");
+  target.hidden = false;
+  target.innerHTML = users.length ? users.map((user) => `<button class="messaging-user" type="button" data-messaging-user="${user.id}"><strong>${escapeHtml(user.name || user.email)}</strong><span>${escapeHtml(user.email)}</span></button>`).join("") : '<p class="empty-state">Nenhum outro usuário autorizado.</p>';
+}
+async function selectMessagingConversation(id, title = "Conversa") {
+  messagingConversationId = Number(id);
+  $("#messaging-thread-title").textContent = title;
+  $("#messaging-body").disabled = false;
+  $("#messaging-file").disabled = false;
+  $("#messaging-composer button[type=submit]").disabled = false;
+  $("#messaging-status").textContent = "";
+  await loadMessagingConversations();
+  await loadMessagingMessages();
+}
+async function initializeMessaging() {
+  if (!$("#messaging-section") && !$("#messaging-conversations")) return;
+  try {
+    await loadMessagingConversations();
+  } catch (error) {
+    $("#messaging-status").textContent = error.message;
+  }
 }
 function markTransactionsUpdated() {
   lastTransactionUpdate = new Date().toISOString();
@@ -1556,7 +1611,7 @@ $("#financial-advisor-run").addEventListener("click", async () => {
     const deterministic = payload.deterministic;
     if (!deterministic || !deterministic.totals) throw new Error("A resposta da análise está vazia.");
     const heading = document.createElement("h3");
-    heading.textContent = `${scope === "buffet" ? "Buffet" : "Geral"} — ${month}`;
+    heading.textContent = `${scope === "buffet" ? "Buffet" : "Geral"} — ${formatPeriod(month)}`;
     const metrics = document.createElement("p");
     metrics.textContent = `Receitas: R$ ${deterministic.totals.income.toFixed(2)} | Despesas: R$ ${deterministic.totals.expense.toFixed(2)} | Saldo: R$ ${deterministic.totals.balance.toFixed(2)} | ${deterministic.totals.count} lançamentos`;
     output.append(heading, metrics);
@@ -1564,7 +1619,7 @@ $("#financial-advisor-run").addEventListener("click", async () => {
     $("#financial-advisor-save").hidden = false;
     const variation = document.createElement("p");
     const formatVariation = (value) => value === null ? "sem base no período anterior" : `${value > 0 ? "+" : ""}${value.toFixed(2)}%`;
-    variation.textContent = `Variação contra ${deterministic.previousPeriod}: receitas ${formatVariation(deterministic.variations.incomePercent)}, despesas ${formatVariation(deterministic.variations.expensePercent)}, saldo ${formatVariation(deterministic.variations.balancePercent)}.`;
+    variation.textContent = `Variação contra ${formatPeriod(deterministic.previousPeriod)}: receitas ${formatVariation(deterministic.variations.incomePercent)}, despesas ${formatVariation(deterministic.variations.expensePercent)}, saldo ${formatVariation(deterministic.variations.balancePercent)}.`;
     output.append(variation);
     const details = document.createElement("p");
     if (deterministic.totals.count === 0) {
@@ -1587,7 +1642,7 @@ $("#financial-advisor-run").addEventListener("click", async () => {
     output.append(patterns);
     if (anomaly) {
       const warning = document.createElement("p");
-      warning.textContent = `Possível anomalia: lançamento de R$ ${anomaly.amount.toFixed(2)} em ${anomaly.date}. O indicador usa o limiar simples de três vezes a média do período.`;
+      warning.textContent = `Possível anomalia: lançamento de R$ ${anomaly.amount.toFixed(2)} em ${formatTransactionDate(anomaly.date)}. O indicador usa o limiar simples de três vezes a média do período.`;
       output.append(warning);
     }
     if (deterministic.alerts?.length) {
@@ -1623,7 +1678,7 @@ $("#financial-advisor-compare").addEventListener("click", async () => {
     trend.textContent = `Comparação de 3 meses — receitas ${formatTrend(payload.trend.income)}, despesas ${formatTrend(payload.trend.expense)}, saldo ${formatTrend(payload.trend.balance)}.`;
     const alerts = document.createElement("p");
     alerts.textContent = payload.alerts?.length
-      ? `Alertas encontrados: ${payload.alerts.map((item) => `${item.period}: ${item.message}`).join(" ")}`
+      ? `Alertas encontrados: ${payload.alerts.map((item) => `${formatPeriod(item.period)}: ${item.message}`).join(" ")}`
       : "Nenhum alerta comparativo encontrado nos últimos meses.";
     output.append(trend, alerts);
     status.textContent = "Comparação e alertas concluídos.";
@@ -1956,7 +2011,50 @@ $("#registry-lists").addEventListener("change", (event) => {
   if (statusInput) entry.isActive = statusInput.checked;
   saveCatalog(API_URL, { action: "rename", kind, current: name, name, displayOrder: entry.displayOrder, isActive: entry.isActive }).then(() => { setupFormOptions(); renderRegistries(); showFeedback("Cadastro atualizado."); }).catch(() => { restoreState(previous); setupFormOptions(); renderRegistries(); showFeedback("Não foi possível atualizar o cadastro."); });
 });
-const pages = ["resumo", "lancamentos", "vendas", "faturamento", "relatorios", "cadastros", "ferramentas", "buffet"];
+$("#messaging-new")?.addEventListener("click", () => openMessagingUsers().catch((error) => { $("#messaging-status").textContent = error.message; }));
+$("#messaging-conversations")?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-messaging-conversation]");
+  if (!button) return;
+  const title = button.querySelector("strong")?.textContent || "Conversa";
+  selectMessagingConversation(button.dataset.messagingConversation, title).catch((error) => { $("#messaging-status").textContent = error.message; });
+});
+$("#messaging-users")?.addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-messaging-user]");
+  if (!button) return;
+  try {
+    const { conversation } = await messagingRequest("/conversations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ participantId: Number(button.dataset.messagingUser) }) });
+    await selectMessagingConversation(conversation.id, button.querySelector("strong")?.textContent || "Conversa");
+    $("#messaging-users").hidden = true;
+  } catch (error) {
+    $("#messaging-status").textContent = error.message;
+  }
+});
+$("#messaging-composer")?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!messagingConversationId) return;
+  const form = event.currentTarget;
+  const submit = form.querySelector("button[type=submit]");
+  const file = $("#messaging-file").files[0];
+  try {
+    submit.disabled = true;
+    if (file) {
+      const formData = new FormData();
+      formData.append("file", file);
+      const upload = await messagingRequest("/files", { method: "POST", body: formData });
+      messagingPendingFileIds = [upload.file.id];
+    }
+    await messagingRequest(`/conversations/${messagingConversationId}/messages`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body: $("#messaging-body").value, fileIds: messagingPendingFileIds }) });
+    $("#messaging-body").value = "";
+    $("#messaging-file").value = "";
+    messagingPendingFileIds = [];
+    await loadMessagingConversations();
+  } catch (error) {
+    $("#messaging-status").textContent = error.message;
+  } finally {
+    submit.disabled = false;
+  }
+});
+const pages = ["resumo", "lancamentos", "vendas", "faturamento", "relatorios", "cadastros", "ferramentas", "mensagens", "buffet"];
 function renderPage() {
   const page = pages.includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : "resumo";
   document.querySelectorAll("[data-page]").forEach((section) => { section.hidden = section.dataset.page !== page; });
@@ -1998,5 +2096,5 @@ loadAuth().then((authenticated) => {
   $("#greeting").textContent = `Olá, ${accountName} ✳`;
   $("#account-email").textContent = authUser.email;
   $("#last-update").textContent = formatLastTransactionUpdate(lastTransactionUpdate);
-  setupFormOptions(); render(); renderReports(); renderRegistries(); renderCashClosings(); renderBillings(); renderLimits(); renderAuthorizedUsers(); renderPage();
+  setupFormOptions(); render(); renderReports(); renderRegistries(); renderCashClosings(); renderBillings(); renderLimits(); renderAuthorizedUsers(); initializeMessaging(); renderPage();
 }).catch((error) => { console.error("Falha ao inicializar a aplicação.", error); showFeedback(`Não foi possível carregar os dados iniciais: ${error.message}`); });

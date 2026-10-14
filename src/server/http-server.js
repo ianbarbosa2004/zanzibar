@@ -12,6 +12,46 @@ async function readBody(request) {
   return JSON.parse(raw || "{}");
 }
 
+async function readRawBody(request, limit = 12 * 1024 * 1024) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of request) {
+    size += chunk.length;
+    if (size > limit) {
+      const error = new Error("Arquivo maior que o limite permitido.");
+      error.statusCode = 413;
+      throw error;
+    }
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
+}
+
+function parseMultipart(body, contentType) {
+  const boundary = String(contentType || "").match(/boundary=(?:"([^"]+)"|([^;]+))/i)?.[1] || String(contentType || "").match(/boundary=(?:"([^"]+)"|([^;]+))/i)?.[2];
+  if (!boundary) throw new Error("Upload multipart inválido.");
+  const delimiter = Buffer.from(`--${boundary}`);
+  const parts = [];
+  let start = body.indexOf(delimiter);
+  while (start !== -1) {
+    const next = body.indexOf(delimiter, start + delimiter.length);
+    if (next === -1) break;
+    const part = body.subarray(start + delimiter.length, next);
+    const content = part.subarray(part.indexOf(Buffer.from("\r\n")) + 2);
+    if (content.length > 2) {
+      const separator = content.indexOf(Buffer.from("\r\n\r\n"));
+      if (separator !== -1) {
+        const headers = content.subarray(0, separator).toString("utf8");
+        const data = content.subarray(separator + 4, content.length - 2);
+        const disposition = headers.match(/Content-Disposition:[^\r\n]*name="([^"]+)"(?:;\s*filename="([^"]*)")?/i);
+        if (disposition) parts.push({ name: disposition[1], filename: disposition[2] || "", mimeType: headers.match(/Content-Type:\s*([^\r\n]+)/i)?.[1]?.trim() || "application/octet-stream", data });
+      }
+    }
+    start = next;
+  }
+  return parts;
+}
+
 function send(response, status, payload, contentType = "application/json", headers = {}) {
   const encodedContentType = /^(application\/json|text\/)/.test(contentType) && !contentType.includes("charset")
     ? `${contentType}; charset=utf-8`
@@ -31,7 +71,7 @@ function staticCacheHeaders(file) {
   return { "Cache-Control": "no-cache" };
 }
 
-export function createHttpServer({ basePath, readData, writeCashClosing, writeCatalog, writeLimit, writeMonthlyCashClosings, writeTransaction, writeBillings, readStaticFile, auth, analyzeFinancialInsights, compareFinancialInsights, askFinancialQuestion, saveFinancialInsightHistory, readFinancialInsightHistory, logger = console }) {
+export function createHttpServer({ basePath, readData, writeCashClosing, writeCatalog, writeLimit, writeMonthlyCashClosings, writeTransaction, writeBillings, readStaticFile, auth, analyzeFinancialInsights, compareFinancialInsights, askFinancialQuestion, saveFinancialInsightHistory, readFinancialInsightHistory, listMessagingUsers, readMessagingConversations, readMessagingFile, readMessagingMessages, saveMessageFile, saveMessage, saveMessagingConversation, logger = console }) {
   return createServer(async (request, response) => {
     try {
       const pathname = new URL(request.url || "/", "http://localhost").pathname;
@@ -56,6 +96,33 @@ export function createHttpServer({ basePath, readData, writeCashClosing, writeCa
       const currentUser = auth ? await auth.current(request) : { role: "admin" };
       const protectedApi = apiPath.startsWith("/api/");
       if (auth && protectedApi && !currentUser) return send(response, 401, { error: "Autenticação necessária." });
+      if (listMessagingUsers && apiPath === "/api/messaging/users" && request.method === "GET") return send(response, 200, { users: await listMessagingUsers(currentUser.id) });
+      if (readMessagingConversations && apiPath === "/api/messaging/conversations" && request.method === "GET") return send(response, 200, { conversations: await readMessagingConversations(currentUser.id) });
+      if (saveMessagingConversation && apiPath === "/api/messaging/conversations" && request.method === "POST") {
+        const payload = await readBody(request);
+        return send(response, 201, { conversation: await saveMessagingConversation({ userId: currentUser.id, participantId: payload.participantId }) });
+      }
+      const conversationMessages = apiPath.match(/^\/api\/messaging\/conversations\/(\d+)\/messages$/);
+      if (conversationMessages && readMessagingMessages && request.method === "GET") return send(response, 200, { messages: await readMessagingMessages(currentUser.id, Number(conversationMessages[1]), new URL(request.url || "/", "http://localhost").searchParams.get("limit")) });
+      if (conversationMessages && saveMessage && request.method === "POST") {
+        const payload = await readBody(request);
+        return send(response, 201, { message: await saveMessage({ userId: currentUser.id, conversationId: Number(conversationMessages[1]), body: payload.body, fileIds: payload.fileIds }) });
+      }
+      if (saveMessageFile && apiPath === "/api/messaging/files" && request.method === "POST") {
+        const parts = parseMultipart(await readRawBody(request), request.headers["content-type"]);
+        const file = parts.find((part) => part.filename);
+        if (!file) {
+          const error = new Error("Selecione um arquivo.");
+          error.statusCode = 400;
+          throw error;
+        }
+        return send(response, 201, { file: await saveMessageFile({ userId: currentUser.id, originalName: file.filename, mimeType: file.mimeType, data: file.data }) });
+      }
+      const messageFile = apiPath.match(/^\/api\/messaging\/files\/(\d+)$/);
+      if (messageFile && readMessagingFile && request.method === "GET") {
+        const file = await readMessagingFile(currentUser.id, Number(messageFile[1]));
+        return send(response, 200, file.data, file.mimeType, { "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(file.originalName)}` });
+      }
       if (apiPath === "/api/data" && request.method === "GET") return send(response, 200, await readData());
       if (compareFinancialInsights && apiPath === "/api/financial-insights/compare" && request.method === "GET") {
         const query = new URL(request.url || "/", "http://localhost").searchParams;

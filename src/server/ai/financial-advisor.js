@@ -1,21 +1,22 @@
 import { aiApiKey, aiEnabled, aiMaxOutputTokens, aiMaxPayloadBytes, aiModel, aiProvider, aiTimeoutMs } from "../config.js";
 import { financialAdvisorPromptVersion, financialAdvisorQuestionPrompt, financialAdvisorSystemPrompt } from "./prompts.js";
+import { formatPeriod, formatTransactionDate } from "../../shared/formatters.js";
 
 const allowedLevels = new Set(["low", "medium", "high"]);
 const cleanText = (value, limit) => String(value).replace(/<[^>]*>/g, "").trim().slice(0, limit);
 
 function safeInsights(insights) {
   return {
-    period: insights.period,
-    previousPeriod: insights.previousPeriod,
+    period: formatPeriod(insights.period),
+    previousPeriod: formatPeriod(insights.previousPeriod),
     scope: insights.scope,
     totals: insights.totals,
     previousTotals: insights.previousTotals,
     variations: insights.variations,
     concentration: insights.concentration,
     recurrence: insights.recurrence.map(({ label, type, count, total }) => ({ label, type, count, total })),
-    anomalies: insights.anomalies.map(({ date, type, amount }) => ({ date, type, amount })),
-    busiestDays: insights.busiestDays,
+    anomalies: insights.anomalies.map(({ date, type, amount }) => ({ date: formatTransactionDate(date), type, amount })),
+    busiestDays: insights.busiestDays.map(({ date, amount }) => ({ date: formatTransactionDate(date), amount })),
   };
 }
 
