@@ -112,6 +112,25 @@ test("concatena partes textuais da resposta Gemini antes de analisar o JSON", as
   assert.equal(result.summary, "Resumo");
 });
 
+test("aceita JSON Gemini serializado como string e preserva texto com thought não booleano", async () => {
+  const advisor = createFinancialAdvisor({
+    enabled: true,
+    provider: "gemini",
+    apiKey: "secret",
+    fetchImpl: async () => response({
+      candidates: [{
+        content: {
+          parts: [
+            { text: JSON.stringify(JSON.stringify(valid)), thought: "false" },
+          ],
+        },
+      }],
+    }),
+  });
+  const result = await advisor.analyze(insights);
+  assert.equal(result.summary, "Resumo");
+});
+
 test("responde perguntas usando indicadores agregados e valida a resposta", async () => {
   let request;
   const advisor = createFinancialAdvisor({

@@ -50,15 +50,21 @@ function parseProviderResponse(payload, provider) {
   const content = provider === "gemini"
     ? (() => {
       const parts = payload?.candidates?.[0]?.content?.parts || [];
-      const finalText = parts.filter((part) => typeof part?.text === "string" && !part.thought).map((part) => part.text).join("");
+      const finalText = parts.filter((part) => typeof part?.text === "string" && part.thought !== true).map((part) => part.text).join("");
       return finalText || parts.filter((part) => typeof part?.text === "string").map((part) => part.text).join("");
     })()
     : payload?.choices?.[0]?.message?.content;
   if (typeof content !== "string") throw new Error("O provedor não retornou conteúdo textual.");
   try {
-    return JSON.parse(extractJsonObject(content));
+    let parsed = JSON.parse(content.trim());
+    if (typeof parsed === "string") parsed = JSON.parse(parsed);
+    return parsed;
   } catch {
-    throw new Error("O provedor retornou JSON inválido.");
+    try {
+      return JSON.parse(extractJsonObject(content));
+    } catch {
+      throw new Error("O provedor retornou JSON inválido.");
+    }
   }
 }
 
