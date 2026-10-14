@@ -90,6 +90,28 @@ test("aceita JSON Gemini em bloco Markdown e ignora partes de pensamento", async
   assert.equal(result.summary, "Resumo");
 });
 
+test("concatena partes textuais da resposta Gemini antes de analisar o JSON", async () => {
+  const serialized = JSON.stringify(valid);
+  const advisor = createFinancialAdvisor({
+    enabled: true,
+    provider: "gemini",
+    apiKey: "secret",
+    fetchImpl: async () => response({
+      candidates: [{
+        content: {
+          parts: [
+            { text: "raciocínio interno", thought: true },
+            { text: serialized.slice(0, 24) },
+            { text: serialized.slice(24) },
+          ],
+        },
+      }],
+    }),
+  });
+  const result = await advisor.analyze(insights);
+  assert.equal(result.summary, "Resumo");
+});
+
 test("responde perguntas usando indicadores agregados e valida a resposta", async () => {
   let request;
   const advisor = createFinancialAdvisor({

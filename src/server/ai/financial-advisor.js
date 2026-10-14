@@ -48,8 +48,11 @@ function extractJsonObject(content) {
 
 function parseProviderResponse(payload, provider) {
   const content = provider === "gemini"
-    ? [...(payload?.candidates?.[0]?.content?.parts || [])].reverse().find((part) => typeof part?.text === "string" && !part.thought)?.text
-      || [...(payload?.candidates?.[0]?.content?.parts || [])].reverse().find((part) => typeof part?.text === "string")?.text
+    ? (() => {
+      const parts = payload?.candidates?.[0]?.content?.parts || [];
+      const finalText = parts.filter((part) => typeof part?.text === "string" && !part.thought).map((part) => part.text).join("");
+      return finalText || parts.filter((part) => typeof part?.text === "string").map((part) => part.text).join("");
+    })()
     : payload?.choices?.[0]?.message?.content;
   if (typeof content !== "string") throw new Error("O provedor não retornou conteúdo textual.");
   try {
