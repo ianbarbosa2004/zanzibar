@@ -270,8 +270,13 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
   const [[outboxEventColumn]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'messaging_notification_outbox' AND column_name = 'event_type'");
   if (!outboxEventColumn.total) await dbPool.query("ALTER TABLE messaging_notification_outbox ADD COLUMN event_type ENUM('new_message', 'new_file') NOT NULL DEFAULT 'new_message' AFTER message_id");
   const [[outboxUniqueKey]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'messaging_notification_outbox' AND index_name = 'uq_messaging_outbox_message_channel'");
+  const [[outboxEventUniqueKey]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'messaging_notification_outbox' AND index_name = 'uq_messaging_outbox_message_channel_event'");
   if (outboxUniqueKey.total) {
+    if (!outboxEventUniqueKey.total) {
+      await dbPool.query("ALTER TABLE messaging_notification_outbox ADD UNIQUE KEY uq_messaging_outbox_message_channel_event (message_id, channel, event_type)");
+    }
     await dbPool.query("ALTER TABLE messaging_notification_outbox DROP INDEX uq_messaging_outbox_message_channel");
+  } else if (!outboxEventUniqueKey.total) {
     await dbPool.query("ALTER TABLE messaging_notification_outbox ADD UNIQUE KEY uq_messaging_outbox_message_channel_event (message_id, channel, event_type)");
   }
   const [[outboxTelegramChannel]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'messaging_notification_outbox' AND column_name = 'channel'");
