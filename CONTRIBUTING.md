@@ -11,8 +11,8 @@
 4. Atualize ou crie testes para o comportamento alterado.
 5. Não inclua credenciais, dados de produção, arquivos JSON de runtime
    (`data.json`, `settings.json`, `incomes.json`, `cash-closings.json`,
-   `monthly-cash-closings.json`, `limits.json` e snapshots), `node_modules/` ou
-   `dist/`.
+   `monthly-cash-closings.json`, `limits.json` e snapshots), a pasta
+   `.messaging-files/`, `node_modules/`, `dist/` ou arquivos de anexos locais.
 
 ## Validação local
 
@@ -69,7 +69,16 @@ impacto no projeto.
 
 ## Persistência e produção
 
-O banco de produção é MySQL. O fallback local usa `data.json`, `settings.json`, `incomes.json` e `cash-closings.json`; esses arquivos são runtime e não devem ser commitados. Alterações de schema, foreign keys, exclusão ou migração devem preservar dados existentes e ser enviadas diretamente para `main` somente após as validações locais. O deploy não é disparado automaticamente: só publique quando o usuário solicitar, usando exclusivamente `.github/scripts/deploy.ps1`, e considere a alteração operacionalmente concluída somente após a validação remota documentada em [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+O banco de produção é MySQL. O fallback local usa `data.json`, `settings.json`,
+`incomes.json`, `cash-closings.json`, `monthly-cash-closings.json` e
+`limits.json`; o modo de snapshot usa `local-snapshot.json`. Esses arquivos
+são runtime e não devem ser commitados. Alterações de schema, foreign keys,
+exclusão ou migração devem preservar dados existentes e ser enviadas
+diretamente para `main` somente após as validações locais. O deploy não é
+disparado automaticamente: só publique quando o usuário solicitar, usando
+exclusivamente `.github/scripts/deploy.ps1`, e considere a alteração
+operacionalmente concluída somente após a validação remota documentada em
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 O procedimento de publicação está em [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
@@ -88,6 +97,13 @@ no navegador a partir dos dados já carregados e não criam gravações ou rotas
 adicionais no servidor. Ao alterar seus campos, filtros ou regras de
 fechamento, atualize a documentação e valide a saída com os testes e o build
 existentes.
+
+Mensagens privadas e anexos exigem autenticação e autorização por conversa.
+Uploads têm limite de 10 MB e devem permanecer fora da raiz pública. O vínculo
+e as notificações Telegram são opcionais; consulte
+[`docs/MESSAGING.md`](docs/MESSAGING.md) antes de alterar rotas, tabelas,
+outbox ou o worker `scripts/process-telegram-outbox.js`.
+
 ### Indicadores financeiros
 
 O guia completo de arquitetura, endpoints, configuração de OpenAI/Gemini,
@@ -95,7 +111,7 @@ privacidade, fases e validação está em
 [docs/FINANCIAL-INSIGHTS.md](docs/FINANCIAL-INSIGHTS.md). Consulte-o antes de
 alterar qualquer superfície do assistente.
 
-Os indicadores da tela de análise são determinísticos e calculados no servidor.
+Os indicadores do menu **Análise IA** são determinísticos e calculados no servidor.
 O escopo geral exclui Buffet; a análise Buffet é solicitada separadamente.
 Não exponha descrições ou PII desnecessária na resposta. Mudanças nessa área
 devem manter testes unitários e de integração para cálculo, autenticação,

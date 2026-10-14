@@ -252,7 +252,7 @@ a interpretação não está habilitada.
 
 ## Interface e estados
 
-O dashboard oferece:
+O menu **Análise IA** oferece:
 
 - seleção de escopo geral/Buffet;
 - geração de indicadores;
@@ -261,6 +261,10 @@ O dashboard oferece:
 - pergunta confirmada à IA;
 - salvamento explícito no histórico;
 - consulta do histórico por usuário.
+
+A análise fica separada dos menus de resumo e movimentações. Abrir ou
+recalcular a tela não altera lançamentos; a interpretação e as perguntas só
+chamam o provedor quando o usuário confirma a ação.
 
 Os controles possuem estados de carregamento, desabilitado, vazio e erro. A
 interface identifica conteúdo gerado por IA e exibe disclaimer. Nenhum botão de

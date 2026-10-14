@@ -11,6 +11,8 @@ Aplicação web para organização financeira pessoal e empresarial. O sistema r
 - Saldo mensal calculado como receitas menos despesas.
 - Categorias, tomadores, locais, credores e fontes de receita.
 - Interface organizada por resumo, movimentações, vendas, relatórios e cadastros, incluindo a área de Empréstimos.
+- Menu **Análise IA** para indicadores financeiros, comparações, histórico e perguntas assistidas, sem mutações automáticas.
+- Mensagens privadas entre usuários autorizados, com anexos protegidos e integração opcional com Telegram.
 - Limites e metas mensais com meta, orçamento, previsão, patamar, resultado e status de fechamento.
 - Persistência MySQL com migração da estrutura legada de receitas.
 - Leitura de fallback JSON para desenvolvimento local, sem gravação CRUD quando o MySQL está indisponível.
@@ -167,7 +169,7 @@ tests/
 dist/                     # Saída gerada pelo Vite, não versionada
 ```
 
-`src/server/http-server.js` é uma fábrica testável do servidor HTTP. `server.js` permanece pequeno para manter a compatibilidade com o Passenger. O carregamento usa MySQL quando configurado; se o MySQL estiver indisponível, o sistema pode ler os arquivos JSON locais, mas bloqueia qualquer gravação para evitar perda ou divergência de dados.
+`src/server/http-server.js` é uma fábrica testável do servidor HTTP. `server.js` permanece pequeno para manter a compatibilidade com o Passenger. O carregamento usa MySQL quando configurado; se o MySQL estiver indisponível, o sistema pode ler os arquivos JSON locais, mas bloqueia qualquer gravação para evitar perda ou divergência de dados. O menu **Mensagens** restringe conversas e downloads ao usuário autenticado e aos membros da conversa; anexos de até 10 MB ficam fora da raiz pública.
 
 Formulários CRUD não enviam mais um snapshot completo do estado. Cada operação chama um endpoint específico, que executa SQL parametrizado e confirma a transação antes de atualizar a interface:
 
@@ -218,7 +220,9 @@ Sem `CLAREZA_DB_PASSWORD`, o desenvolvimento usa estes arquivos na raiz:
 - `settings.json`
 - `incomes.json`
 - `cash-closings.json`
+- `monthly-cash-closings.json`
 - `limits.json`
+- `local-snapshot.json` (somente no modo de snapshot)
 
 Eles são arquivos de runtime ignorados pelo Git. Os arquivos `*.example.json`, quando presentes, servem como referência de estrutura. Não coloque credenciais ou dados reais nesses arquivos.
 
@@ -229,6 +233,12 @@ O assistente financeiro e sua evolução por fases estão documentados em
 indicadores determinísticos server-side, histórico opcional no MySQL,
 comparações, alertas e interpretação assistida por OpenAI ou Gemini, sempre
 sem alterar lançamentos automaticamente.
+
+Mensagens privadas, anexos, vínculo com Telegram e o consumidor de
+notificações estão documentados em [docs/MESSAGING.md](docs/MESSAGING.md).
+Quando habilitado, o worker `scripts/process-telegram-outbox.js` deve ser
+executado por cron no ambiente do Passenger; o token e o segredo do webhook
+ficam somente nas variáveis de ambiente.
 
 Configure as variáveis no ambiente do processo Node.js:
 
@@ -248,6 +258,12 @@ A tabela `monthly_cash_closings` é independente de `cash_closings`: armazena m�
 A tabela `limits` registra o planejamento mensal com `month`, `year`, `target`, `budget`, `forecast`, `patamar`, `result` e `closed`. Os cinco valores financeiros usam `DECIMAL(12,2)`, o fechamento usa `TINYINT(1)` com padrão `0`, e cada período (`year` + `month`) é único. O `result` é calculado como `target - budget - forecast - patamar`. A tabela também mantém `id`, `client_id`, `created_at` e `updated_at`.
 Na interface, os limites ficam na seção **Ferramentas**, com o formulário **Limites e Metas**, valores de meta, orçamento, previsão e resultado, status de fechamento controlado pela lógica, edição e paginação.
 Os cadastros auxiliares usam `display_order` e `is_active` quando aplicável. Registros inativos não aparecem em formulários ou filtros; a exclusão física só ocorre quando não há referência em `transactions` ou `cash_closings`.
+As mensagens privadas usam `messaging_conversations`,
+`messaging_conversation_members`, `messaging_messages`, `messaging_files`,
+`messaging_message_files` e `messaging_notification_outbox`. Os bytes dos
+anexos ficam em `CLAREZA_MESSAGING_FILES_DIR` ou em `.messaging-files/`, nunca
+em uma pasta pública. O worker do Telegram envia eventos separados para texto
+e arquivo e encerra o pool MySQL ao terminar.
 
 Nunca versionar senhas, arquivos de produção ou dumps do banco.
 
@@ -318,6 +334,10 @@ As principais rotas são:
 | Método | Rota | Descrição |
 | --- | --- | --- |
 | `GET` | `/clareza/api/data` | Lê transações, receitas derivadas e configurações |
+| `GET` | `/clareza/api/messaging/conversations` | Lista as conversas privadas do usuário autenticado |
+| `POST` | `/clareza/api/messaging/conversations/:id/messages` | Envia texto e anexos autorizados |
+| `POST` | `/clareza/api/telegram/link-code` | Gera código temporário para vincular o Telegram |
+| `POST` | `/clareza/api/telegram/test` | Envia teste autenticado ao Telegram vinculado |
 | `PUT` | `/clareza/api/transactions` | Insere ou atualiza uma despesa/receita |
 | `PUT` | `/clareza/api/cash-closings` | Grava um fechamento diário e sua receita correspondente |
 | `PUT` | `/clareza/api/monthly-cash-closings` | Grava os registros mensais do período editado |
@@ -331,6 +351,8 @@ O caminho `/clareza` é o padrão e pode ser alterado por `CLAREZA_BASE_PATH`. O
 
 - [Contribuição e validação](CONTRIBUTING.md)
 - [Publicação no cPanel](docs/DEPLOYMENT.md)
+- [Mensagens privadas e Telegram](docs/MESSAGING.md)
+- [Assistente financeiro](docs/FINANCIAL-INSIGHTS.md)
 - [Regras das automações](docs/AUTOMATIONS.md)
 - [Contrato técnico dos prompts](docs/AUTOMATION-PROMPTS.md)
 - [Prompt de continuidade para novas sessões](docs/CONTINUITY-PROMPT.md)

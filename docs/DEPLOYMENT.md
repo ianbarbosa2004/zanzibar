@@ -25,6 +25,15 @@ As Fases 4 e 5 usam somente os endpoints protegidos de comparação e perguntas
 assistidas. Não criam tabelas nem alteram o schema MySQL. Perguntas são
 limitadas a 500 caracteres e a IA recebe apenas indicadores agregados.
 
+Mensagens privadas e Telegram são opcionais. O deploy envia o worker
+`scripts/process-telegram-outbox.js`, mas não executa cron nem configura
+segredos. Para habilitar notificações, defina no Application Manager
+`CLAREZA_TELEGRAM_BOT_TOKEN`, `CLAREZA_TELEGRAM_WEBHOOK_SECRET` e
+`CLAREZA_TELEGRAM_NOTIFICATIONS_ENABLED=1`, configure o webhook protegido e
+agende o worker conforme [docs/MESSAGING.md](MESSAGING.md). O diretório de
+anexos (`CLAREZA_MESSAGING_FILES_DIR` ou `.messaging-files/`) e o outbox devem
+ser preservados entre reinícios.
+
 O `.htaccess` é administrado pelo cPanel e não deve ser sobrescrito. Dados de produção ficam no MySQL; os arquivos `data.json`, `settings.json`, `incomes.json`, `cash-closings.json` e `monthly-cash-closings.json` não são enviados e devem ser preservados. O CRUD de produção grava somente por SQL no MySQL.
 
 ## Procedimento oficial

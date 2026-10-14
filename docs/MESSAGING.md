@@ -22,6 +22,11 @@ download.
 - `POST /api/telegram/webhook`: recebe `/vincular CÓDIGO` do bot Telegram,
   protegido pelo header `X-Telegram-Bot-Api-Secret-Token`.
 
+O corpo textual de uma mensagem tem limite de 5.000 caracteres. Uma mensagem
+precisa conter texto, pelo menos um anexo ou ambos. O upload é feito antes do
+envio da mensagem; se o envio falhar, o anexo órfão deve ser tratado como dado
+operacional e não é exposto por uma rota pública.
+
 ### Teste autenticado
 
 Com o usuário autenticado no Clareza e o Telegram já vinculado, execute no
@@ -50,7 +55,9 @@ O envio de mensagens cria entradas em `messaging_notification_outbox` separadas
 por evento: `new_message` para texto e `new_file` para anexos. O consumidor
 `scripts/process-telegram-outbox.js` deve ser executado por cron no ambiente
 do Passenger quando as notificações estiverem habilitadas. Ele envia texto por
-`sendMessage`, arquivos por `sendDocument` e registra o resultado no outbox.
+`sendMessage`, arquivos por `sendDocument`, registra o resultado no outbox e
+encerra o pool MySQL ao terminar. O worker processa o lote disponível e sai;
+não é um processo persistente.
 
 Configure, somente no ambiente do Passenger, sem versionar valores:
 
@@ -68,6 +75,11 @@ cd /home1/itsitescom/public_html/clareza
 
 O consumidor termina após processar o lote disponível e pode ser executado
 periodicamente. Falhas são registradas no outbox sem expor o token.
+
+O teste autenticado disponível em `POST /api/telegram/test` usa a conta
+Telegram já vinculada e envia somente uma mensagem de verificação. Ele não
+cria mensagem interna nem entrada no outbox; use-o para confirmar token,
+vínculo, conectividade e permissões antes de habilitar o cron.
 
 O modo local sem MySQL mantém os registros apenas em memória para testes e
 desenvolvimento. Ele não transforma o fallback JSON em destino de gravações
