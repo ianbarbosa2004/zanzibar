@@ -21,6 +21,15 @@
 }
 
 * { box-sizing: border-box; }
+html { overflow-y: scroll; }
+.financial-advisor-panel { margin-top: 1.25rem; }
+.financial-advisor-controls { display: flex; align-items: end; flex-wrap: wrap; gap: .75rem; }
+.financial-advisor-controls label { display: grid; gap: .25rem; }
+.financial-advisor-output { display: grid; gap: .35rem; margin-top: 1rem; }
+.financial-advisor-output p, .financial-advisor-output h3 { margin: 0; }
+@media (max-width: 700px) {
+  .financial-advisor-controls { align-items: stretch; flex-direction: column; }
+}
 body { margin: 0; background: #f6f8f7; }
 button, input, select, textarea { font: inherit; }
 button { border: 0; cursor: pointer; }
@@ -31,8 +40,9 @@ a { color: inherit; text-decoration: none; }
 .brand small { display: block; margin-top: 1px; color: var(--sidebar-muted); font-size: 9px; font-weight: 500; letter-spacing: .03em; }
 .brand-mark { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 5px; border-radius: 10px; color: var(--sidebar); background: #b9ebce; }
 .brand-mark svg { display: block; width: 100%; height: 100%; }
+.main-nav { width: 100%; }
 .nav-label { margin: 0 12px 10px; color: #70978d; font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
-.nav-link { display: flex; align-items: center; gap: 13px; margin: 3px 0; padding: 13px 12px; border-radius: 10px; color: var(--sidebar-muted); font-size: 13px; }
+.nav-link { display: flex; align-items: center; width: 100%; gap: 13px; margin: 3px 0; padding: 13px 12px; border-radius: 10px; color: var(--sidebar-muted); font-size: 13px; }
 .nav-link span { width: 18px; color: #7da99a; font-size: 19px; text-align: center; }
 .nav-link.active, .nav-link:hover { color: #fff; background: #28564b; }
 .nav-link.active span { color: #b9ebce; }
@@ -416,7 +426,7 @@ dialog { overscroll-behavior: contain; }
   .main-nav { display: flex; align-items: center; gap: 6px; overflow-x: auto; scrollbar-width: none; }
   .main-nav::-webkit-scrollbar { display: none; }
   .nav-label { display: none; }
-  .nav-link { flex: 0 0 auto; margin: 0; padding: 10px 13px; white-space: nowrap; }
+  .nav-link { flex: 0 0 auto; width: auto; margin: 0; padding: 10px 13px; white-space: nowrap; }
   .content { padding: 30px 24px 48px; }
   .topbar { margin-bottom: 26px; }
   .dashboard-grid { grid-template-columns: 1fr; }

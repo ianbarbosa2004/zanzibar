@@ -1,9 +1,10 @@
 import { cashClosingsFile, dataFile, defaultSettings, incomesFile, limitsFile, localSnapshotFile, localSnapshotMode, monthlyCashClosingsFile, settingsFile } from "./config.js";
-import { dbPool, deleteAuthSession, findAuthSession, findAuthUser, initializeDatabase, listAuthUsers, readDatabase, refreshBillingsData, saveAuthSession, saveAuthUser, saveCashClosing, saveCatalog, saveLimit, saveMonthlyCashClosings, saveTransaction, touchAuthSession } from "./database/repository.js";
+import { dbPool, deleteAuthSession, findAuthSession, findAuthUser, initializeDatabase, listAuthUsers, readDatabase, readFinancialInsightHistory, refreshBillingsData, saveAuthSession, saveAuthUser, saveCashClosing, saveCatalog, saveFinancialInsightHistory, saveLimit, saveMonthlyCashClosings, saveTransaction, touchAuthSession } from "./database/repository.js";
 import { readJson } from "./json-store.js";
 
 export { dbPool };
 export { deleteAuthSession, findAuthSession, findAuthUser, listAuthUsers, saveAuthSession, saveAuthUser, touchAuthSession };
+export { readFinancialInsightHistory, saveFinancialInsightHistory };
 
 export async function initializeDataStore() {
   if (localSnapshotMode) return;

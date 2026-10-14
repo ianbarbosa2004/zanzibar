@@ -16,6 +16,7 @@ import { buffetDailyClosings, buffetEntries, buffetMonthlyClosings, isBuffetExpe
 
 const { expenseTypes: defaultExpenseTypes, takers: defaultTakers, locations: defaultLocations, creditors: defaultCreditors, paymentMethods: defaultPaymentMethods, incomeSources: defaultIncomeSources } = catalogDefaults;
 const API_URL = new URL("api/data", document.baseURI).pathname;
+const FINANCIAL_INSIGHTS_URL = API_URL.replace(/data$/, "financial-insights");
 let transactions = [];
 let expenseTypes = [...defaultExpenseTypes];
 let takers = [...defaultTakers];
@@ -33,6 +34,8 @@ let billings = [];
 let limits = [];
 let expenseStatus = "all";
 let authUser = null;
+let financialAdvisorBusy = false;
+let latestFinancialInsightResult = null;
 const initialState = defaultAppState({
   expenseTypes: defaultExpenseTypes,
   takers: defaultTakers,
@@ -1534,6 +1537,167 @@ document.querySelectorAll("#month-filter-month, #month-filter-year").forEach((se
   render();
   renderReports();
 }));
+$("#financial-advisor-run").addEventListener("click", async () => {
+  if (financialAdvisorBusy) return;
+  financialAdvisorBusy = true;
+  const button = $("#financial-advisor-run");
+  const status = $("#financial-advisor-status");
+  const output = $("#financial-advisor-output");
+  button.disabled = true;
+  button.setAttribute("aria-busy", "true");
+  status.textContent = "Calculando indicadores...";
+  output.replaceChildren();
+  try {
+    const month = selectedMonth();
+    const scope = $("#financial-advisor-scope").value;
+    const response = await fetch(`${FINANCIAL_INSIGHTS_URL}?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}`);
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || `Falha na análise (${response.status})`);
+    const deterministic = payload.deterministic;
+    if (!deterministic || !deterministic.totals) throw new Error("A resposta da análise está vazia.");
+    const heading = document.createElement("h3");
+    heading.textContent = `${scope === "buffet" ? "Buffet" : "Geral"} — ${month}`;
+    const metrics = document.createElement("p");
+    metrics.textContent = `Receitas: R$ ${deterministic.totals.income.toFixed(2)} | Despesas: R$ ${deterministic.totals.expense.toFixed(2)} | Saldo: R$ ${deterministic.totals.balance.toFixed(2)} | ${deterministic.totals.count} lançamentos`;
+    output.append(heading, metrics);
+    latestFinancialInsightResult = { deterministic, ai: null };
+    $("#financial-advisor-save").hidden = false;
+    const variation = document.createElement("p");
+    const formatVariation = (value) => value === null ? "sem base no período anterior" : `${value > 0 ? "+" : ""}${value.toFixed(2)}%`;
+    variation.textContent = `Variação contra ${deterministic.previousPeriod}: receitas ${formatVariation(deterministic.variations.incomePercent)}, despesas ${formatVariation(deterministic.variations.expensePercent)}, saldo ${formatVariation(deterministic.variations.balancePercent)}.`;
+    output.append(variation);
+    const details = document.createElement("p");
+    if (deterministic.totals.count === 0) {
+      details.textContent = "Nenhum lançamento encontrado no período e escopo selecionados.";
+      output.append(details);
+      status.textContent = "Não há dados suficientes para calcular indicadores neste período.";
+      return;
+    }
+    const category = deterministic.concentration.expensesByCategory[0];
+    const recurrent = deterministic.recurrence[0];
+    const anomaly = deterministic.anomalies[0];
+    details.textContent = category
+      ? `Maior concentração de despesas: ${category.label} (R$ ${category.amount.toFixed(2)}).`
+      : "Não há despesas categorizadas no período.";
+    output.append(details);
+    const patterns = document.createElement("p");
+    patterns.textContent = recurrent
+      ? `Recorrência identificada em ${recurrent.label}: ${recurrent.count} lançamentos, total de R$ ${recurrent.total.toFixed(2)}.`
+      : "Não foram identificados padrões recorrentes suficientes.";
+    output.append(patterns);
+    if (anomaly) {
+      const warning = document.createElement("p");
+      warning.textContent = `Possível anomalia: lançamento de R$ ${anomaly.amount.toFixed(2)} em ${anomaly.date}. O indicador usa o limiar simples de três vezes a média do período.`;
+      output.append(warning);
+    }
+    status.textContent = "Indicadores determinísticos calculados no servidor.";
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    financialAdvisorBusy = false;
+    button.disabled = false;
+    button.removeAttribute("aria-busy");
+  }
+});
+$("#financial-advisor-ai").addEventListener("click", async () => {
+  if (financialAdvisorBusy) return;
+  if (!window.confirm("Solicitar uma interpretação por IA usando somente indicadores agregados deste período?")) return;
+  financialAdvisorBusy = true;
+  const button = $("#financial-advisor-ai");
+  const status = $("#financial-advisor-status");
+  const output = $("#financial-advisor-output");
+  button.disabled = true;
+  button.setAttribute("aria-busy", "true");
+  status.textContent = "Solicitando interpretação por IA...";
+  try {
+    const month = selectedMonth();
+    const scope = $("#financial-advisor-scope").value;
+    const response = await fetch(FINANCIAL_INSIGHTS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ month, scope, withAi: true }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || `Falha na interpretação (${response.status})`);
+    const ai = payload.ai;
+    if (!ai?.enabled) {
+      status.textContent = ai?.message || "A análise por IA está desabilitada.";
+      return;
+    }
+    latestFinancialInsightResult = { deterministic: payload.deterministic, ai };
+    $("#financial-advisor-save").hidden = false;
+    const summary = document.createElement("p");
+    summary.textContent = `Gerado por IA: ${ai.summary}`;
+    output.append(summary);
+    for (const item of ai.insights) {
+      const row = document.createElement("p");
+      row.textContent = `Insight (${item.severity}): ${item.title}: ${item.description} Evidências: ${item.evidence.join(", ") || "não informadas"}.`;
+      output.append(row);
+    }
+    for (const item of ai.recommendations) {
+      const row = document.createElement("p");
+      row.textContent = `Recomendação (${item.priority}): ${item.title}: ${item.description} Ação sugerida: ${item.action}.`;
+      output.append(row);
+    }
+    const disclaimer = document.createElement("small");
+    disclaimer.textContent = ai.disclaimer;
+    output.append(disclaimer);
+    status.textContent = `Interpretação por IA concluída. Prompt ${ai.promptVersion}.`;
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    financialAdvisorBusy = false;
+    button.disabled = false;
+    button.removeAttribute("aria-busy");
+  }
+});
+$("#financial-advisor-save").addEventListener("click", async () => {
+  if (!latestFinancialInsightResult || financialAdvisorBusy) return;
+  financialAdvisorBusy = true;
+  const button = $("#financial-advisor-save");
+  const status = $("#financial-advisor-status");
+  button.disabled = true;
+  try {
+    const response = await fetch(FINANCIAL_INSIGHTS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ month: latestFinancialInsightResult.deterministic.period, scope: latestFinancialInsightResult.deterministic.scope, withAi: Boolean(latestFinancialInsightResult.ai), saveHistory: true }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || `Falha ao salvar histórico (${response.status})`);
+    status.textContent = "Análise salva no histórico deste usuário.";
+    button.hidden = true;
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    financialAdvisorBusy = false;
+    button.disabled = false;
+  }
+});
+$("#financial-advisor-history").addEventListener("click", async () => {
+  const status = $("#financial-advisor-status");
+  const output = $("#financial-advisor-history-output");
+  output.hidden = false;
+  output.replaceChildren();
+  status.textContent = "Carregando histórico...";
+  try {
+    const response = await fetch(`${FINANCIAL_INSIGHTS_URL}/history`);
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || `Falha ao carregar histórico (${response.status})`);
+    if (!payload.history?.length) {
+      output.textContent = "Nenhuma análise salva para este usuário.";
+    } else {
+      for (const entry of payload.history) {
+        const row = document.createElement("p");
+        row.textContent = `${entry.period} · ${entry.scope === "buffet" ? "Buffet" : "Geral"} · salvo em ${new Date(entry.createdAt).toLocaleString("pt-BR")}${entry.ai?.summary ? ` · ${entry.ai.summary}` : ""}`;
+        output.append(row);
+      }
+    }
+    status.textContent = "Histórico carregado.";
+  } catch (error) {
+    status.textContent = error.message;
+  }
+});
 $("#report-period-select").addEventListener("change", (event) => {
   const [year, month] = event.target.value.split("-");
   $("#month-filter-month").value = month;
@@ -1759,6 +1923,7 @@ loadAuth().then((authenticated) => {
   }
   $("#account-trigger-name").textContent = accountName;
   $("#account-name").textContent = accountName;
+  $("#greeting").textContent = `Olá, ${accountName} ✳`;
   $("#account-email").textContent = authUser.email;
   $("#last-update").textContent = formatLastTransactionUpdate(lastTransactionUpdate);
   setupFormOptions(); render(); renderReports(); renderRegistries(); renderCashClosings(); renderBillings(); renderLimits(); renderAuthorizedUsers(); renderPage();

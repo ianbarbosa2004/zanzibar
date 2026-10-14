@@ -41,6 +41,12 @@ export const googleRedirectUri = secret("GOOGLE_REDIRECT_URI");
 export const sessionSecret = secret("CLAREZA_SESSION_SECRET");
 export const adminEmail = (secret("CLAREZA_ADMIN_EMAIL") || "pbsjr1@gmail.com").toLowerCase();
 export const cookieSecure = secret("CLAREZA_COOKIE_SECURE") === "1" || secret("CLAREZA_COOKIE_SECURE").toLowerCase() === "true";
+export const aiEnabled = secret("CLAREZA_AI_ENABLED") === "1" || secret("CLAREZA_AI_ENABLED").toLowerCase() === "true";
+export const aiApiKey = secret("CLAREZA_AI_API_KEY");
+export const aiModel = secret("CLAREZA_AI_MODEL") || "gpt-4o-mini";
+export const aiTimeoutMs = Math.min(Math.max(Number(secret("CLAREZA_AI_TIMEOUT_MS")) || 20000, 5000), 60000);
+export const aiMaxOutputTokens = Math.min(Math.max(Number(secret("CLAREZA_AI_MAX_OUTPUT_TOKENS")) || 800, 200), 2000);
+export const aiMaxPayloadBytes = Math.min(Math.max(Number(secret("CLAREZA_AI_MAX_PAYLOAD_BYTES")) || 24000, 4000), 100000);
 
 export const defaultSettings = {
   ...catalogDefaults,

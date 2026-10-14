@@ -4,6 +4,21 @@
 
 O entrypoint do CloudLinux Passenger é `server.js`. A aplicação usa `/clareza/` como caminho base e o servidor precisa receber as variáveis MySQL pelo Application Manager do cPanel. Os nomes das variáveis estão documentados no README; os valores, especialmente a senha, nunca devem ser registrados no Git ou neste arquivo.
 
+A tela de análise financeira da Fase 1 usa somente indicadores determinísticos
+calculados no servidor e não exige novas variáveis de ambiente ou alterações
+de schema MySQL.
+
+Na Fase 2, a interpretação OpenAI permanece desabilitada por padrão. Para
+habilitá-la, configure `CLAREZA_AI_ENABLED=1` e `CLAREZA_AI_API_KEY` somente
+no ambiente protegido do Node/Passenger. Os limites opcionais são
+`CLAREZA_AI_MODEL`, `CLAREZA_AI_TIMEOUT_MS`, `CLAREZA_AI_MAX_OUTPUT_TOKENS` e
+`CLAREZA_AI_MAX_PAYLOAD_BYTES`. Nunca versionar ou registrar a chave.
+
+A Fase 3 cria automaticamente a tabela MySQL `financial_insight_history` na
+inicialização, vinculada a `authorized_users`. O deploy não deve remover nem
+recriar destrutivamente tabelas existentes; a validação deve confirmar que a
+aplicação inicializa e que o banco permanece preservado.
+
 O `.htaccess` é administrado pelo cPanel e não deve ser sobrescrito. Dados de produção ficam no MySQL; os arquivos `data.json`, `settings.json`, `incomes.json`, `cash-closings.json` e `monthly-cash-closings.json` não são enviados e devem ser preservados. O CRUD de produção grava somente por SQL no MySQL.
 
 ## Procedimento oficial

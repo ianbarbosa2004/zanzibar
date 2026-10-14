@@ -88,3 +88,14 @@ no navegador a partir dos dados já carregados e não criam gravações ou rotas
 adicionais no servidor. Ao alterar seus campos, filtros ou regras de
 fechamento, atualize a documentação e valide a saída com os testes e o build
 existentes.
+### Indicadores financeiros
+
+Os indicadores da tela de análise são determinísticos e calculados no servidor.
+O escopo geral exclui Buffet; a análise Buffet é solicitada separadamente.
+Não exponha descrições ou PII desnecessária na resposta. Mudanças nessa área
+devem manter testes unitários e de integração para cálculo, autenticação,
+períodos inválidos e estados vazios.
+
+A interpretação por IA é opcional, server-only e não pode executar mutações.
+Testes devem cobrir payload agregado, chave ausente, resposta JSON inválida,
+timeout, rate limit e schema incompleto.

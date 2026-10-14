@@ -192,6 +192,18 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
   if (!activityColumn.total) await dbPool.query("ALTER TABLE auth_sessions ADD COLUMN last_activity_at DATETIME NULL AFTER expires_at");
   await dbPool.query("UPDATE auth_sessions SET last_activity_at = COALESCE(last_activity_at, created_at) WHERE last_activity_at IS NULL");
   await dbPool.query("ALTER TABLE auth_sessions MODIFY COLUMN last_activity_at DATETIME NOT NULL");
+  await dbPool.query(`CREATE TABLE IF NOT EXISTS financial_insight_history (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNSIGNED NOT NULL,
+    period CHAR(7) NOT NULL,
+    scope ENUM('general', 'buffet') NOT NULL,
+    indicators JSON NOT NULL,
+    ai_result JSON NULL,
+    prompt_version VARCHAR(40) NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_financial_insight_history_user FOREIGN KEY (user_id) REFERENCES authorized_users(id) ON DELETE CASCADE,
+    INDEX ix_financial_insight_history_user_created (user_id, created_at)
+  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
   await dbPool.query("UPDATE transactions t JOIN expense_types c ON c.name = t.expense_type SET t.expense_type_id = c.id WHERE t.expense_type_id IS NULL");
   await dbPool.query("UPDATE transactions t JOIN takers c ON c.name = t.taker SET t.taker_id = c.id WHERE t.taker_id IS NULL");
   await dbPool.query("UPDATE transactions t JOIN locations c ON c.name = t.location SET t.location_id = c.id WHERE t.location_id IS NULL");
@@ -310,6 +322,33 @@ export async function deleteAuthSession(tokenHash) {
     return;
   }
   await dbPool.execute("DELETE FROM auth_sessions WHERE token_hash = ?", [tokenHash]);
+}
+
+export async function saveFinancialInsightHistory({ userId, period, scope, indicators, aiResult = null, promptVersion = null }) {
+  if (!dbPool) throw new Error("MySQL indisponível. Histórico não gravado.");
+  const [result] = await dbPool.execute(
+    "INSERT INTO financial_insight_history (user_id, period, scope, indicators, ai_result, prompt_version) VALUES (?, ?, ?, CAST(? AS JSON), CAST(? AS JSON), ?)",
+    [userId, period, scope, JSON.stringify(indicators), aiResult ? JSON.stringify(aiResult) : null, promptVersion],
+  );
+  return { id: Number(result.insertId), period, scope, indicators, ai: aiResult, promptVersion, createdAt: new Date().toISOString() };
+}
+
+export async function readFinancialInsightHistory(userId, limit = 20) {
+  if (!dbPool) return [];
+  const boundedLimit = Math.min(Math.max(Number(limit) || 20, 1), 50);
+  const [rows] = await dbPool.query(
+    "SELECT id, period, scope, indicators, ai_result AS ai, prompt_version AS promptVersion, created_at AS createdAt FROM financial_insight_history WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT ?",
+    [userId, boundedLimit],
+  );
+  return rows.map((row) => ({
+    id: Number(row.id),
+    period: row.period,
+    scope: row.scope,
+    indicators: typeof row.indicators === "string" ? JSON.parse(row.indicators) : row.indicators,
+    ai: typeof row.ai === "string" ? JSON.parse(row.ai) : row.ai,
+    promptVersion: row.promptVersion,
+    createdAt: row.createdAt,
+  }));
 }
 
 export async function readDatabase() {

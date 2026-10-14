@@ -31,7 +31,7 @@ function staticCacheHeaders(file) {
   return { "Cache-Control": "no-cache" };
 }
 
-export function createHttpServer({ basePath, readData, writeCashClosing, writeCatalog, writeLimit, writeMonthlyCashClosings, writeTransaction, writeBillings, readStaticFile, auth, logger = console }) {
+export function createHttpServer({ basePath, readData, writeCashClosing, writeCatalog, writeLimit, writeMonthlyCashClosings, writeTransaction, writeBillings, readStaticFile, auth, analyzeFinancialInsights, saveFinancialInsightHistory, readFinancialInsightHistory, logger = console }) {
   return createServer(async (request, response) => {
     try {
       const pathname = new URL(request.url || "/", "http://localhost").pathname;
@@ -57,6 +57,28 @@ export function createHttpServer({ basePath, readData, writeCashClosing, writeCa
       const protectedApi = apiPath.startsWith("/api/");
       if (auth && protectedApi && !currentUser) return send(response, 401, { error: "Autenticação necessária." });
       if (apiPath === "/api/data" && request.method === "GET") return send(response, 200, await readData());
+      if (readFinancialInsightHistory && apiPath === "/api/financial-insights/history" && request.method === "GET") {
+        return send(response, 200, { history: await readFinancialInsightHistory(currentUser.id, new URL(request.url || "/", "http://localhost").searchParams.get("limit")) });
+      }
+      if (analyzeFinancialInsights && apiPath === "/api/financial-insights" && (request.method === "GET" || request.method === "POST")) {
+        const payload = request.method === "POST" ? await readBody(request) : Object.fromEntries(new URL(request.url || "/", "http://localhost").searchParams);
+        const data = await readData();
+        const result = await analyzeFinancialInsights({ data, month: payload.month, scope: payload.scope, withAi: request.method === "POST" && payload.withAi === true });
+        if (request.method === "POST" && payload.saveHistory === true) {
+          if (!saveFinancialInsightHistory) throw new Error("Histórico de análises não configurado.");
+          const deterministic = result.deterministic || result;
+          const history = await saveFinancialInsightHistory({
+            userId: currentUser.id,
+            period: deterministic.period,
+            scope: deterministic.scope,
+            indicators: deterministic,
+            aiResult: result.ai || null,
+            promptVersion: result.ai?.promptVersion || null,
+          });
+          return send(response, 201, { ...result, history });
+        }
+        return send(response, 200, result);
+      }
       if (apiPath === "/api/auth/users" && request.method === "GET") {
         if (currentUser.role !== "admin") return send(response, 403, { error: "Acesso restrito ao administrador." });
         return send(response, 200, { users: await auth.users() });
@@ -98,7 +120,7 @@ export function createHttpServer({ basePath, readData, writeCashClosing, writeCa
       return send(response, 200, file.body, file.contentType, staticCacheHeaders(file));
     } catch (error) {
       logger.error(error);
-      return send(response, 503, { error: error.message || "MySQL indisponível. Dados não foram gravados." });
+      return send(response, error.statusCode || 503, { error: error.message || "MySQL indisponível. Dados não foram gravados." });
     }
   });
 }

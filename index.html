@@ -40,7 +40,7 @@
         <header class="topbar">
           <div>
             <p class="eyebrow" id="today-label">Seu espaço financeiro</p>
-            <h1>Olá, Paulo <span aria-hidden="true">✳</span></h1>
+            <h1 id="greeting"><span aria-hidden="true">Olá, usuário ✳</span></h1>
           </div>
           <div class="topbar-actions">
             <p id="last-update" class="last-update" aria-live="polite">Última atualização indisponível</p>
@@ -111,6 +111,24 @@ P: R$ 0,00</strong></div>
             <button class="primary-button" id="home-new-income" type="button"><span>＋</span> Incluir receita</button>
             <button class="primary-button" id="home-new-transaction" type="button"><span>＋</span> Incluir despesa</button>
           </div>
+          <section class="financial-advisor-panel panel" aria-labelledby="financial-advisor-title">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Análise assistida</p>
+                <h2 id="financial-advisor-title">Indicadores e análise financeira</h2>
+              </div>
+              <div class="financial-advisor-controls">
+                <label for="financial-advisor-scope">Escopo<select id="financial-advisor-scope"><option value="general">Geral</option><option value="buffet">Buffet</option></select></label>
+                <button class="primary-button" id="financial-advisor-run" type="button">Gerar indicadores</button>
+                <button class="secondary-button" id="financial-advisor-ai" type="button">Solicitar interpretação por IA</button>
+                <button class="secondary-button" id="financial-advisor-save" type="button" hidden>Salvar no histórico</button>
+                <button class="secondary-button" id="financial-advisor-history" type="button">Ver histórico</button>
+              </div>
+            </div>
+            <p class="muted" id="financial-advisor-status" role="status" aria-live="polite">A análise só é solicitada quando você aciona o botão.</p>
+            <div id="financial-advisor-output" class="financial-advisor-output" aria-live="polite"></div>
+            <div id="financial-advisor-history-output" class="financial-advisor-output" aria-live="polite" hidden></div>
+          </section>
         </section>
 
         <section id="buffet" class="buffet-section" data-page="buffet">
