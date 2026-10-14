@@ -22,35 +22,6 @@
    cliente** em um gerenciador seguro. Nunca os coloque no frontend, Git,
    `data.json`, `settings.json` ou em mensagens.
 
-## Arquivo de segredos fora do deploy
-
-Quando o provedor não disponibilizar o Node.js Selector, crie o arquivo
-diretamente no servidor, fora do diretório da aplicação e fora do caminho
-sincronizado pelo SFTP. Por exemplo:
-
-```text
-/home/USUARIO/clareza-secrets.json
-```
-
-Use permissão `600` e o conteúdo abaixo, substituindo os valores:
-
-```json
-{
-  "GOOGLE_CLIENT_ID": "...",
-  "GOOGLE_CLIENT_SECRET": "...",
-  "GOOGLE_REDIRECT_URI": "https://seudominio.com/clareza/auth/google/callback",
-  "CLAREZA_SESSION_SECRET": "uma-string-aleatoria-longa-e-secreta",
-  "CLAREZA_ADMIN_EMAIL": "pbsjr1@gmail.com",
-  "CLAREZA_COOKIE_SECURE": "1"
-}
-```
-
-Por padrão, o Clareza procura `clareza-secrets.json` no diretório home do
-usuário que executa o Passenger. Se o arquivo ficar em outro local, o provedor
-deve configurar `CLAREZA_SECRETS_FILE` no Passenger apontando para o caminho
-absoluto. Essa variável contém somente o caminho; os segredos continuam no
-arquivo fora do deploy.
-
 ## Variáveis no servidor
 
 Configure no ambiente do Node/Passenger:
@@ -68,9 +39,9 @@ CLAREZA_COOKIE_SECURE=1
 segredos existem somente no servidor. Depois de salvar as variáveis, reinicie
 o aplicativo Passenger.
 
-O arquivo JSON e as variáveis são alternativas: o arquivo tem prioridade quando
-existe. Nunca envie esse arquivo por SFTP, nunca o coloque no Git e nunca o
-salve dentro do diretório publicado.
+O Clareza lê essas configurações exclusivamente do ambiente do processo
+Node/Passenger. Não é necessário criar arquivo JSON de segredos nem configurar
+`CLAREZA_SECRETS_FILE`.
 
 ## Primeiro acesso e autorização
 

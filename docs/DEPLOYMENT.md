@@ -2,7 +2,7 @@
 
 ## Ambiente
 
-O entrypoint do CloudLinux Passenger é `server.js`. A aplicação usa `/clareza/` como caminho base e o servidor precisa receber as variáveis MySQL pelo Application Manager do cPanel. Os nomes das variáveis estão documentados no README; os valores, especialmente a senha, nunca devem ser registrados no Git ou neste arquivo.
+O entrypoint do CloudLinux Passenger é `server.js`. A aplicação usa `/clareza/` como caminho base e o servidor precisa receber as variáveis MySQL e os demais segredos diretamente pelo Application Manager do cPanel. Os nomes das variáveis estão documentados no README; os valores, especialmente senhas e chaves, nunca devem ser registrados no Git ou neste arquivo.
 
 A tela de análise financeira da Fase 1 usa somente indicadores determinísticos
 calculados no servidor e não exige novas variáveis de ambiente ou alterações
