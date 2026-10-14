@@ -17,6 +17,8 @@ download.
   dono ou membro da conversa que o utiliza.
 - `POST /api/telegram/link-code`: gera um código de vinculação válido por 15
   minutos para o usuário autenticado.
+- `POST /api/telegram/test`: envia uma mensagem de teste para o Telegram
+  vinculado ao usuário autenticado, sem criar mensagem interna ou outbox.
 - `POST /api/telegram/webhook`: recebe `/vincular CÓDIGO` do bot Telegram,
   protegido pelo header `X-Telegram-Bot-Api-Secret-Token`.
 

@@ -4,7 +4,22 @@ import { readMessageFile, writeMessageFile } from "../messaging-files.js";
 import { createHash, randomBytes } from "node:crypto";
 import { toSlug, uniqueSlug } from "../../shared/slugs.js";
 import { sendTelegramOutboxEvent } from "../telegram-notifications.js";
+import { sendTelegramMessage } from "../telegram-notifications.js";
 export { dbPool };
+
+export async function sendTelegramTest({ userId, token, fetchImpl = fetch } = {}) {
+  if (!dbPool) throw new Error("Telegram indisponível sem banco de dados.");
+  if (!token) throw new Error("Token do Telegram não configurado.");
+  const [[account]] = await dbPool.query("SELECT chat_id AS chatId FROM telegram_accounts WHERE user_id = ?", [userId]);
+  if (!account) throw new Error("A conta Telegram deste usuário não está vinculada.");
+  await sendTelegramMessage({
+    token,
+    chatId: account.chatId,
+    text: "Teste do Clareza: a integração Telegram está funcionando.",
+    fetchImpl,
+  });
+  return { sent: true };
+}
 
 export async function processTelegramOutbox({ token, fetchImpl = fetch, logger = console, limit = 10 } = {}) {
   if (!dbPool) return { processed: 0, skipped: true };

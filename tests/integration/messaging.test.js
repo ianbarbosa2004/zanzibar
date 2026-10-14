@@ -80,6 +80,25 @@ test("gera código protegido e valida webhook Telegram por segredo", async (t) =
     readStaticFile: async () => null,
     logger: { error: () => {} },
   });
+
+  test("envia teste Telegram para o usuário autenticado", async (t) => {
+    const calls = [];
+    const server = createHttpServer({
+      basePath: "/clareza",
+      auth: { current: async () => ({ id: 7, role: "user", authorized: true }) },
+      sendTelegramTest: async (input) => { calls.push(input); return { sent: true }; },
+      telegramBotToken: "token",
+      readData: async () => ({}),
+      readStaticFile: async () => null,
+      logger: { error: () => {} },
+    });
+    t.after(() => server.close());
+    server.listen(0);
+    await once(server, "listening");
+    const response = await fetch(`http://localhost:${server.address().port}/clareza/api/telegram/test`, { method: "POST" });
+    assert.equal(response.status, 200);
+    assert.deepEqual(calls, [{ userId: 7, token: "token" }]);
+  });
   t.after(() => server.close());
   server.listen(0);
   await once(server, "listening");
