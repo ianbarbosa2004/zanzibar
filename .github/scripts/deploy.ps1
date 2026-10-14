@@ -89,7 +89,7 @@ try {
     generatedAt = (Get-Date).ToUniversalTime().ToString("o")
   } | ConvertTo-Json -Compress | Set-Content -LiteralPath "dist/deploy-version.json" -Encoding ascii
 
-  Invoke-Checked "ssh" @($connectionOptions + @($remoteTarget, "mkdir -p $remoteRoot/backups $remoteRoot/tmp $remoteRoot/src; for file in data.json settings.json incomes.json cash-closings.json .htaccess; do if [ -f $remoteRoot/`$file ]; then cp $remoteRoot/`$file $remoteRoot/backups/`$file-$backupStamp; fi; done"))
+  Invoke-Checked "ssh" @($connectionOptions + @($remoteTarget, "mkdir -p $remoteRoot/backups $remoteRoot/tmp $remoteRoot/src $remoteRoot/scripts; for file in data.json settings.json incomes.json cash-closings.json .htaccess; do if [ -f $remoteRoot/`$file ]; then cp $remoteRoot/`$file $remoteRoot/backups/`$file-$backupStamp; fi; done"))
   Invoke-Checked "ssh" @($connectionOptions + @($remoteTarget, "rm -rf $remoteRoot/dist && mkdir -p $remoteRoot/dist"))
   New-Item -ItemType File -Path $restartPath -Force | Out-Null
   @"
