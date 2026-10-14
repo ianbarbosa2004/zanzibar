@@ -1,5 +1,5 @@
 import { telegramBotToken, telegramNotificationsEnabled } from "../src/server/config.js";
-import { initializeDataStore, processTelegramOutbox } from "../src/server/data-store.js";
+import { dbPool, initializeDataStore, processTelegramOutbox } from "../src/server/data-store.js";
 
 if (!telegramNotificationsEnabled) {
   console.log("Notificações Telegram desativadas.");
@@ -13,4 +13,6 @@ try {
 } catch (error) {
   console.error("Falha ao processar notificações Telegram.", error.message);
   process.exitCode = 1;
+} finally {
+  await dbPool?.end();
 }
