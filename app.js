@@ -155,6 +155,7 @@ async function loadData() {
 
 const MESSAGING_URL = API_URL.replace(/data$/, "messaging");
 const TELEGRAM_URL = API_URL.replace(/data$/, "telegram");
+const DOCUMENTATION_URL = API_URL.replace(/data$/, "documentation");
 async function messagingRequest(path = "", options = {}) {
   const response = await fetch(`${MESSAGING_URL}${path}`, options);
   const result = response.headers.get("content-type")?.includes("application/json") ? await response.json() : null;
@@ -513,6 +514,64 @@ function renderIncomeTransactions() {
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[character]));
+}
+
+function renderMarkdown(markdown) {
+  const lines = String(markdown || "").split(/\r?\n/);
+  const output = [];
+  let inCode = false;
+  let code = [];
+  for (const line of lines) {
+    if (line.trim().startsWith("```")) {
+      if (inCode) {
+        output.push(`<pre><code>${escapeHtml(code.join("\n"))}</code></pre>`);
+        code = [];
+      }
+      inCode = !inCode;
+      continue;
+    }
+    if (inCode) {
+      code.push(line);
+      continue;
+    }
+    const escaped = escapeHtml(line);
+    if (!escaped.trim()) continue;
+    if (/^### /.test(escaped)) output.push(`<h3>${escaped.slice(4)}</h3>`);
+    else if (/^## /.test(escaped)) output.push(`<h2>${escaped.slice(3)}</h2>`);
+    else if (/^# /.test(escaped)) output.push(`<h1>${escaped.slice(2)}</h1>`);
+    else if (/^- /.test(escaped)) output.push(`<li>${escaped.slice(2)}</li>`);
+    else output.push(`<p>${escaped}</p>`);
+  }
+  return output.join("");
+}
+
+async function loadMarkdownDocuments() {
+  const select = $("#markdown-document-select");
+  const viewer = $("#markdown-document-viewer");
+  if (!select || !viewer) return;
+  try {
+    const response = await fetch(DOCUMENTATION_URL);
+    if (!response.ok) throw new Error("Não foi possível listar a documentação.");
+    const { files } = await response.json();
+    select.innerHTML = `<option value="">Selecione...</option>${files.map((file) => `<option value="${encodeURIComponent(file)}">${escapeHtml(file)}</option>`).join("")}`;
+    select.addEventListener("change", async () => {
+      if (!select.value) {
+        viewer.innerHTML = '<p class="empty-state">Selecione um documento para visualizar.</p>';
+        return;
+      }
+      viewer.innerHTML = '<p class="muted">Carregando documento...</p>';
+      try {
+        const response = await fetch(`${DOCUMENTATION_URL}/${select.value}`);
+        if (!response.ok) throw new Error("Não foi possível carregar o documento.");
+        const document = await response.json();
+        viewer.innerHTML = `<p class="markdown-document-path">${escapeHtml(document.path)}</p>${renderMarkdown(document.content)}`;
+      } catch (error) {
+        viewer.innerHTML = `<p class="error-text">${escapeHtml(error.message)}</p>`;
+      }
+    });
+  } catch (error) {
+    viewer.innerHTML = `<p class="error-text">${escapeHtml(error.message)}</p>`;
+  }
 }
 function normalizeCatalogValue(value) {
   const text = String(value || "");
@@ -2081,6 +2140,7 @@ loadAuth().then((authenticated) => {
   return authenticated ? loadData() : null;
 }).then(() => {
   if (!authUser) return;
+  loadMarkdownDocuments();
   transactions = transactions.map((item) => ({ ...item, expenseType: item.expenseType || item.category || "Outros", taker: item.taker || "Pessoal", location: item.location || "Casa", creditor: item.creditor || "Caixa" }));
   $("#today-label").textContent = todayLabel();
   const accountName = String(authUser.name || authUser.email).trim();

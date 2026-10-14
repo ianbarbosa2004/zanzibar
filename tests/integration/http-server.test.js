@@ -56,6 +56,28 @@ test("serve dados pela API", async (t) => {
   assert.deepEqual(await response.json(), { transactions: [], incomes: [], settings: {} });
 });
 
+test("lista e abre documentos Markdown sem expor a rota como download", async (t) => {
+  const documentationServer = createHttpServer({
+    basePath: "/clareza",
+    auth: { current: async () => ({ id: 7, role: "user", authorized: true }) },
+    listMarkdownFiles: async () => ["README.md", "docs/DEPLOYMENT.md"],
+    readMarkdownFile: async (path) => path === "README.md" ? { path, content: "# Clareza" } : null,
+    readData: async () => ({}),
+    readStaticFile: async () => null,
+    logger: { error: () => {} },
+  });
+  t.after(() => documentationServer.close());
+  documentationServer.listen(0);
+  await once(documentationServer, "listening");
+  const base = `http://localhost:${documentationServer.address().port}/clareza/api/documentation`;
+  const list = await fetch(base);
+  assert.equal(list.status, 200);
+  assert.deepEqual((await list.json()).files, ["README.md", "docs/DEPLOYMENT.md"]);
+  const document = await fetch(`${base}/README.md`);
+  assert.equal(document.status, 200);
+  assert.deepEqual(await document.json(), { path: "README.md", content: "# Clareza" });
+});
+
 test("atualiza billings pela API", async (t) => {
   const server = createHttpServer({
     basePath: "/clareza",

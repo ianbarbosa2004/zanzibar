@@ -2,7 +2,7 @@ import { basePath, port, telegramBotToken, telegramWebhookSecret } from "./src/s
 import { consumeTelegramLink, createTelegramLinkCode, deleteAuthSession, dbPool, findAuthSession, findAuthUser, initializeDataStore, listAuthUsers, listMessagingUsers, readData, readFinancialInsightHistory, readMessagingConversations, readMessagingFile, readMessagingMessages, saveAuthSession, saveAuthUser, saveFinancialInsightHistory, saveMessage, saveMessageFile, saveMessagingConversation, sendTelegramTest, touchAuthSession, writeBillings, writeCashClosing, writeCatalog, writeLimit, writeMonthlyCashClosings, writeTransaction } from "./src/server/data-store.js";
 import { createAuth } from "./src/server/auth.js";
 import { createHttpServer } from "./src/server/http-server.js";
-import { readStaticFile } from "./src/server/static-files.js";
+import { listMarkdownFiles, readMarkdownFile, readStaticFile } from "./src/server/static-files.js";
 import { analyzeFinancialPeriod, compareFinancialPeriods } from "./src/shared/financial-insights.js";
 import { createFinancialAdvisor } from "./src/server/ai/financial-advisor.js";
 
@@ -32,7 +32,7 @@ const askFinancialQuestion = async ({ data, month, scope = "general", question }
   const deterministic = analyzeFinancialInsights({ data, month, scope });
   return { deterministic, ai: await financialAdvisor.ask(question, deterministic) };
 };
-const server = createHttpServer({ basePath, auth, analyzeFinancialInsights: requestFinancialInsights, compareFinancialInsights, askFinancialQuestion, consumeTelegramLink, createTelegramLinkCode, listMessagingUsers, readData, readFinancialInsightHistory, readMessagingConversations, readMessagingFile, readMessagingMessages, saveFinancialInsightHistory, saveMessage, saveMessageFile, saveMessagingConversation, sendTelegramTest, telegramBotToken, telegramWebhookSecret, writeBillings, writeCashClosing, writeCatalog, writeLimit, writeMonthlyCashClosings, writeTransaction, readStaticFile });
+const server = createHttpServer({ basePath, auth, analyzeFinancialInsights: requestFinancialInsights, compareFinancialInsights, askFinancialQuestion, consumeTelegramLink, createTelegramLinkCode, listMarkdownFiles, listMessagingUsers, readData, readFinancialInsightHistory, readMarkdownFile, readMessagingConversations, readMessagingFile, readMessagingMessages, saveFinancialInsightHistory, saveMessage, saveMessageFile, saveMessagingConversation, sendTelegramTest, telegramBotToken, telegramWebhookSecret, writeBillings, writeCashClosing, writeCatalog, writeLimit, writeMonthlyCashClosings, writeTransaction, readStaticFile });
 
 initializeDataStore().then(() => {
   server.listen(port, () => console.log(`Clareza disponível em http://localhost:${port}${dbPool ? " (MySQL)" : ""}`));
