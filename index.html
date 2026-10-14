@@ -33,6 +33,7 @@
           <a class="nav-link" href="#buffet"><span>▦</span> Buffet</a>
           <a class="nav-link" href="#cadastros"><span>⚙</span> Cadastros</a>
           <a class="nav-link" href="#ferramentas"><span>⚒</span> Ferramentas</a>
+          <a class="nav-link" href="#analise-ia"><span>✦</span> Análise IA</a>
           <a class="nav-link" href="#mensagens"><span>✉</span> Mensagens</a>
         </nav>
       </aside>
@@ -112,32 +113,6 @@ P: R$ 0,00</strong></div>
             <button class="primary-button" id="home-new-income" type="button"><span>＋</span> Incluir receita</button>
             <button class="primary-button" id="home-new-transaction" type="button"><span>＋</span> Incluir despesa</button>
           </div>
-          <section class="financial-advisor-panel panel" aria-labelledby="financial-advisor-title">
-            <div class="panel-heading">
-              <div>
-                <p class="eyebrow">Análise assistida</p>
-                <h2 id="financial-advisor-title">Indicadores e análise financeira</h2>
-              </div>
-              <div class="financial-advisor-controls">
-                <label for="financial-advisor-scope">Escopo<select id="financial-advisor-scope"><option value="general">Geral</option><option value="buffet">Buffet</option></select></label>
-                <button class="primary-button" id="financial-advisor-run" type="button">Gerar indicadores</button>
-                <button class="secondary-button" id="financial-advisor-ai" type="button">Solicitar interpretação por IA</button>
-                <button class="secondary-button" id="financial-advisor-save" type="button" hidden>Salvar no histórico</button>
-                <button class="secondary-button" id="financial-advisor-history" type="button">Ver histórico</button>
-                <button class="secondary-button" id="financial-advisor-compare" type="button">Comparar últimos meses</button>
-              </div>
-            </div>
-            <p class="muted" id="financial-advisor-status" role="status" aria-live="polite">A análise só é solicitada quando você aciona o botão.</p>
-            <div id="financial-advisor-output" class="financial-advisor-output" aria-live="polite"></div>
-            <div class="financial-advisor-question">
-              <label for="financial-advisor-question-input">Pergunte sobre os indicadores
-                <input id="financial-advisor-question-input" type="text" maxlength="500" autocomplete="off" placeholder="Ex.: por que as despesas variaram…">
-              </label>
-              <button class="secondary-button" id="financial-advisor-ask" type="button">Perguntar à IA</button>
-            </div>
-            <div id="financial-advisor-answer-output" class="financial-advisor-output" aria-live="polite"></div>
-            <div id="financial-advisor-history-output" class="financial-advisor-output" aria-live="polite" hidden></div>
-          </section>
         </section>
 
         <section id="mensagens" class="messaging-section" data-page="mensagens" hidden>
@@ -335,6 +310,33 @@ P: R$ 0,00</strong></div>
           <div class="section-heading limits-heading"><div><p class="eyebrow">Planejamento</p><h2>Limites e Metas</h2></div><button class="primary-button" id="new-limit" type="button"><span>＋</span> Limite</button></div>
           <div class="table-wrap"><table><thead><tr><th>Período</th><th>Owner</th><th class="align-right">Meta</th><th class="align-right">Orçamento</th><th class="align-right">Previsão</th><th class="align-right">Patamar</th><th class="align-right">Resultado</th><th>Status</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody id="limits-list"></tbody></table><div id="limits-empty" class="empty-state" hidden>Nenhum limite encontrado.</div></div>
           <nav class="pagination" aria-label="Paginação dos limites"><span class="pagination-controls"><button id="limit-pagination-prev" class="pagination-button" type="button">← Anterior</button><span id="limit-pagination-status" aria-live="polite"></span><button id="limit-pagination-next" class="pagination-button" type="button">Próxima →</button></span><label class="page-size">Por página <select id="limit-page-size" aria-label="Limites por página"><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label></nav>
+        </section>
+
+        <section id="analise-ia" class="financial-advisor-panel panel" data-page="analise-ia" aria-labelledby="financial-advisor-title" hidden>
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Análise assistida</p>
+              <h2 id="financial-advisor-title">Indicadores e análise financeira</h2>
+            </div>
+            <div class="financial-advisor-controls">
+              <label for="financial-advisor-scope">Escopo<select id="financial-advisor-scope"><option value="general">Geral</option><option value="buffet">Buffet</option></select></label>
+              <button class="primary-button" id="financial-advisor-run" type="button">Gerar indicadores</button>
+              <button class="secondary-button" id="financial-advisor-ai" type="button">Solicitar interpretação por IA</button>
+              <button class="secondary-button" id="financial-advisor-save" type="button" hidden>Salvar no histórico</button>
+              <button class="secondary-button" id="financial-advisor-history" type="button">Ver histórico</button>
+              <button class="secondary-button" id="financial-advisor-compare" type="button">Comparar últimos meses</button>
+            </div>
+          </div>
+          <p class="muted" id="financial-advisor-status" role="status" aria-live="polite">A análise só é solicitada quando você aciona o botão.</p>
+          <div id="financial-advisor-output" class="financial-advisor-output" aria-live="polite"></div>
+          <div class="financial-advisor-question">
+            <label for="financial-advisor-question-input">Pergunte sobre os indicadores
+              <input id="financial-advisor-question-input" type="text" maxlength="500" autocomplete="off" placeholder="Ex.: por que as despesas variaram…">
+            </label>
+            <button class="secondary-button" id="financial-advisor-ask" type="button">Perguntar à IA</button>
+          </div>
+          <div id="financial-advisor-answer-output" class="financial-advisor-output" aria-live="polite"></div>
+          <div id="financial-advisor-history-output" class="financial-advisor-output" aria-live="polite" hidden></div>
         </section>
 
         <section id="cadastros" class="registries-section" data-page="cadastros">

@@ -2066,7 +2066,7 @@ $("#messaging-composer")?.addEventListener("submit", async (event) => {
     submit.disabled = false;
   }
 });
-const pages = ["resumo", "lancamentos", "vendas", "faturamento", "relatorios", "cadastros", "ferramentas", "mensagens", "buffet"];
+const pages = ["resumo", "lancamentos", "vendas", "faturamento", "relatorios", "cadastros", "ferramentas", "analise-ia", "mensagens", "buffet"];
 function renderPage() {
   const page = pages.includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : "resumo";
   document.querySelectorAll("[data-page]").forEach((section) => { section.hidden = section.dataset.page !== page; });
