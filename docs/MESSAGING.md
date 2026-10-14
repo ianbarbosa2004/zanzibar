@@ -29,16 +29,17 @@ arquivos ficam em `CLAREZA_MESSAGING_FILES_DIR` ou, por padrão, em
 `.messaging-files/`, fora da raiz pública.
 
 O envio de mensagens cria entradas em `messaging_notification_outbox` separadas
-por evento: `new_message` para texto e `new_file` para anexos. O canal
-`telegram` fica preparado, mas o envio externo e o worker ainda não são
-ativados nesta etapa.
+por evento: `new_message` para texto e `new_file` para anexos. O consumidor
+`scripts/process-telegram-outbox.js` deve ser executado por cron no ambiente
+do Passenger quando as notificações estiverem habilitadas. Ele envia texto por
+`sendMessage`, arquivos por `sendDocument` e registra o resultado no outbox.
 
 Configure, somente no ambiente do Passenger, sem versionar valores:
 
-- `CLAREZA_TELEGRAM_BOT_TOKEN`: token do BotFather, reservado para o worker
-  futuro.
+- `CLAREZA_TELEGRAM_BOT_TOKEN`: token do BotFather, usado somente pelo worker.
 - `CLAREZA_TELEGRAM_WEBHOOK_SECRET`: segredo usado para validar o webhook.
 - `CLAREZA_TELEGRAM_NOTIFICATIONS_ENABLED=0`: mantém os envios desativados.
+  Use `1` somente após configurar o token e o cron.
 
 O modo local sem MySQL mantém os registros apenas em memória para testes e
 desenvolvimento. Ele não transforma o fallback JSON em destino de gravações

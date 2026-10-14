@@ -1,11 +1,12 @@
 import { cashClosingsFile, dataFile, defaultSettings, incomesFile, limitsFile, localSnapshotFile, localSnapshotMode, monthlyCashClosingsFile, settingsFile } from "./config.js";
-import { dbPool, consumeTelegramLink, createTelegramLinkCode, deleteAuthSession, findAuthSession, findAuthUser, initializeDatabase, listAuthUsers, listMessagingUsers, readDatabase, readFinancialInsightHistory, readMessagingConversations, readMessagingFile, readMessagingMessages, refreshBillingsData, saveAuthSession, saveAuthUser, saveCashClosing, saveCatalog, saveFinancialInsightHistory, saveLimit, saveMessageFile, saveMessage, saveMessagingConversation, touchAuthSession } from "./database/repository.js";
+import { dbPool, consumeTelegramLink, createTelegramLinkCode, deleteAuthSession, findAuthSession, findAuthUser, initializeDatabase, listAuthUsers, listMessagingUsers, processTelegramOutbox, readDatabase, readFinancialInsightHistory, readMessagingConversations, readMessagingFile, readMessagingMessages, refreshBillingsData, saveAuthSession, saveAuthUser, saveCashClosing, saveCatalog, saveFinancialInsightHistory, saveLimit, saveMessageFile, saveMessage, saveMessagingConversation, touchAuthSession } from "./database/repository.js";
 import { readJson } from "./json-store.js";
 
 export { dbPool };
 export { deleteAuthSession, findAuthSession, findAuthUser, listAuthUsers, saveAuthSession, saveAuthUser, touchAuthSession };
 export { readFinancialInsightHistory, saveFinancialInsightHistory };
 export { consumeTelegramLink, createTelegramLinkCode, listMessagingUsers, readMessagingConversations, readMessagingFile, readMessagingMessages, saveMessageFile, saveMessage, saveMessagingConversation };
+export { processTelegramOutbox };
 
 export async function initializeDataStore() {
   if (localSnapshotMode) return;

@@ -97,6 +97,7 @@ cd $remoteRoot
 put -r dist
 put server.js
 put -r src
+put -r scripts
 put package.json
 put package-lock.json
 put $restartPath tmp/restart.txt

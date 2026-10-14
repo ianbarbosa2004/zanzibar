@@ -3,7 +3,67 @@ import { databaseName, databaseUser } from "../config.js";
 import { readMessageFile, writeMessageFile } from "../messaging-files.js";
 import { createHash, randomBytes } from "node:crypto";
 import { toSlug, uniqueSlug } from "../../shared/slugs.js";
+import { sendTelegramOutboxEvent } from "../telegram-notifications.js";
 export { dbPool };
+
+export async function processTelegramOutbox({ token, fetchImpl = fetch, logger = console, limit = 10 } = {}) {
+  if (!dbPool) return { processed: 0, skipped: true };
+  if (!token) throw new Error("Token do Telegram não configurado.");
+  const boundedLimit = Math.min(Math.max(Number(limit) || 1, 1), 50);
+  let processed = 0;
+  for (let index = 0; index < boundedLimit; index += 1) {
+    const connection = await dbPool.getConnection();
+    let event;
+    try {
+      await connection.beginTransaction();
+      const [rows] = await connection.query(
+        `SELECT o.id, o.message_id AS messageId, o.event_type AS eventType, m.body,
+          ta.chat_id AS chatId
+         FROM messaging_notification_outbox o
+         JOIN messaging_messages m ON m.id = o.message_id
+         JOIN messaging_conversation_members cm ON cm.conversation_id = m.conversation_id AND cm.user_id <> m.sender_id
+         JOIN telegram_accounts ta ON ta.user_id = cm.user_id
+         WHERE o.channel = 'telegram' AND o.status = 'pending' AND o.available_at <= CURRENT_TIMESTAMP
+         ORDER BY o.id LIMIT 1 FOR UPDATE`,
+      );
+      if (!rows[0]) {
+        await connection.rollback();
+        break;
+      }
+      event = rows[0];
+      const [files] = await connection.query(
+        `SELECT f.original_name AS name, f.mime_type AS mimeType, f.stored_name AS storedName
+         FROM messaging_message_files mf
+         JOIN messaging_files f ON f.id = mf.file_id
+         WHERE mf.message_id = ? ORDER BY mf.file_id`,
+        [event.messageId],
+      );
+      event.files = [];
+      for (const file of files) {
+        event.files.push({ ...file, bytes: await readMessageFile(file.storedName) });
+      }
+      await connection.execute(
+        "UPDATE messaging_notification_outbox SET attempts = attempts + 1, available_at = DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 5 MINUTE) WHERE id = ?",
+        [event.id],
+      );
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      connection.release();
+      throw error;
+    }
+    connection.release();
+    try {
+      await sendTelegramOutboxEvent({ token, event, fetchImpl });
+      await dbPool.execute("UPDATE messaging_notification_outbox SET status = 'sent', sent_at = CURRENT_TIMESTAMP, last_error = NULL WHERE id = ?", [event.id]);
+      processed += 1;
+    } catch (error) {
+      await dbPool.execute("UPDATE messaging_notification_outbox SET status = 'failed', last_error = ? WHERE id = ?", [String(error.message).slice(0, 500), event.id]);
+      logger.error("Falha ao enviar notificação Telegram.", { outboxId: event.id, error: error.message });
+    }
+  }
+  return { processed, skipped: false };
+}
 
 const memoryAuthUsers = new Map();
 const memoryAuthSessions = new Map();
