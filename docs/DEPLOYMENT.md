@@ -8,11 +8,13 @@ A tela de análise financeira da Fase 1 usa somente indicadores determinísticos
 calculados no servidor e não exige novas variáveis de ambiente ou alterações
 de schema MySQL.
 
-Na Fase 2, a interpretação OpenAI permanece desabilitada por padrão. Para
-habilitá-la, configure `CLAREZA_AI_ENABLED=1` e `CLAREZA_AI_API_KEY` somente
-no ambiente protegido do Node/Passenger. Os limites opcionais são
-`CLAREZA_AI_MODEL`, `CLAREZA_AI_TIMEOUT_MS`, `CLAREZA_AI_MAX_OUTPUT_TOKENS` e
-`CLAREZA_AI_MAX_PAYLOAD_BYTES`. Nunca versionar ou registrar a chave.
+Na Fase 2, a interpretação por IA permanece desabilitada por padrão. Para
+habilitá-la, configure `CLAREZA_AI_ENABLED=1` e `CLAREZA_AI_PROVIDER` como
+`openai` ou `gemini`. Use `CLAREZA_AI_API_KEY` para OpenAI ou
+`CLAREZA_GEMINI_API_KEY` para Gemini. O modelo padrão do Gemini é
+`gemini-2.5-flash`; os limites opcionais são `CLAREZA_AI_MODEL`,
+`CLAREZA_AI_TIMEOUT_MS`, `CLAREZA_AI_MAX_OUTPUT_TOKENS` e
+`CLAREZA_AI_MAX_PAYLOAD_BYTES`. Nunca versionar ou registrar chaves.
 
 A Fase 3 cria automaticamente a tabela MySQL `financial_insight_history` na
 inicialização, vinculada a `authorized_users`. O deploy não deve remover nem

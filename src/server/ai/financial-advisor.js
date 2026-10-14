@@ -1,4 +1,4 @@
-import { aiApiKey, aiEnabled, aiMaxOutputTokens, aiMaxPayloadBytes, aiModel, aiTimeoutMs } from "../config.js";
+import { aiApiKey, aiEnabled, aiMaxOutputTokens, aiMaxPayloadBytes, aiModel, aiProvider, aiTimeoutMs } from "../config.js";
 import { financialAdvisorPromptVersion, financialAdvisorQuestionPrompt, financialAdvisorSystemPrompt } from "./prompts.js";
 
 const allowedLevels = new Set(["low", "medium", "high"]);
@@ -19,8 +19,10 @@ function safeInsights(insights) {
   };
 }
 
-function parseProviderResponse(payload) {
-  const content = payload?.choices?.[0]?.message?.content;
+function parseProviderResponse(payload, provider) {
+  const content = provider === "gemini"
+    ? payload?.candidates?.[0]?.content?.parts?.[0]?.text
+    : payload?.choices?.[0]?.message?.content;
   if (typeof content !== "string") throw new Error("O provedor não retornou conteúdo textual.");
   try {
     return JSON.parse(content);
@@ -29,12 +31,41 @@ function parseProviderResponse(payload) {
   }
 }
 
+function providerRequest({ provider, apiKey, model, systemPrompt, userContent, maxOutputTokens }) {
+  if (provider === "gemini") {
+    return {
+      url: `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
+      options: {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: "user", parts: [{ text: userContent }] }],
+          generationConfig: { temperature: 0.2, maxOutputTokens, responseMimeType: "application/json" },
+        }),
+      },
+    };
+  }
+  return {
+    url: "https://api.openai.com/v1/chat/completions",
+    options: {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model,
+        temperature: 0.2,
+        max_tokens: maxOutputTokens,
+        messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userContent }],
+      }),
+    },
+  };
+}
+
 function validateResponse(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("A resposta da IA tem formato inválido.");
   if (typeof value.summary !== "string" || typeof value.disclaimer !== "string" || !Array.isArray(value.insights) || !Array.isArray(value.recommendations)) {
     throw new Error("A resposta da IA não atende ao schema esperado.");
   }
-
   const insights = value.insights.slice(0, 8).map((item) => {
     if (!item || typeof item.title !== "string" || typeof item.description !== "string" || !allowedLevels.has(item.severity) || !Array.isArray(item.evidence)) {
       throw new Error("Um insight da IA tem formato inválido.");
@@ -61,39 +92,44 @@ function validateAnswer(value) {
   };
 }
 
-export function createFinancialAdvisor({ fetchImpl = fetch, enabled = aiEnabled, apiKey = aiApiKey, model = aiModel, timeoutMs = aiTimeoutMs, maxOutputTokens = aiMaxOutputTokens, maxPayloadBytes = aiMaxPayloadBytes, logger = console } = {}) {
+async function callProvider({ fetchImpl, provider, apiKey, model, timeoutMs, maxOutputTokens, systemPrompt, userContent }) {
+  const request = providerRequest({ provider, apiKey, model, systemPrompt, userContent, maxOutputTokens });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetchImpl(request.url, { ...request.options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function providerJson({ response, provider }) {
+  if (response.status === 429) {
+    const error = new Error("O provedor de IA atingiu o limite de requisições.");
+    error.statusCode = 429;
+    throw error;
+  }
+  if (!response.ok) {
+    const error = new Error(`O provedor de IA retornou HTTP ${response.status}.`);
+    error.statusCode = 502;
+    throw error;
+  }
+  return parseProviderResponse(await response.json(), provider);
+}
+
+export function createFinancialAdvisor({ fetchImpl = fetch, enabled = aiEnabled, provider = aiProvider, apiKey = aiApiKey, model = aiModel, timeoutMs = aiTimeoutMs, maxOutputTokens = aiMaxOutputTokens, maxPayloadBytes = aiMaxPayloadBytes, logger = console } = {}) {
+  const activeProvider = provider === "gemini" ? "gemini" : "openai";
   return {
     enabled: Boolean(enabled && apiKey),
+    provider: activeProvider,
     promptVersion: financialAdvisorPromptVersion,
     async analyze(insights) {
       if (!enabled || !apiKey) return { enabled: false, promptVersion: financialAdvisorPromptVersion, message: "A análise por IA está desabilitada. Os indicadores determinísticos continuam disponíveis." };
       const analysis = JSON.stringify({ promptVersion: financialAdvisorPromptVersion, indicators: safeInsights(insights) });
       if (Buffer.byteLength(analysis, "utf8") > maxPayloadBytes) throw new Error("O payload da análise excede o limite configurado.");
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        const response = await fetchImpl("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-          body: JSON.stringify({
-            model,
-            temperature: 0.2,
-            max_tokens: maxOutputTokens,
-            messages: [{ role: "system", content: financialAdvisorSystemPrompt }, { role: "user", content: analysis }],
-          }),
-          signal: controller.signal,
-        });
-        if (response.status === 429) {
-          const error = new Error("O provedor de IA atingiu o limite de requisições.");
-          error.statusCode = 429;
-          throw error;
-        }
-        if (!response.ok) {
-          const error = new Error(`O provedor de IA retornou HTTP ${response.status}.`);
-          error.statusCode = 502;
-          throw error;
-        }
-        return { enabled: true, promptVersion: financialAdvisorPromptVersion, ...validateResponse(parseProviderResponse(await response.json())) };
+        const response = await callProvider({ fetchImpl, provider: activeProvider, apiKey, model, timeoutMs, maxOutputTokens, systemPrompt: financialAdvisorSystemPrompt, userContent: analysis });
+        return { enabled: true, provider: activeProvider, promptVersion: financialAdvisorPromptVersion, ...validateResponse(await providerJson({ response, provider: activeProvider })) };
       } catch (error) {
         if (error.name === "AbortError") {
           const timeoutError = new Error("A análise por IA excedeu o tempo limite.");
@@ -103,8 +139,6 @@ export function createFinancialAdvisor({ fetchImpl = fetch, enabled = aiEnabled,
         if (!error.statusCode) error.statusCode = 502;
         logger.error("Falha na análise financeira por IA.", { message: error.message });
         throw error;
-      } finally {
-        clearTimeout(timer);
       }
     },
     async ask(question, insights) {
@@ -113,26 +147,9 @@ export function createFinancialAdvisor({ fetchImpl = fetch, enabled = aiEnabled,
       if (!normalizedQuestion) throw new Error("Informe uma pergunta para a análise.");
       const request = JSON.stringify({ promptVersion: financialAdvisorPromptVersion, question: normalizedQuestion, indicators: safeInsights(insights) });
       if (Buffer.byteLength(request, "utf8") > maxPayloadBytes) throw new Error("O payload da pergunta excede o limite configurado.");
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        const response = await fetchImpl("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-          body: JSON.stringify({ model, temperature: 0.2, max_tokens: maxOutputTokens, messages: [{ role: "system", content: financialAdvisorQuestionPrompt }, { role: "user", content: request }] }),
-          signal: controller.signal,
-        });
-        if (response.status === 429) {
-          const error = new Error("O provedor de IA atingiu o limite de requisições.");
-          error.statusCode = 429;
-          throw error;
-        }
-        if (!response.ok) {
-          const error = new Error(`O provedor de IA retornou HTTP ${response.status}.`);
-          error.statusCode = 502;
-          throw error;
-        }
-        return { enabled: true, promptVersion: financialAdvisorPromptVersion, ...validateAnswer(parseProviderResponse(await response.json())) };
+        const response = await callProvider({ fetchImpl, provider: activeProvider, apiKey, model, timeoutMs, maxOutputTokens, systemPrompt: financialAdvisorQuestionPrompt, userContent: request });
+        return { enabled: true, provider: activeProvider, promptVersion: financialAdvisorPromptVersion, ...validateAnswer(await providerJson({ response, provider: activeProvider })) };
       } catch (error) {
         if (error.name === "AbortError") {
           const timeoutError = new Error("A análise por IA excedeu o tempo limite.");
@@ -142,8 +159,6 @@ export function createFinancialAdvisor({ fetchImpl = fetch, enabled = aiEnabled,
         if (!error.statusCode) error.statusCode = 502;
         logger.error("Falha na pergunta financeira por IA.", { message: error.message });
         throw error;
-      } finally {
-        clearTimeout(timer);
       }
     },
   };

@@ -29,7 +29,7 @@ carregamento, vazio e erro. Nenhuma ação financeira é executada pela análise
 
 ## Interpretação opcional por IA
 
-A interpretação OpenAI é uma etapa posterior e opt-in. Ela só é solicitada
+A interpretação por IA é uma etapa posterior e opt-in. Ela só é solicitada
 pelo botão próprio, após confirmação explícita, via `POST` com `withAi: true`.
 O servidor envia apenas indicadores agregados, nunca descrições, credenciais,
 arquivos runtime ou dados de autenticação. A chave fica somente no ambiente
@@ -37,7 +37,8 @@ Node/Passenger. Respostas JSON são validadas e erros de timeout, limite,
 provedor ou schema inválido são expostos sem fallback enganoso. A IA não pode
 alterar transações, cadastros ou fechamentos.
 
-Configure `CLAREZA_AI_ENABLED`, `CLAREZA_AI_API_KEY` e opcionalmente
+Configure `CLAREZA_AI_ENABLED`, `CLAREZA_AI_PROVIDER` e opcionalmente
+`CLAREZA_AI_API_KEY` (OpenAI) ou `CLAREZA_GEMINI_API_KEY` (Gemini), além de
 `CLAREZA_AI_MODEL`, `CLAREZA_AI_TIMEOUT_MS`, `CLAREZA_AI_MAX_OUTPUT_TOKENS` e
 `CLAREZA_AI_MAX_PAYLOAD_BYTES` fora do repositório. A integração pode
 permanecer desabilitada sem afetar os indicadores determinísticos.

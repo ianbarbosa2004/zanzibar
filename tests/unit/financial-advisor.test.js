@@ -86,3 +86,23 @@ test("responde perguntas usando indicadores agregados e valida a resposta", asyn
   assert.equal(JSON.stringify(request).includes("description"), false);
   assert.equal(JSON.stringify(request).includes("secret"), false);
 });
+
+test("usa Gemini quando o provedor está configurado", async () => {
+  let request;
+  const advisor = createFinancialAdvisor({
+    enabled: true,
+    provider: "gemini",
+    apiKey: "gemini-secret",
+    model: "gemini-2.5-flash",
+    fetchImpl: async (url, options) => {
+      request = { url, options };
+      return response({ candidates: [{ content: { parts: [{ text: JSON.stringify(valid) }] } }] });
+    },
+  });
+  const result = await advisor.analyze(insights);
+  assert.equal(result.provider, "gemini");
+  assert.match(request.url, /generativelanguage\.googleapis\.com/);
+  assert.match(request.url, /key=gemini-secret/);
+  assert.equal(JSON.parse(request.options.body).generationConfig.responseMimeType, "application/json");
+  assert.equal(JSON.stringify(request.options.body).includes("gemini-secret"), false);
+});
