@@ -3,7 +3,7 @@ import { deleteAuthSession, dbPool, findAuthSession, findAuthUser, initializeDat
 import { createAuth } from "./src/server/auth.js";
 import { createHttpServer } from "./src/server/http-server.js";
 import { readStaticFile } from "./src/server/static-files.js";
-import { analyzeFinancialPeriod } from "./src/shared/financial-insights.js";
+import { analyzeFinancialPeriod, compareFinancialPeriods } from "./src/shared/financial-insights.js";
 import { createFinancialAdvisor } from "./src/server/ai/financial-advisor.js";
 
 const auth = createAuth({ findUser: findAuthUser, saveUser: saveAuthUser, listUsers: listAuthUsers, saveSession: saveAuthSession, findSession: findAuthSession, touchSession: touchAuthSession, deleteSession: deleteAuthSession });
@@ -20,7 +20,19 @@ const requestFinancialInsights = async ({ data, month, scope = "general", withAi
   const deterministic = analyzeFinancialInsights({ data, month, scope });
   return withAi ? { deterministic, ai: await financialAdvisor.analyze(deterministic) } : { deterministic };
 };
-const server = createHttpServer({ basePath, auth, analyzeFinancialInsights: requestFinancialInsights, readData, readFinancialInsightHistory, saveFinancialInsightHistory, writeBillings, writeCashClosing, writeCatalog, writeLimit, writeMonthlyCashClosings, writeTransaction, readStaticFile });
+const compareFinancialInsights = ({ data, month, scope = "general", periods = 3 }) => {
+  try {
+    return compareFinancialPeriods({ transactions: data.transactions || [], incomes: data.incomes || [], month, scope, periods });
+  } catch (error) {
+    error.statusCode = 400;
+    throw error;
+  }
+};
+const askFinancialQuestion = async ({ data, month, scope = "general", question }) => {
+  const deterministic = analyzeFinancialInsights({ data, month, scope });
+  return { deterministic, ai: await financialAdvisor.ask(question, deterministic) };
+};
+const server = createHttpServer({ basePath, auth, analyzeFinancialInsights: requestFinancialInsights, compareFinancialInsights, askFinancialQuestion, readData, readFinancialInsightHistory, saveFinancialInsightHistory, writeBillings, writeCashClosing, writeCatalog, writeLimit, writeMonthlyCashClosings, writeTransaction, readStaticFile });
 
 initializeDataStore().then(() => {
   server.listen(port, () => console.log(`Clareza disponível em http://localhost:${port}${dbPool ? " (MySQL)" : ""}`));

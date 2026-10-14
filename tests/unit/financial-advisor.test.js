@@ -69,3 +69,20 @@ test("remove HTML de textos retornados pelo provedor", async () => {
   assert.equal(result.insights[0].description, "alert(1)Observe");
   assert.equal(result.recommendations[0].action, "review");
 });
+
+test("responde perguntas usando indicadores agregados e valida a resposta", async () => {
+  let request;
+  const advisor = createFinancialAdvisor({
+    enabled: true,
+    apiKey: "secret",
+    fetchImpl: async (_url, options) => {
+      request = JSON.parse(options.body);
+      return response({ choices: [{ message: { content: JSON.stringify({ answer: "As despesas cresceram.", evidence: ["variations.expensePercent"], disclaimer: "Informativo." }) } }] });
+    },
+  });
+  const result = await advisor.ask("Por que as despesas cresceram?", insights);
+  assert.equal(result.answer, "As despesas cresceram.");
+  assert.equal(JSON.parse(request.messages[1].content).question, "Por que as despesas cresceram?");
+  assert.equal(JSON.stringify(request).includes("description"), false);
+  assert.equal(JSON.stringify(request).includes("secret"), false);
+});

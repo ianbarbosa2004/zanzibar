@@ -123,10 +123,18 @@ P: R$ 0,00</strong></div>
                 <button class="secondary-button" id="financial-advisor-ai" type="button">Solicitar interpretação por IA</button>
                 <button class="secondary-button" id="financial-advisor-save" type="button" hidden>Salvar no histórico</button>
                 <button class="secondary-button" id="financial-advisor-history" type="button">Ver histórico</button>
+                <button class="secondary-button" id="financial-advisor-compare" type="button">Comparar últimos meses</button>
               </div>
             </div>
             <p class="muted" id="financial-advisor-status" role="status" aria-live="polite">A análise só é solicitada quando você aciona o botão.</p>
             <div id="financial-advisor-output" class="financial-advisor-output" aria-live="polite"></div>
+            <div class="financial-advisor-question">
+              <label for="financial-advisor-question-input">Pergunte sobre os indicadores
+                <input id="financial-advisor-question-input" type="text" maxlength="500" autocomplete="off" placeholder="Ex.: por que as despesas variaram?">
+              </label>
+              <button class="secondary-button" id="financial-advisor-ask" type="button">Perguntar à IA</button>
+            </div>
+            <div id="financial-advisor-answer-output" class="financial-advisor-output" aria-live="polite"></div>
             <div id="financial-advisor-history-output" class="financial-advisor-output" aria-live="polite" hidden></div>
           </section>
         </section>

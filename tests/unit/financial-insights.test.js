@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { analyzeFinancialPeriod } from "../../src/shared/financial-insights.js";
+import { analyzeFinancialPeriod, compareFinancialPeriods } from "../../src/shared/financial-insights.js";
 
 const transactions = [
   { id: "1", date: "2026-05-02", amount: 100, type: "expense", expenseType: "Casa", location: "Casa", description: "Aluguel" },
@@ -32,4 +32,19 @@ test("mantém recorrência agregada sem expor descrições", () => {
 
 test("rejeita período inválido", () => {
   assert.throws(() => analyzeFinancialPeriod({ month: "maio" }), /YYYY-MM/);
+});
+
+test("gera alertas e comparação de períodos sem misturar Buffet", () => {
+  const result = compareFinancialPeriods({
+    transactions: [...transactions, { id: "8", date: "2026-03-02", amount: 10, type: "expense", expenseType: "Casa", location: "Casa" }],
+    incomes,
+    month: "2026-05",
+    periods: 3,
+  });
+  assert.equal(result.periods.length, 3);
+  assert.equal(result.scope, "general");
+  assert.equal(result.periods[0].totals.income, 300);
+  assert.equal(result.periods[0].totals.expense, 140);
+  assert.equal(result.periods.some((period) => period.period === "2026-04"), true);
+  assert.equal(result.periods[0].alerts.some((alert) => alert.type === "negative_balance"), false);
 });

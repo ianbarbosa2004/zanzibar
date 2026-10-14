@@ -31,7 +31,7 @@ function staticCacheHeaders(file) {
   return { "Cache-Control": "no-cache" };
 }
 
-export function createHttpServer({ basePath, readData, writeCashClosing, writeCatalog, writeLimit, writeMonthlyCashClosings, writeTransaction, writeBillings, readStaticFile, auth, analyzeFinancialInsights, saveFinancialInsightHistory, readFinancialInsightHistory, logger = console }) {
+export function createHttpServer({ basePath, readData, writeCashClosing, writeCatalog, writeLimit, writeMonthlyCashClosings, writeTransaction, writeBillings, readStaticFile, auth, analyzeFinancialInsights, compareFinancialInsights, askFinancialQuestion, saveFinancialInsightHistory, readFinancialInsightHistory, logger = console }) {
   return createServer(async (request, response) => {
     try {
       const pathname = new URL(request.url || "/", "http://localhost").pathname;
@@ -57,6 +57,24 @@ export function createHttpServer({ basePath, readData, writeCashClosing, writeCa
       const protectedApi = apiPath.startsWith("/api/");
       if (auth && protectedApi && !currentUser) return send(response, 401, { error: "Autenticação necessária." });
       if (apiPath === "/api/data" && request.method === "GET") return send(response, 200, await readData());
+      if (compareFinancialInsights && apiPath === "/api/financial-insights/compare" && request.method === "GET") {
+        const query = new URL(request.url || "/", "http://localhost").searchParams;
+        return send(response, 200, await compareFinancialInsights({
+          data: await readData(),
+          month: query.get("month"),
+          scope: query.get("scope") || "general",
+          periods: query.get("periods") || 3,
+        }));
+      }
+      if (askFinancialQuestion && apiPath === "/api/financial-insights/ask" && request.method === "POST") {
+        const payload = await readBody(request);
+        return send(response, 200, await askFinancialQuestion({
+          data: await readData(),
+          month: payload.month,
+          scope: payload.scope || "general",
+          question: payload.question,
+        }));
+      }
       if (readFinancialInsightHistory && apiPath === "/api/financial-insights/history" && request.method === "GET") {
         return send(response, 200, { history: await readFinancialInsightHistory(currentUser.id, new URL(request.url || "/", "http://localhost").searchParams.get("limit")) });
       }

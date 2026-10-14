@@ -1,5 +1,5 @@
 import { aiApiKey, aiEnabled, aiMaxOutputTokens, aiMaxPayloadBytes, aiModel, aiTimeoutMs } from "../config.js";
-import { financialAdvisorPromptVersion, financialAdvisorSystemPrompt } from "./prompts.js";
+import { financialAdvisorPromptVersion, financialAdvisorQuestionPrompt, financialAdvisorSystemPrompt } from "./prompts.js";
 
 const allowedLevels = new Set(["low", "medium", "high"]);
 const cleanText = (value, limit) => String(value).replace(/<[^>]*>/g, "").trim().slice(0, limit);
@@ -34,6 +34,7 @@ function validateResponse(value) {
   if (typeof value.summary !== "string" || typeof value.disclaimer !== "string" || !Array.isArray(value.insights) || !Array.isArray(value.recommendations)) {
     throw new Error("A resposta da IA não atende ao schema esperado.");
   }
+
   const insights = value.insights.slice(0, 8).map((item) => {
     if (!item || typeof item.title !== "string" || typeof item.description !== "string" || !allowedLevels.has(item.severity) || !Array.isArray(item.evidence)) {
       throw new Error("Um insight da IA tem formato inválido.");
@@ -47,6 +48,17 @@ function validateResponse(value) {
     return { title: cleanText(item.title, 160), description: cleanText(item.description, 600), priority: item.priority, action: cleanText(item.action, 100) };
   });
   return { summary: cleanText(value.summary, 1200), insights, recommendations, disclaimer: cleanText(value.disclaimer, 800) };
+}
+
+function validateAnswer(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value) || typeof value.answer !== "string" || typeof value.disclaimer !== "string" || !Array.isArray(value.evidence)) {
+    throw new Error("A resposta da IA para a pergunta tem formato inválido.");
+  }
+  return {
+    answer: cleanText(value.answer, 1600),
+    evidence: value.evidence.slice(0, 8).map((item) => cleanText(item, 160)),
+    disclaimer: cleanText(value.disclaimer, 800),
+  };
 }
 
 export function createFinancialAdvisor({ fetchImpl = fetch, enabled = aiEnabled, apiKey = aiApiKey, model = aiModel, timeoutMs = aiTimeoutMs, maxOutputTokens = aiMaxOutputTokens, maxPayloadBytes = aiMaxPayloadBytes, logger = console } = {}) {
@@ -90,6 +102,45 @@ export function createFinancialAdvisor({ fetchImpl = fetch, enabled = aiEnabled,
         }
         if (!error.statusCode) error.statusCode = 502;
         logger.error("Falha na análise financeira por IA.", { message: error.message });
+        throw error;
+      } finally {
+        clearTimeout(timer);
+      }
+    },
+    async ask(question, insights) {
+      if (!enabled || !apiKey) return { enabled: false, promptVersion: financialAdvisorPromptVersion, message: "A análise por IA está desabilitada. Gere indicadores determinísticos para continuar." };
+      const normalizedQuestion = String(question || "").trim().slice(0, 500);
+      if (!normalizedQuestion) throw new Error("Informe uma pergunta para a análise.");
+      const request = JSON.stringify({ promptVersion: financialAdvisorPromptVersion, question: normalizedQuestion, indicators: safeInsights(insights) });
+      if (Buffer.byteLength(request, "utf8") > maxPayloadBytes) throw new Error("O payload da pergunta excede o limite configurado.");
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const response = await fetchImpl("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+          body: JSON.stringify({ model, temperature: 0.2, max_tokens: maxOutputTokens, messages: [{ role: "system", content: financialAdvisorQuestionPrompt }, { role: "user", content: request }] }),
+          signal: controller.signal,
+        });
+        if (response.status === 429) {
+          const error = new Error("O provedor de IA atingiu o limite de requisições.");
+          error.statusCode = 429;
+          throw error;
+        }
+        if (!response.ok) {
+          const error = new Error(`O provedor de IA retornou HTTP ${response.status}.`);
+          error.statusCode = 502;
+          throw error;
+        }
+        return { enabled: true, promptVersion: financialAdvisorPromptVersion, ...validateAnswer(parseProviderResponse(await response.json())) };
+      } catch (error) {
+        if (error.name === "AbortError") {
+          const timeoutError = new Error("A análise por IA excedeu o tempo limite.");
+          timeoutError.statusCode = 504;
+          throw timeoutError;
+        }
+        if (!error.statusCode) error.statusCode = 502;
+        logger.error("Falha na pergunta financeira por IA.", { message: error.message });
         throw error;
       } finally {
         clearTimeout(timer);

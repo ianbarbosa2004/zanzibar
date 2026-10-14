@@ -19,6 +19,10 @@ inicialização, vinculada a `authorized_users`. O deploy não deve remover nem
 recriar destrutivamente tabelas existentes; a validação deve confirmar que a
 aplicação inicializa e que o banco permanece preservado.
 
+As Fases 4 e 5 usam somente os endpoints protegidos de comparação e perguntas
+assistidas. Não criam tabelas nem alteram o schema MySQL. Perguntas são
+limitadas a 500 caracteres e a IA recebe apenas indicadores agregados.
+
 O `.htaccess` é administrado pelo cPanel e não deve ser sobrescrito. Dados de produção ficam no MySQL; os arquivos `data.json`, `settings.json`, `incomes.json`, `cash-closings.json` e `monthly-cash-closings.json` não são enviados e devem ser preservados. O CRUD de produção grava somente por SQL no MySQL.
 
 ## Procedimento oficial

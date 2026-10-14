@@ -23,6 +23,8 @@ function makeServer(overrides = {}) {
     }),
     saveFinancialInsightHistory: async ({ userId, period, scope, indicators, aiResult }) => ({ id: 1, userId, period, scope, indicators, ai: aiResult }),
     readFinancialInsightHistory: async (userId) => [{ id: 1, userId, period: "2026-05", scope: "general", indicators: {}, ai: null }],
+    compareFinancialInsights: async ({ month, scope, periods }) => ({ period: month, scope, periods: [{ period: month }], trend: { income: 1, expense: 2, balance: 3 }, alerts: [] }),
+    askFinancialQuestion: async ({ question, month, scope }) => ({ deterministic: { period: month, scope }, ai: { enabled: true, answer: `Resposta: ${question}`, evidence: ["totals"], disclaimer: "Informativo." } }),
     writeCashClosing: async () => {},
     writeMonthlyCashClosings: async () => {},
     writeTransaction: async () => {},
@@ -107,4 +109,22 @@ test("rota rejeita período ausente ou inválido", async (t) => {
   await once(server, "listening");
   const response = await fetch(`http://localhost:${server.address().port}/clareza/api/financial-insights?month=maio`);
   assert.equal(response.status, 400);
+});
+
+test("compara períodos e responde perguntas somente por rotas protegidas", async (t) => {
+  const server = makeServer();
+  t.after(() => server.close());
+  server.listen(0);
+  await once(server, "listening");
+  const port = server.address().port;
+  const comparison = await fetch(`http://localhost:${port}/clareza/api/financial-insights/compare?month=2026-05&scope=general&periods=3`);
+  assert.equal(comparison.status, 200);
+  assert.equal((await comparison.json()).periods.length, 1);
+  const answer = await fetch(`http://localhost:${port}/clareza/api/financial-insights/ask`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ month: "2026-05", scope: "general", question: "Por que as despesas cresceram?" }),
+  });
+  assert.equal(answer.status, 200);
+  assert.equal((await answer.json()).ai.enabled, true);
 });

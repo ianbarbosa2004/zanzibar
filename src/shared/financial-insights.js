@@ -64,6 +64,23 @@ const anomalies = (items) => {
   return items.filter((item) => amountOf(item) > threshold).sort((a, b) => amountOf(b) - amountOf(a)).slice(0, 5)
     .map((item) => ({ date: item.date, type: isIncome(item) ? "income" : "expense", amount: amountOf(item) }));
 };
+const alertLevel = (value, medium, high) => value >= high ? "high" : value >= medium ? "medium" : "low";
+const buildAlerts = ({ totals, previousTotals, variations, anomalies: detectedAnomalies, scope }) => {
+  const alerts = [];
+  if (variations.expensePercent !== null && variations.expensePercent >= 20) {
+    alerts.push({ type: "expense_growth", severity: alertLevel(variations.expensePercent, 20, 40), message: "As despesas cresceram de forma relevante em relação ao período anterior.", value: variations.expensePercent });
+  }
+  if (variations.incomePercent !== null && variations.incomePercent <= -20) {
+    alerts.push({ type: "income_drop", severity: alertLevel(Math.abs(variations.incomePercent), 20, 40), message: "As receitas diminuíram de forma relevante em relação ao período anterior.", value: variations.incomePercent });
+  }
+  if (totals.balance < 0 && previousTotals.balance >= 0) {
+    alerts.push({ type: "negative_balance", severity: "high", message: "O saldo do período ficou negativo.", value: totals.balance });
+  }
+  if (detectedAnomalies.length) {
+    alerts.push({ type: "anomaly", severity: "medium", message: "Há lançamentos acima do limiar simples de anomalia.", value: detectedAnomalies.length });
+  }
+  return alerts.map((alert) => ({ ...alert, scope }));
+};
 
 export function analyzeFinancialPeriod({ transactions = [], incomes = [], month, scope = "general" }) {
   if (!validMonth(month)) throw new Error("Informe um período no formato YYYY-MM.");
@@ -77,7 +94,7 @@ export function analyzeFinancialPeriod({ transactions = [], incomes = [], month,
   const variation = (current, prior) => prior === 0 ? null : Number((((current - prior) / Math.abs(prior)) * 100).toFixed(2));
   const expenses = scoped.filter((item) => !isIncome(item));
   const incomeProperty = scope === "buffet" ? "product" : "source";
-  return {
+  const result = {
     period: month,
     previousPeriod: previousMonth(month),
     scope,
@@ -97,5 +114,30 @@ export function analyzeFinancialPeriod({ transactions = [], incomes = [], month,
     anomalies: anomalies(scoped),
     busiestDays: dayTotals(scoped),
     buffet: scope === "general" ? analyzeFinancialPeriod({ transactions, incomes, month, scope: "buffet" }) : null,
+  };
+  result.alerts = buildAlerts({ totals, previousTotals: priorTotals, variations: result.variations, anomalies: result.anomalies, scope });
+  return result;
+}
+
+export function compareFinancialPeriods({ transactions = [], incomes = [], month, scope = "general", periods = 3 }) {
+  if (!validMonth(month)) throw new Error("Informe um período no formato YYYY-MM.");
+  const count = Math.min(Math.max(Number(periods) || 3, 2), 12);
+  const analyses = [];
+  let current = month;
+  for (let index = 0; index < count; index += 1) {
+    analyses.push(analyzeFinancialPeriod({ transactions, incomes, month: current, scope }));
+    current = previousMonth(current);
+  }
+  const newest = analyses[0];
+  return {
+    scope,
+    period: month,
+    periods: analyses.map(({ period: itemPeriod, totals, variations, alerts }) => ({ period: itemPeriod, totals, variations, alerts })),
+    trend: {
+      income: analyses.at(-1).totals.income === 0 ? null : Number((((newest.totals.income - analyses.at(-1).totals.income) / Math.abs(analyses.at(-1).totals.income)) * 100).toFixed(2)),
+      expense: analyses.at(-1).totals.expense === 0 ? null : Number((((newest.totals.expense - analyses.at(-1).totals.expense) / Math.abs(analyses.at(-1).totals.expense)) * 100).toFixed(2)),
+      balance: analyses.at(-1).totals.balance === 0 ? null : Number((((newest.totals.balance - analyses.at(-1).totals.balance) / Math.abs(analyses.at(-1).totals.balance)) * 100).toFixed(2)),
+    },
+    alerts: analyses.flatMap((analysis) => analysis.alerts.map((alert) => ({ ...alert, period: analysis.period }))),
   };
 }

@@ -51,6 +51,19 @@ usuário. São armazenados período, escopo, indicadores agregados, eventual
 resultado da IA e versão do prompt; transações brutas e descrições não são
 armazenadas. O fallback JSON e o modo snapshot não se tornam graváveis.
 
+## Comparações e perguntas (Fases 4 e 5)
+
+O endpoint `GET /clareza/api/financial-insights/compare` compara até 12
+períodos mensais do mesmo escopo e retorna tendências, alertas de crescimento
+de despesas, queda de receitas, saldo negativo e anomalias simples. O Buffet
+continua isolado e nunca é incorporado ao escopo geral.
+
+O endpoint protegido `POST /clareza/api/financial-insights/ask` aceita uma
+pergunta de até 500 caracteres. O servidor calcula os indicadores do período e,
+quando a IA está habilitada, envia somente esses agregados e a pergunta ao
+provedor. A resposta é validada e exibida como informativa; nenhuma pergunta
+pode alterar transações, cadastros, fechamentos ou histórico automaticamente.
+
 ## Privacidade e validação
 
 A resposta não inclui descrições dos lançamentos nem PII desnecessária. A

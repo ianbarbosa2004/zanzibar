@@ -1590,6 +1590,11 @@ $("#financial-advisor-run").addEventListener("click", async () => {
       warning.textContent = `Possível anomalia: lançamento de R$ ${anomaly.amount.toFixed(2)} em ${anomaly.date}. O indicador usa o limiar simples de três vezes a média do período.`;
       output.append(warning);
     }
+    if (deterministic.alerts?.length) {
+      const alerts = document.createElement("p");
+      alerts.textContent = `Alertas: ${deterministic.alerts.map((item) => `${item.message} (${item.severity})`).join(" ")}`;
+      output.append(alerts);
+    }
     status.textContent = "Indicadores determinísticos calculados no servidor.";
   } catch (error) {
     status.textContent = error.message;
@@ -1597,6 +1602,73 @@ $("#financial-advisor-run").addEventListener("click", async () => {
     financialAdvisorBusy = false;
     button.disabled = false;
     button.removeAttribute("aria-busy");
+  }
+});
+$("#financial-advisor-compare").addEventListener("click", async () => {
+  if (financialAdvisorBusy) return;
+  financialAdvisorBusy = true;
+  const button = $("#financial-advisor-compare");
+  const status = $("#financial-advisor-status");
+  const output = $("#financial-advisor-output");
+  button.disabled = true;
+  status.textContent = "Comparando períodos...";
+  try {
+    const month = selectedMonth();
+    const scope = $("#financial-advisor-scope").value;
+    const response = await fetch(`${FINANCIAL_INSIGHTS_URL}/compare?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&periods=3`);
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || `Falha na comparação (${response.status})`);
+    const trend = document.createElement("p");
+    const formatTrend = (value) => value === null ? "sem base" : `${value > 0 ? "+" : ""}${value.toFixed(2)}%`;
+    trend.textContent = `Comparação de 3 meses — receitas ${formatTrend(payload.trend.income)}, despesas ${formatTrend(payload.trend.expense)}, saldo ${formatTrend(payload.trend.balance)}.`;
+    const alerts = document.createElement("p");
+    alerts.textContent = payload.alerts?.length
+      ? `Alertas encontrados: ${payload.alerts.map((item) => `${item.period}: ${item.message}`).join(" ")}`
+      : "Nenhum alerta comparativo encontrado nos últimos meses.";
+    output.append(trend, alerts);
+    status.textContent = "Comparação e alertas concluídos.";
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    financialAdvisorBusy = false;
+    button.disabled = false;
+  }
+});
+$("#financial-advisor-ask").addEventListener("click", async () => {
+  if (financialAdvisorBusy) return;
+  const question = $("#financial-advisor-question-input").value.trim();
+  if (!question) {
+    $("#financial-advisor-status").textContent = "Digite uma pergunta sobre os indicadores.";
+    return;
+  }
+  if (!window.confirm("Enviar esta pergunta para a IA usando somente indicadores agregados do período?")) return;
+  financialAdvisorBusy = true;
+  const button = $("#financial-advisor-ask");
+  const status = $("#financial-advisor-status");
+  const output = $("#financial-advisor-answer-output");
+  button.disabled = true;
+  output.replaceChildren();
+  status.textContent = "Consultando a IA...";
+  try {
+    const response = await fetch(`${FINANCIAL_INSIGHTS_URL}/ask`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ month: selectedMonth(), scope: $("#financial-advisor-scope").value, question }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || `Falha na pergunta (${response.status})`);
+    if (!payload.ai?.enabled) throw new Error(payload.ai?.message || "A análise por IA está desabilitada.");
+    const answer = document.createElement("p");
+    answer.textContent = `Resposta gerada por IA: ${payload.ai.answer}`;
+    const evidence = document.createElement("small");
+    evidence.textContent = `Evidências: ${payload.ai.evidence.join(", ") || "não informadas"}. ${payload.ai.disclaimer}`;
+    output.append(answer, evidence);
+    status.textContent = `Resposta concluída. Prompt ${payload.ai.promptVersion}.`;
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    financialAdvisorBusy = false;
+    button.disabled = false;
   }
 });
 $("#financial-advisor-ai").addEventListener("click", async () => {
