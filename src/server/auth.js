@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { adminEmail, basePath, cookieSecure, googleClientId, googleClientSecret, googleRedirectUri, sessionSecret } from "./config.js";
 
 const sessionLifetimeMs = 7 * 24 * 60 * 60 * 1000;
+const inactivityTimeoutMs = 15 * 60 * 1000;
 const digest = (value) => createHash("sha256").update(`${sessionSecret}:${value}`).digest("hex");
 const normalizedEmail = (email) => String(email || "").trim().toLowerCase();
 const secureCookie = process.env.NODE_ENV === "production" || cookieSecure;
@@ -26,10 +27,10 @@ async function readGoogleUser(accessToken) {
   const user = await response.json();
   const email = normalizedEmail(user.email);
   if (!user.email_verified || !email) throw new Error("A conta Google precisa ter e-mail verificado.");
-  return { email, name: String(user.name || email), googleSub: String(user.sub || ""), picture: String(user.picture || "") };
+  return { email, name: String(user.name || email), givenName: String(user.given_name || ""), familyName: String(user.family_name || ""), googleSub: String(user.sub || ""), picture: String(user.picture || "") };
 }
 
-export function createAuth({ findUser, saveUser, listUsers, saveSession, findSession, deleteSession, logger = console }) {
+export function createAuth({ findUser, saveUser, listUsers, saveSession, findSession, touchSession, deleteSession, logger = console }) {
   return {
     begin(request, response) {
       assertConfigured();
@@ -53,7 +54,7 @@ export function createAuth({ findUser, saveUser, listUsers, saveSession, findSes
         return response.end();
       }
       const sessionToken = randomBytes(32).toString("base64url");
-      await saveSession({ tokenHash: digest(sessionToken), userId: user.id, expiresAt: new Date(Date.now() + sessionLifetimeMs) });
+      await saveSession({ tokenHash: digest(sessionToken), userId: user.id, expiresAt: new Date(Date.now() + sessionLifetimeMs), lastActivityAt: new Date() });
       response.writeHead(302, {
         Location: `${basePath}/`,
         "Set-Cookie": [
@@ -67,7 +68,18 @@ export function createAuth({ findUser, saveUser, listUsers, saveSession, findSes
       const token = cookieValue(request, "clareza_session");
       if (!token) return null;
       const session = await findSession(digest(token));
-      return session?.authorized && session.expiresAt && new Date(session.expiresAt) > new Date() ? session : null;
+      const now = Date.now();
+      const lastActivity = session?.lastActivityAt ? new Date(session.lastActivityAt).getTime() : 0;
+      return session?.authorized && session.expiresAt && new Date(session.expiresAt).getTime() > now && now - lastActivity <= inactivityTimeoutMs ? session : null;
+    },
+    async heartbeat(request) {
+      const token = cookieValue(request, "clareza_session");
+      if (!token) return null;
+      const session = await findSession(digest(token));
+      const now = Date.now();
+      if (!session?.authorized || !session.expiresAt || new Date(session.expiresAt).getTime() <= now || now - new Date(session.lastActivityAt || 0).getTime() > inactivityTimeoutMs) return null;
+      await touchSession(digest(token), new Date());
+      return { ...session, lastActivityAt: new Date() };
     },
     async logout(request, response) {
       const token = cookieValue(request, "clareza_session");
@@ -83,6 +95,7 @@ export function createAuth({ findUser, saveUser, listUsers, saveSession, findSes
       return saveUser({ ...user, authorized: normalized === adminEmail || Boolean(authorized), role: normalized === adminEmail ? "admin" : user.role });
     },
     adminEmail,
+    inactivityTimeoutMs,
     logger,
   };
 }

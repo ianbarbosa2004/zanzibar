@@ -93,3 +93,10 @@ Google. A foto é guardada em `authorized_users.picture_url`; se a imagem
 estiver indisponível, o frontend exibe a inicial do nome. O quadro da conta
 também oferece um link para **Gerenciar sua Conta do Google** e a ação segura
 de **Sair**.
+
+O perfil básico persistido em `authorized_users` inclui e-mail, nome completo,
+nome e sobrenome, identificador Google, foto, autorização e `last_login_at`.
+Cada sessão possui validade máxima de sete dias e `last_activity_at`. Enquanto
+o usuário interage com o aplicativo, o frontend envia heartbeats periódicos.
+Após 15 minutos sem atividade, a sessão deixa de ser válida e o usuário precisa
+entrar novamente.

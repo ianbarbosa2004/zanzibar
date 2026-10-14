@@ -91,6 +91,32 @@ async function loadAuth() {
   return true;
 }
 
+function startAuthHeartbeat() {
+  let activityPending = true;
+  let lastHeartbeat = 0;
+  const reportHeartbeatError = (error) => console.warn("Não foi possível atualizar a atividade da sessão.", error);
+  const heartbeat = async () => {
+    if (!activityPending || document.visibilityState !== "visible") return;
+    activityPending = false;
+    lastHeartbeat = Date.now();
+    const response = await fetch(new URL("api/auth/heartbeat", document.baseURI).pathname, { method: "POST" });
+    if (response.status === 401) window.location.reload();
+  };
+  const markActivity = () => {
+    activityPending = true;
+    if (Date.now() - lastHeartbeat >= 60_000) heartbeat().catch(reportHeartbeatError);
+  };
+  ["click", "keydown", "input", "pointerdown", "scroll"].forEach((eventName) => document.addEventListener(eventName, markActivity, { passive: true }));
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      activityPending = true;
+      heartbeat().catch(reportHeartbeatError);
+    }
+  });
+  heartbeat().catch(reportHeartbeatError);
+  window.setInterval(() => heartbeat().catch(reportHeartbeatError), 60_000);
+}
+
 async function renderAuthorizedUsers() {
   const panel = $("#authorized-users-panel");
   if (!panel || authUser?.role !== "admin") return;
@@ -1704,7 +1730,10 @@ function renderPage() {
 window.addEventListener("hashchange", renderPage);
 
 renderPage();
-loadAuth().then((authenticated) => authenticated ? loadData() : null).then(() => {
+loadAuth().then((authenticated) => {
+  if (authenticated) startAuthHeartbeat();
+  return authenticated ? loadData() : null;
+}).then(() => {
   if (!authUser) return;
   transactions = transactions.map((item) => ({ ...item, expenseType: item.expenseType || item.category || "Outros", taker: item.taker || "Pessoal", location: item.location || "Casa", creditor: item.creditor || "Caixa" }));
   $("#today-label").textContent = todayLabel();

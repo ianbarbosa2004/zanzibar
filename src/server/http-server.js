@@ -44,9 +44,15 @@ export function createHttpServer({ basePath, readData, writeCashClosing, writeCa
       if (auth && apiPath === "/auth/google/callback" && request.method === "GET") return await auth.callback(request, response);
       if (auth && apiPath === "/api/auth/me" && request.method === "GET") {
         const user = await auth.current(request);
-        return send(response, 200, { authenticated: Boolean(user), user: user ? { id: user.id, email: user.email, name: user.name, picture: user.picture, role: user.role, authorized: user.authorized } : null });
+        return send(response, 200, { authenticated: Boolean(user), user: user ? { id: user.id, email: user.email, name: user.name, givenName: user.givenName, familyName: user.familyName, picture: user.picture, lastLoginAt: user.lastLoginAt, role: user.role, authorized: user.authorized } : null });
       }
       if (auth && apiPath === "/api/auth/logout" && request.method === "POST") return auth.logout(request, response);
+      if (auth && apiPath === "/api/auth/heartbeat" && request.method === "POST") {
+        const user = await auth.heartbeat(request);
+        if (!user) return send(response, 401, { error: "Sessão expirada por inatividade." });
+        response.writeHead(204, { "Cache-Control": "no-store" });
+        return response.end();
+      }
       const currentUser = auth ? await auth.current(request) : { role: "admin" };
       const protectedApi = apiPath.startsWith("/api/");
       if (auth && protectedApi && !currentUser) return send(response, 401, { error: "Autenticação necessária." });

@@ -172,18 +172,26 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
   ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
   await dbPool.query(`CREATE TABLE IF NOT EXISTS authorized_users (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, email VARCHAR(190) NOT NULL UNIQUE,
-    display_name VARCHAR(190) NOT NULL, picture_url VARCHAR(500) NULL, google_sub VARCHAR(190) NULL UNIQUE,
+    display_name VARCHAR(190) NOT NULL, given_name VARCHAR(120) NULL, family_name VARCHAR(120) NULL, picture_url VARCHAR(500) NULL, google_sub VARCHAR(190) NULL UNIQUE,
     authorized TINYINT(1) NOT NULL DEFAULT 0, role ENUM('admin', 'user') NOT NULL DEFAULT 'user',
     last_login_at TIMESTAMP NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
   const [[pictureColumn]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'authorized_users' AND column_name = 'picture_url'");
   if (!pictureColumn.total) await dbPool.query("ALTER TABLE authorized_users ADD COLUMN picture_url VARCHAR(500) NULL AFTER display_name");
+  for (const [column, definition] of [["given_name", "VARCHAR(120) NULL"], ["family_name", "VARCHAR(120) NULL"]]) {
+    const [[found]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'authorized_users' AND column_name = ?", [column]);
+    if (!found.total) await dbPool.query(`ALTER TABLE authorized_users ADD COLUMN ${column} ${definition} AFTER display_name`);
+  }
   await dbPool.query(`CREATE TABLE IF NOT EXISTS auth_sessions (
     token_hash CHAR(64) PRIMARY KEY, user_id INT UNSIGNED NOT NULL,
-    expires_at DATETIME NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at DATETIME NOT NULL, last_activity_at DATETIME NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_auth_sessions_user FOREIGN KEY (user_id) REFERENCES authorized_users(id) ON DELETE CASCADE
   ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+  const [[activityColumn]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'auth_sessions' AND column_name = 'last_activity_at'");
+  if (!activityColumn.total) await dbPool.query("ALTER TABLE auth_sessions ADD COLUMN last_activity_at DATETIME NULL AFTER expires_at");
+  await dbPool.query("UPDATE auth_sessions SET last_activity_at = COALESCE(last_activity_at, created_at) WHERE last_activity_at IS NULL");
+  await dbPool.query("ALTER TABLE auth_sessions MODIFY COLUMN last_activity_at DATETIME NOT NULL");
   await dbPool.query("UPDATE transactions t JOIN expense_types c ON c.name = t.expense_type SET t.expense_type_id = c.id WHERE t.expense_type_id IS NULL");
   await dbPool.query("UPDATE transactions t JOIN takers c ON c.name = t.taker SET t.taker_id = c.id WHERE t.taker_id IS NULL");
   await dbPool.query("UPDATE transactions t JOIN locations c ON c.name = t.location SET t.location_id = c.id WHERE t.location_id IS NULL");
@@ -236,7 +244,7 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
 
 export async function findAuthUser(email) {
   if (!dbPool) return memoryAuthUsers.get(String(email).toLowerCase()) || null;
-  const [[row]] = await dbPool.query("SELECT id, email, display_name AS name, picture_url AS picture, google_sub AS googleSub, authorized, role, last_login_at AS lastLoginAt FROM authorized_users WHERE email = ?", [email]);
+  const [[row]] = await dbPool.query("SELECT id, email, display_name AS name, given_name AS givenName, family_name AS familyName, picture_url AS picture, google_sub AS googleSub, authorized, role, last_login_at AS lastLoginAt FROM authorized_users WHERE email = ?", [email]);
   return row ? { ...row, authorized: Boolean(row.authorized) } : null;
 }
 
@@ -244,15 +252,15 @@ export async function saveAuthUser(user) {
   const email = String(user.email).toLowerCase();
   if (!dbPool) {
     const current = memoryAuthUsers.get(email) || { id: memoryAuthUsers.size + 1, email };
-    const saved = { ...current, ...user, email, authorized: Boolean(user.authorized) };
+      const saved = { ...current, ...user, email, authorized: Boolean(user.authorized) };
     memoryAuthUsers.set(email, saved);
     return saved;
   }
-  await dbPool.execute(`INSERT INTO authorized_users (email, display_name, picture_url, google_sub, authorized, role, last_login_at)
-    VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-    ON DUPLICATE KEY UPDATE display_name = VALUES(display_name), picture_url = VALUES(picture_url), google_sub = VALUES(google_sub),
+  await dbPool.execute(`INSERT INTO authorized_users (email, display_name, given_name, family_name, picture_url, google_sub, authorized, role, last_login_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ON DUPLICATE KEY UPDATE display_name = VALUES(display_name), given_name = VALUES(given_name), family_name = VALUES(family_name), picture_url = VALUES(picture_url), google_sub = VALUES(google_sub),
       authorized = VALUES(authorized), role = VALUES(role), last_login_at = CURRENT_TIMESTAMP`,
-  [email, user.name || email, user.picture || null, user.googleSub || null, user.authorized ? 1 : 0, user.role === "admin" ? "admin" : "user"]);
+  [email, user.name || email, user.givenName || null, user.familyName || null, user.picture || null, user.googleSub || null, user.authorized ? 1 : 0, user.role === "admin" ? "admin" : "user"]);
   return findAuthUser(email);
 }
 
@@ -263,25 +271,37 @@ export async function listAuthUsers() {
       .map((session) => session.userId));
     return [...memoryAuthUsers.values()].map((user) => ({ ...user, online: onlineUserIds.has(user.id) }));
   }
-  const [rows] = await dbPool.query(`SELECT id, email, display_name AS name, picture_url AS picture,
+  const [rows] = await dbPool.query(`SELECT id, email, display_name AS name, given_name AS givenName, family_name AS familyName, picture_url AS picture,
     google_sub AS googleSub, authorized, role, last_login_at AS lastLoginAt, created_at AS createdAt,
-    EXISTS (SELECT 1 FROM auth_sessions s WHERE s.user_id = authorized_users.id AND s.expires_at > CURRENT_TIMESTAMP) AS online
+    EXISTS (SELECT 1 FROM auth_sessions s WHERE s.user_id = authorized_users.id
+      AND s.expires_at > CURRENT_TIMESTAMP
+      AND s.last_activity_at > DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 15 MINUTE)
+      AND authorized_users.authorized = 1) AS online
     FROM authorized_users ORDER BY email`);
   return rows.map((row) => ({ ...row, authorized: Boolean(row.authorized), online: Boolean(row.online) }));
 }
 
-export async function saveAuthSession({ tokenHash, userId, expiresAt }) {
+export async function saveAuthSession({ tokenHash, userId, expiresAt, lastActivityAt = new Date() }) {
   if (!dbPool) {
-    memoryAuthSessions.set(tokenHash, { tokenHash, userId, expiresAt });
+    memoryAuthSessions.set(tokenHash, { tokenHash, userId, expiresAt, lastActivityAt });
     return;
   }
-  await dbPool.execute("INSERT INTO auth_sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)", [tokenHash, userId, expiresAt]);
+  await dbPool.execute("INSERT INTO auth_sessions (token_hash, user_id, expires_at, last_activity_at) VALUES (?, ?, ?, ?)", [tokenHash, userId, expiresAt, lastActivityAt]);
 }
 
 export async function findAuthSession(tokenHash) {
   if (!dbPool) return memoryAuthSessions.get(tokenHash) || null;
-  const [[row]] = await dbPool.query("SELECT s.token_hash AS tokenHash, s.expires_at AS expiresAt, u.id, u.email, u.display_name AS name, u.picture_url AS picture, u.authorized, u.role FROM auth_sessions s JOIN authorized_users u ON u.id = s.user_id WHERE s.token_hash = ?", [tokenHash]);
+  const [[row]] = await dbPool.query("SELECT s.token_hash AS tokenHash, s.expires_at AS expiresAt, s.last_activity_at AS lastActivityAt, u.id, u.email, u.display_name AS name, u.given_name AS givenName, u.family_name AS familyName, u.picture_url AS picture, u.authorized, u.role FROM auth_sessions s JOIN authorized_users u ON u.id = s.user_id WHERE s.token_hash = ?", [tokenHash]);
   return row ? { ...row, authorized: Boolean(row.authorized) } : null;
+}
+
+export async function touchAuthSession(tokenHash, lastActivityAt = new Date()) {
+  if (!dbPool) {
+    const session = memoryAuthSessions.get(tokenHash);
+    if (session) session.lastActivityAt = lastActivityAt;
+    return;
+  }
+  await dbPool.execute("UPDATE auth_sessions SET last_activity_at = ? WHERE token_hash = ?", [lastActivityAt, tokenHash]);
 }
 
 export async function deleteAuthSession(tokenHash) {
