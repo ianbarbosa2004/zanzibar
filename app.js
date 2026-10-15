@@ -343,6 +343,14 @@ function renderSummary() {
   const home = locationSummary("Casa");
   const business = locationSummary("Zanzibar");
   const loans = locationSummary("Empréstimos");
+  const sales = summary.items.filter((item) => item.type === "income" && String(item.source || "").trim().toLocaleLowerCase("pt-BR") === "vendas");
+  const otherIncomes = summary.items.filter((item) => item.type === "income" && String(item.source || "").trim().toLocaleLowerCase("pt-BR") !== "vendas");
+  const incomeBreakdown = (items) => ({
+    amount: items.reduce((total, item) => total + Number(item.amount || 0), 0),
+    count: items.length,
+  });
+  const salesSummary = incomeBreakdown(sales);
+  const otherIncomeSummary = incomeBreakdown(otherIncomes);
   const ownerLimitText = (field, label) => `${label} R: ${formatMoney(periodLimits.find((item) => item.owner === "R")?.[field] || 0)}\n${label} P: ${formatMoney(periodLimits.find((item) => item.owner !== "R")?.[field] || 0)}`;
   $("#summary-limit-target").textContent = ownerLimitText("target", "Meta");
   $("#summary-limit-budget").textContent = ownerLimitText("budget", "Orçamento");
@@ -351,6 +359,10 @@ function renderSummary() {
   $("#summary-limit-result").textContent = ownerLimitText("result", "Resultado");
   $("#income-value").textContent = formatMoney(summary.income);
   $("#income-caption").textContent = `${incomeCount} ${incomeCount === 1 ? "entrada registrada" : "entradas registradas"}`;
+  $("#income-sales-value").textContent = formatMoney(salesSummary.amount);
+  $("#income-sales-caption").textContent = `${salesSummary.count} ${salesSummary.count === 1 ? "entrada" : "entradas"}`;
+  $("#income-other-value").textContent = formatMoney(otherIncomeSummary.amount);
+  $("#income-other-caption").textContent = `${otherIncomeSummary.count} ${otherIncomeSummary.count === 1 ? "entrada" : "entradas"}`;
   $("#home-expense-value").textContent = formatMoney(-home.amount);
   $("#home-expense-caption").textContent = `${home.count} ${home.count === 1 ? "despesa registrada" : "despesas registradas"}`;
   $("#business-expense-value").textContent = formatMoney(-business.amount);
