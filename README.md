@@ -9,6 +9,9 @@ Aplicação web para organização financeira pessoal e empresarial. O sistema r
 - Importação em lote de despesas e receitas por CSV, com pré-visualização e validação por linha.
 - Slugs técnicos, sem acentos, para identificar cadastros auxiliares sem substituir os nomes exibidos.
 - Saldo mensal calculado como receitas menos despesas.
+- Resumo do mês em três colunas, com Vendas e cada outra fonte de receita
+  detalhadas separadamente, despesas Casa/Zanzibar/Empréstimos empilhadas e
+  saldo destacado.
 - Categorias, tomadores, locais, credores e fontes de receita.
 - Interface organizada por resumo, movimentações, vendas, relatórios e cadastros, incluindo a área de Empréstimos.
 - Menu **Análise IA** para indicadores financeiros, comparações, histórico e perguntas assistidas, sem mutações automáticas.

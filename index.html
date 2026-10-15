@@ -84,10 +84,7 @@ P: R$ 0,00</strong></div>
                   <span class="summary-icon" aria-hidden="true">↗</span>
                   <div class="summary-card-main">
                     <span>Receitas</span><strong id="income-value">R$ 0,00</strong><em id="income-caption">0 entradas registradas</em>
-                    <div class="summary-breakdown">
-                      <div class="summary-detail-card"><span>Vendas</span><strong id="income-sales-value">R$ 0,00</strong><em id="income-sales-caption">0 entradas</em></div>
-                      <div class="summary-detail-card"><span>Demais receitas</span><strong id="income-other-value">R$ 0,00</strong><em id="income-other-caption">0 entradas</em></div>
-                    </div>
+                    <div id="income-breakdown" class="summary-breakdown"></div>
                   </div>
                 </article>
               </div>
@@ -155,9 +152,9 @@ P: R$ 0,00</strong></div>
             <div class="section-actions"><label class="month-picker"><span>Mês</span><select id="buffet-period-select" aria-label="Selecionar mês do Buffet"></select></label></div>
           </div>
           <div class="summary-grid buffet-summary-grid">
-            <article class="summary-card summary-card-income"><span class="summary-icon" aria-hidden="true">↗</span><div><span>Receitas</span><strong id="buffet-income-total">R$ 0,00</strong><em id="buffet-income-count">0 entradas</em></div></article>
-            <article class="summary-card summary-card-home"><span class="summary-icon" aria-hidden="true">↘</span><div><span>Despesas</span><strong id="buffet-expense-total">R$ 0,00</strong><em id="buffet-expense-count">0 saídas</em></div></article>
-            <article class="summary-card summary-card-balance"><span class="summary-icon" aria-hidden="true">=</span><div><span>Saldo do mês</span><strong id="buffet-balance-total">R$ 0,00</strong></div></article>
+            <article class="summary-card summary-card-income"><span class="summary-icon" aria-hidden="true">↗</span><div class="summary-card-main"><span>Receitas</span><strong id="buffet-income-total">R$ 0,00</strong><em id="buffet-income-count">0 entradas</em></div></article>
+            <article class="summary-card summary-card-home"><span class="summary-icon" aria-hidden="true">↘</span><div class="summary-card-main"><span>Despesas</span><strong id="buffet-expense-total">R$ 0,00</strong><em id="buffet-expense-count">0 saídas</em></div></article>
+            <article class="summary-card summary-card-balance"><span class="summary-icon" aria-hidden="true">=</span><div class="summary-card-main"><span>Saldo do mês</span><strong id="buffet-balance-total">R$ 0,00</strong></div></article>
           </div>
           <div class="buffet-grid">
             <section class="panel buffet-panel"><div class="section-heading"><div><p class="eyebrow">Movimentação</p><h3>Entradas</h3></div><button class="primary-button" id="buffet-new-income" type="button"><span>＋</span> Nova receita</button></div><div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th class="align-right">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody id="buffet-income-list"></tbody></table><div id="buffet-income-empty" class="empty-state" hidden>Nenhuma entrada do Buffet.</div></div></section>

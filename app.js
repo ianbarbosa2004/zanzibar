@@ -290,7 +290,11 @@ function renderBuffet() {
   const expenseTotal = entries.filter(isBuffetExpense).reduce((sum, item) => sum + Number(item.amount || 0), 0);
   $("#buffet-income-total").textContent = formatMoney(incomeTotal);
   $("#buffet-expense-total").textContent = formatMoney(-expenseTotal);
-  $("#buffet-balance-total").textContent = formatMoney(incomeTotal - expenseTotal);
+  const buffetBalance = incomeTotal - expenseTotal;
+  const buffetBalanceValue = $("#buffet-balance-total");
+  buffetBalanceValue.textContent = formatMoney(buffetBalance);
+  buffetBalanceValue.classList.toggle("value-positive", buffetBalance >= 0);
+  buffetBalanceValue.classList.toggle("value-negative", buffetBalance < 0);
   $("#buffet-income-count").textContent = `${entries.filter(isBuffetIncome).length} entradas`;
   $("#buffet-expense-count").textContent = `${entries.filter(isBuffetExpense).length} saídas`;
   const entryRows = (items, kind) => items.map((item) => `<tr><td>${escapeHtml(formatTransactionDate(item.date))}</td><td><div>${escapeHtml(item.description)}</div>${item.observation ? `<small>${escapeHtml(item.observation)}</small>` : ""}</td><td class="align-right ${kind === "income" ? "income-text" : "expense-text"}">${kind === "income" ? "+ " : "- "}${formatMoney(item.amount)}</td><td class="align-right"><button class="action-button" data-edit-buffet="${escapeHtml(String(item.id))}" aria-label="Editar ${escapeHtml(item.description)}">•••</button></td></tr>`).join("");
@@ -350,7 +354,12 @@ function renderSummary() {
     count: items.length,
   });
   const salesSummary = incomeBreakdown(sales);
-  const otherIncomeSummary = incomeBreakdown(otherIncomes);
+  const incomeGroups = [
+    ["Vendas", salesSummary],
+    ...[...new Set(otherIncomes.map((item) => String(item.source || "").trim() || "Sem fonte"))]
+      .sort((left, right) => left.localeCompare(right, "pt-BR"))
+      .map((source) => [source, incomeBreakdown(otherIncomes.filter((item) => (String(item.source || "").trim() || "Sem fonte") === source))]),
+  ];
   const ownerLimitText = (field, label) => `${label} R: ${formatMoney(periodLimits.find((item) => item.owner === "R")?.[field] || 0)}\n${label} P: ${formatMoney(periodLimits.find((item) => item.owner !== "R")?.[field] || 0)}`;
   $("#summary-limit-target").textContent = ownerLimitText("target", "Meta");
   $("#summary-limit-budget").textContent = ownerLimitText("budget", "Orçamento");
@@ -359,10 +368,7 @@ function renderSummary() {
   $("#summary-limit-result").textContent = ownerLimitText("result", "Resultado");
   $("#income-value").textContent = formatMoney(summary.income);
   $("#income-caption").textContent = `${incomeCount} ${incomeCount === 1 ? "entrada registrada" : "entradas registradas"}`;
-  $("#income-sales-value").textContent = formatMoney(salesSummary.amount);
-  $("#income-sales-caption").textContent = `${salesSummary.count} ${salesSummary.count === 1 ? "entrada" : "entradas"}`;
-  $("#income-other-value").textContent = formatMoney(otherIncomeSummary.amount);
-  $("#income-other-caption").textContent = `${otherIncomeSummary.count} ${otherIncomeSummary.count === 1 ? "entrada" : "entradas"}`;
+  $("#income-breakdown").innerHTML = incomeGroups.map(([source, sourceSummary]) => `<div class="summary-detail-card"><span>${escapeHtml(source)}</span><strong>${formatMoney(sourceSummary.amount)}</strong><em>${sourceSummary.count} ${sourceSummary.count === 1 ? "entrada" : "entradas"}</em></div>`).join("");
   $("#home-expense-value").textContent = formatMoney(-home.amount);
   $("#home-expense-caption").textContent = `${home.count} ${home.count === 1 ? "despesa registrada" : "despesas registradas"}`;
   $("#business-expense-value").textContent = formatMoney(-business.amount);
