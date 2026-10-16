@@ -580,29 +580,6 @@ async function loadMarkdownDocuments() {
         return;
       }
 
-      function selectedTaskDate() {
-        return $("#task-date")?.value || localDate();
-      }
-
-      function renderTasks() {
-        const active = tasks.filter((task) => !task.archived);
-        const archived = tasks.filter((task) => task.archived);
-        $("#active-task-count").textContent = active.length ? `${active.length} ${active.length === 1 ? "tarefa" : "tarefas"}` : "";
-        $("#archived-task-count").textContent = archived.length ? `${archived.length} ${archived.length === 1 ? "arquivada" : "arquivadas"}` : "";
-        $("#active-task-list").innerHTML = active.length
-          ? active.map((task) => `<label class="task-row"><input type="checkbox" data-complete-task="${task.id}" /><span>${escapeHtml(task.title)}</span></label>`).join("")
-          : '<p class="empty-state">Nenhuma tarefa em aberto neste dia.</p>';
-        $("#archived-task-list").innerHTML = archived.length
-          ? archived.map((task) => `<div class="task-row task-row-archived"><span>${escapeHtml(task.title)}</span><small>Concluída</small></div>`).join("")
-          : '<p class="empty-state">As tarefas concluídas aparecerão aqui.</p>';
-      }
-
-      async function loadTasks() {
-        const response = await fetch(`${TASKS_URL}?date=${encodeURIComponent(selectedTaskDate())}`);
-        if (!response.ok) throw new Error("Não foi possível carregar as tarefas.");
-        tasks = (await response.json()).tasks || [];
-        renderTasks();
-      }
       viewer.innerHTML = '<p class="muted">Carregando documento...</p>';
       try {
         const documentPath = decodeURIComponent(select.value);
@@ -618,6 +595,40 @@ async function loadMarkdownDocuments() {
     viewer.innerHTML = `<p class="error-text">${escapeHtml(error.message)}</p>`;
   }
 }
+
+function selectedTaskDate() {
+  return $("#task-date")?.value || localDate();
+}
+
+function renderTasks() {
+  const active = tasks.filter((task) => !task.archived);
+  const archived = tasks.filter((task) => task.archived);
+  $("#active-task-count").textContent = active.length ? `${active.length} ${active.length === 1 ? "tarefa" : "tarefas"}` : "";
+  $("#archived-task-count").textContent = archived.length ? `${archived.length} ${archived.length === 1 ? "arquivada" : "arquivadas"}` : "";
+  $("#active-task-list").innerHTML = active.length
+    ? active.map((task) => `<label class="task-row"><input type="checkbox" data-complete-task="${task.id}" /><span>${escapeHtml(task.title)}</span></label>`).join("")
+    : '<p class="empty-state">Nenhuma tarefa em aberto neste dia.</p>';
+  $("#archived-task-list").innerHTML = archived.length
+    ? archived.map((task) => `<div class="task-row task-row-archived"><span>${escapeHtml(task.title)}</span><small>Concluída</small></div>`).join("")
+    : '<p class="empty-state">As tarefas concluídas aparecerão aqui.</p>';
+}
+
+async function loadTasks() {
+  const response = await fetch(`${TASKS_URL}?date=${encodeURIComponent(selectedTaskDate())}`);
+  if (!response.ok) throw new Error("Não foi possível carregar as tarefas.");
+  tasks = (await response.json()).tasks || [];
+  renderTasks();
+}
+
+function shiftTaskDate(days) {
+  const input = $("#task-date");
+  const current = input.value || localDate();
+  const [year, month, day] = current.split("-").map(Number);
+  const shifted = new Date(Date.UTC(year, month - 1, day + days));
+  input.value = shifted.toISOString().slice(0, 10);
+  loadTasks().catch((error) => showFeedback(error.message));
+}
+
 function normalizeCatalogValue(value) {
   const text = String(value || "");
   const repaired = /[ÃÂ]/.test(text)
@@ -2171,6 +2182,8 @@ $("#messaging-composer")?.addEventListener("submit", async (event) => {
   }
 });
 $("#task-date")?.addEventListener("change", () => loadTasks().catch((error) => showFeedback(error.message)));
+$("#task-date-previous")?.addEventListener("click", () => shiftTaskDate(-1));
+$("#task-date-next")?.addEventListener("click", () => shiftTaskDate(1));
 $("#task-form")?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.currentTarget;

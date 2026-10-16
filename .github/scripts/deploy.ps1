@@ -89,9 +89,10 @@ try {
     generatedAt = (Get-Date).ToUniversalTime().ToString("o")
   } | ConvertTo-Json -Compress | Set-Content -LiteralPath "dist/deploy-version.json" -Encoding ascii
 
-  Invoke-Checked "ssh" @($connectionOptions + @($remoteTarget, "mkdir -p $remoteRoot/backups $remoteRoot/tmp $remoteRoot/src $remoteRoot/scripts $remoteRoot/docs $remoteRoot/.github $remoteRoot/.agents; rm -rf $remoteRoot/docs $remoteRoot/.github $remoteRoot/.agents; mkdir -p $remoteRoot/docs $remoteRoot/.github $remoteRoot/.agents; for file in data.json settings.json incomes.json cash-closings.json .htaccess; do if [ -f $remoteRoot/`$file ]; then cp $remoteRoot/`$file $remoteRoot/backups/`$file-$backupStamp; fi; done"))
+  Invoke-Checked "ssh" @($connectionOptions + @($remoteTarget, "mkdir -p $remoteRoot/backups $remoteRoot/tmp $remoteRoot/src $remoteRoot/scripts $remoteRoot/docs $remoteRoot/.github; rm -rf $remoteRoot/docs $remoteRoot/.github $remoteRoot/.agents; mkdir -p $remoteRoot/docs $remoteRoot/.github; for file in data.json settings.json incomes.json cash-closings.json .htaccess; do if [ -f $remoteRoot/`$file ]; then cp $remoteRoot/`$file $remoteRoot/backups/`$file-$backupStamp; fi; done"))
   Invoke-Checked "ssh" @($connectionOptions + @($remoteTarget, "rm -rf $remoteRoot/dist && mkdir -p $remoteRoot/dist"))
   New-Item -ItemType File -Path $restartPath -Force | Out-Null
+  $agentsUpload = if (Test-Path -LiteralPath ".agents") { "put -r .agents" } else { "# .agents removido" }
   @"
 cd $remoteRoot
 put -r dist
@@ -102,7 +103,7 @@ put README.md
 put CONTRIBUTING.md
 put -r docs
 put -r .github
-put -r .agents
+$agentsUpload
 put package.json
 put package-lock.json
 put $restartPath tmp/restart.txt

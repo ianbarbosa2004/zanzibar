@@ -68,7 +68,14 @@
         <section id="tarefas" class="tasks-section panel" data-page="tarefas" hidden>
           <div class="section-heading">
             <div><p class="eyebrow">Organização diária</p><h2>Tarefas</h2><p class="section-description">Registre o que precisa ser feito hoje. Ao marcar uma tarefa, ela vai para o arquivo do dia.</p></div>
-            <label class="month-picker"><span>Dia</span><input id="task-date" type="date" aria-label="Selecionar dia das tarefas" /></label>
+            <div class="task-date-picker">
+              <span>Dia</span>
+              <div class="task-date-controls">
+                <button class="secondary-button task-date-button" id="task-date-previous" type="button" aria-label="Dia anterior">←</button>
+                <input id="task-date" type="date" aria-label="Selecionar dia das tarefas" />
+                <button class="secondary-button task-date-button" id="task-date-next" type="button" aria-label="Próximo dia">→</button>
+              </div>
+            </div>
           </div>
           <form id="task-form" class="task-form">
             <label for="task-title">Nova tarefa<input id="task-title" name="title" maxlength="240" autocomplete="off" placeholder="Ex.: conferir fechamento do dia" required /></label>
