@@ -1,5 +1,5 @@
 import { cashClosingsFile, dataFile, defaultSettings, incomesFile, limitsFile, localSnapshotFile, localSnapshotMode, monthlyCashClosingsFile, settingsFile } from "./config.js";
-import { dbPool, consumeTelegramLink, createTelegramLinkCode, deleteAuthSession, findAuthSession, findAuthUser, initializeDatabase, listAuthUsers, listMessagingUsers, processTelegramOutbox, readDatabase, readFinancialInsightHistory, readMessagingConversations, readMessagingFile, readMessagingMessages, refreshBillingsData, saveAuthSession, saveAuthUser, saveCashClosing, saveCatalog, saveFinancialInsightHistory, saveLimit, saveMessageFile, saveMessage, saveMessagingConversation, saveTransaction, sendTelegramTest, touchAuthSession } from "./database/repository.js";
+import { archiveTask, dbPool, consumeTelegramLink, createTelegramLinkCode, deleteAuthSession, findAuthSession, findAuthUser, initializeDatabase, listAuthUsers, listMessagingUsers, listTasks, processTelegramOutbox, readDatabase, readFinancialInsightHistory, readMessagingConversations, readMessagingFile, readMessagingMessages, refreshBillingsData, saveAuthSession, saveAuthUser, saveCashClosing, saveCatalog, saveFinancialInsightHistory, saveLimit, saveMessageFile, saveMessage, saveMessagingConversation, saveTask, saveTransaction, sendTelegramTest, touchAuthSession } from "./database/repository.js";
 import { readJson } from "./json-store.js";
 
 export { dbPool };
@@ -8,6 +8,18 @@ export { readFinancialInsightHistory, saveFinancialInsightHistory };
 export { consumeTelegramLink, createTelegramLinkCode, listMessagingUsers, readMessagingConversations, readMessagingFile, readMessagingMessages, saveMessageFile, saveMessage, saveMessagingConversation };
 export { processTelegramOutbox };
 export { sendTelegramTest };
+
+export async function readTasks(userId, date) {
+  return listTasks(userId, date);
+}
+
+export async function writeTask(userId, task) {
+  return saveTask(userId, task);
+}
+
+export async function completeTask(userId, id) {
+  return archiveTask(userId, id);
+}
 
 export async function initializeDataStore() {
   if (localSnapshotMode) return;

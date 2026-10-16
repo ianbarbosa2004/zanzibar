@@ -16,6 +16,7 @@ import { buffetDailyClosings, buffetEntries, buffetMonthlyClosings, isBuffetExpe
 
 const { expenseTypes: defaultExpenseTypes, takers: defaultTakers, locations: defaultLocations, creditors: defaultCreditors, paymentMethods: defaultPaymentMethods, incomeSources: defaultIncomeSources } = catalogDefaults;
 const API_URL = new URL("api/data", document.baseURI).pathname;
+const TASKS_URL = API_URL.replace(/data$/, "tasks");
 const FINANCIAL_INSIGHTS_URL = API_URL.replace(/data$/, "financial-insights");
 let transactions = [];
 let expenseTypes = [...defaultExpenseTypes];
@@ -38,6 +39,7 @@ let financialAdvisorBusy = false;
 let latestFinancialInsightResult = null;
 let messagingConversationId = null;
 let messagingPendingFileIds = [];
+let tasks = [];
 const initialState = defaultAppState({
   expenseTypes: defaultExpenseTypes,
   takers: defaultTakers,
@@ -577,9 +579,34 @@ async function loadMarkdownDocuments() {
         viewer.innerHTML = '<p class="empty-state">Selecione um documento para visualizar.</p>';
         return;
       }
+
+      function selectedTaskDate() {
+        return $("#task-date")?.value || localDate();
+      }
+
+      function renderTasks() {
+        const active = tasks.filter((task) => !task.archived);
+        const archived = tasks.filter((task) => task.archived);
+        $("#active-task-count").textContent = active.length ? `${active.length} ${active.length === 1 ? "tarefa" : "tarefas"}` : "";
+        $("#archived-task-count").textContent = archived.length ? `${archived.length} ${archived.length === 1 ? "arquivada" : "arquivadas"}` : "";
+        $("#active-task-list").innerHTML = active.length
+          ? active.map((task) => `<label class="task-row"><input type="checkbox" data-complete-task="${task.id}" /><span>${escapeHtml(task.title)}</span></label>`).join("")
+          : '<p class="empty-state">Nenhuma tarefa em aberto neste dia.</p>';
+        $("#archived-task-list").innerHTML = archived.length
+          ? archived.map((task) => `<div class="task-row task-row-archived"><span>${escapeHtml(task.title)}</span><small>Concluída</small></div>`).join("")
+          : '<p class="empty-state">As tarefas concluídas aparecerão aqui.</p>';
+      }
+
+      async function loadTasks() {
+        const response = await fetch(`${TASKS_URL}?date=${encodeURIComponent(selectedTaskDate())}`);
+        if (!response.ok) throw new Error("Não foi possível carregar as tarefas.");
+        tasks = (await response.json()).tasks || [];
+        renderTasks();
+      }
       viewer.innerHTML = '<p class="muted">Carregando documento...</p>';
       try {
-        const response = await fetch(`${DOCUMENTATION_URL}/${select.value}`);
+        const documentPath = decodeURIComponent(select.value);
+        const response = await fetch(`${DOCUMENTATION_URL}?path=${encodeURIComponent(documentPath)}`);
         if (!response.ok) throw new Error("Não foi possível carregar o documento.");
         const document = await response.json();
         viewer.innerHTML = `<p class="markdown-document-path">${escapeHtml(document.path)}</p>${renderMarkdown(document.content)}`;
@@ -2143,7 +2170,41 @@ $("#messaging-composer")?.addEventListener("submit", async (event) => {
     submit.disabled = false;
   }
 });
-const pages = ["resumo", "lancamentos", "vendas", "faturamento", "relatorios", "cadastros", "ferramentas", "analise-ia", "mensagens", "buffet"];
+$("#task-date")?.addEventListener("change", () => loadTasks().catch((error) => showFeedback(error.message)));
+$("#task-form")?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const input = $("#task-title");
+  const submit = form.querySelector("button[type=submit]");
+  try {
+    submit.disabled = true;
+    const response = await fetch(TASKS_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: selectedTaskDate(), title: input.value }) });
+    if (!response.ok) throw new Error((await response.json()).error || "Não foi possível adicionar a tarefa.");
+    input.value = "";
+    await loadTasks();
+    showFeedback("Tarefa adicionada.");
+  } catch (error) {
+    showFeedback(error.message);
+  } finally {
+    submit.disabled = false;
+  }
+});
+$("#active-task-list")?.addEventListener("change", async (event) => {
+  const checkbox = event.target.closest("[data-complete-task]");
+  if (!checkbox || !checkbox.checked) return;
+  checkbox.disabled = true;
+  try {
+    const response = await fetch(`${TASKS_URL}/${checkbox.dataset.completeTask}`, { method: "PUT" });
+    if (!response.ok) throw new Error((await response.json()).error || "Não foi possível arquivar a tarefa.");
+    await loadTasks();
+    showFeedback("Tarefa concluída e arquivada.");
+  } catch (error) {
+    checkbox.checked = false;
+    checkbox.disabled = false;
+    showFeedback(error.message);
+  }
+});
+const pages = ["resumo", "lancamentos", "vendas", "faturamento", "relatorios", "cadastros", "ferramentas", "analise-ia", "mensagens", "tarefas", "buffet"];
 function renderPage() {
   const page = pages.includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : "resumo";
   document.querySelectorAll("[data-page]").forEach((section) => { section.hidden = section.dataset.page !== page; });
@@ -2186,5 +2247,6 @@ loadAuth().then((authenticated) => {
   $("#greeting").textContent = `Olá, ${accountName} ✳`;
   $("#account-email").textContent = authUser.email;
   $("#last-update").textContent = formatLastTransactionUpdate(lastTransactionUpdate);
-  setupFormOptions(); render(); renderReports(); renderRegistries(); renderCashClosings(); renderBillings(); renderLimits(); renderAuthorizedUsers(); initializeMessaging(); renderPage();
+  $("#task-date").value = localDate();
+  setupFormOptions(); render(); renderReports(); renderRegistries(); renderCashClosings(); renderBillings(); renderLimits(); renderAuthorizedUsers(); initializeMessaging(); renderTasks(); loadTasks().catch((error) => showFeedback(error.message)); renderPage();
 }).catch((error) => { console.error("Falha ao inicializar a aplicação.", error); showFeedback(`Não foi possível carregar os dados iniciais: ${error.message}`); });

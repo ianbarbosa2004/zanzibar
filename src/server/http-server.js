@@ -71,7 +71,7 @@ function staticCacheHeaders(file) {
   return { "Cache-Control": "no-cache" };
 }
 
-export function createHttpServer({ basePath, readData, writeCashClosing, writeCatalog, writeLimit, writeMonthlyCashClosings, writeTransaction, writeBillings, readStaticFile, listMarkdownFiles, readMarkdownFile, auth, analyzeFinancialInsights, compareFinancialInsights, askFinancialQuestion, saveFinancialInsightHistory, readFinancialInsightHistory, listMessagingUsers, readMessagingConversations, readMessagingFile, readMessagingMessages, saveMessageFile, saveMessage, saveMessagingConversation, createTelegramLinkCode, consumeTelegramLink, sendTelegramTest, telegramBotToken = "", telegramWebhookSecret = "", logger = console }) {
+export function createHttpServer({ basePath, readData, writeCashClosing, writeCatalog, writeLimit, writeMonthlyCashClosings, writeTransaction, writeBillings, writeTask, listTasks, archiveTask, readStaticFile, listMarkdownFiles, readMarkdownFile, auth, analyzeFinancialInsights, compareFinancialInsights, askFinancialQuestion, saveFinancialInsightHistory, readFinancialInsightHistory, listMessagingUsers, readMessagingConversations, readMessagingFile, readMessagingMessages, saveMessageFile, saveMessage, saveMessagingConversation, createTelegramLinkCode, consumeTelegramLink, sendTelegramTest, telegramBotToken = "", telegramWebhookSecret = "", logger = console }) {
   return createServer(async (request, response) => {
     try {
       const pathname = new URL(request.url || "/", "http://localhost").pathname;
@@ -106,10 +106,11 @@ export function createHttpServer({ basePath, readData, writeCashClosing, writeCa
       if (auth && protectedApi && !currentUser) return send(response, 401, { error: "Autenticação necessária." });
       if (createTelegramLinkCode && apiPath === "/api/telegram/link-code" && request.method === "POST") return send(response, 200, await createTelegramLinkCode(currentUser.id));
       if (sendTelegramTest && apiPath === "/api/telegram/test" && request.method === "POST") return send(response, 200, await sendTelegramTest({ userId: currentUser.id, token: telegramBotToken }));
-      if (listMarkdownFiles && apiPath === "/api/documentation" && request.method === "GET") return send(response, 200, { files: await listMarkdownFiles() });
+      const documentationPath = new URL(request.url || "/", "http://localhost").searchParams.get("path");
+      if (listMarkdownFiles && apiPath === "/api/documentation" && !documentationPath && request.method === "GET") return send(response, 200, { files: await listMarkdownFiles() });
       const markdownFile = apiPath.match(/^\/api\/documentation\/(.+)$/);
-      if (markdownFile && readMarkdownFile && request.method === "GET") {
-        const file = await readMarkdownFile(decodeURIComponent(markdownFile[1]));
+      if ((markdownFile || documentationPath) && readMarkdownFile && request.method === "GET") {
+        const file = await readMarkdownFile(documentationPath || decodeURIComponent(markdownFile[1]));
         if (!file) return send(response, 404, { error: "Documento não encontrado." });
         return send(response, 200, file);
       }
@@ -141,6 +142,17 @@ export function createHttpServer({ basePath, readData, writeCashClosing, writeCa
         return send(response, 200, file.data, file.mimeType, { "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(file.originalName)}` });
       }
       if (apiPath === "/api/data" && request.method === "GET") return send(response, 200, await readData());
+      if (listTasks && apiPath === "/api/tasks" && request.method === "GET") {
+        const date = new URL(request.url || "/", "http://localhost").searchParams.get("date");
+        return send(response, 200, { tasks: await listTasks(currentUser.id, date) });
+      }
+      if (writeTask && apiPath === "/api/tasks" && request.method === "POST") {
+        return send(response, 201, { task: await writeTask(currentUser.id, await readBody(request)) });
+      }
+      const taskPath = apiPath.match(/^\/api\/tasks\/(\d+)$/);
+      if (taskPath && archiveTask && request.method === "PUT") {
+        return send(response, 200, { task: await archiveTask(currentUser.id, Number(taskPath[1])) });
+      }
       if (compareFinancialInsights && apiPath === "/api/financial-insights/compare" && request.method === "GET") {
         const query = new URL(request.url || "/", "http://localhost").searchParams;
         return send(response, 200, await compareFinancialInsights({

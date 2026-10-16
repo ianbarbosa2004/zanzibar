@@ -35,6 +35,7 @@
           <a class="nav-link" href="#ferramentas"><span>⚒</span> Ferramentas</a>
           <a class="nav-link" href="#analise-ia"><span>✦</span> Análise IA</a>
           <a class="nav-link" href="#mensagens"><span>✉</span> Mensagens</a>
+          <a class="nav-link" href="#tarefas"><span>✓</span> Tarefas</a>
         </nav>
       </aside>
 
@@ -64,6 +65,26 @@
         </header>
 
         <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
+        <section id="tarefas" class="tasks-section panel" data-page="tarefas" hidden>
+          <div class="section-heading">
+            <div><p class="eyebrow">Organização diária</p><h2>Tarefas</h2><p class="section-description">Registre o que precisa ser feito hoje. Ao marcar uma tarefa, ela vai para o arquivo do dia.</p></div>
+            <label class="month-picker"><span>Dia</span><input id="task-date" type="date" aria-label="Selecionar dia das tarefas" /></label>
+          </div>
+          <form id="task-form" class="task-form">
+            <label for="task-title">Nova tarefa<input id="task-title" name="title" maxlength="240" autocomplete="off" placeholder="Ex.: conferir fechamento do dia" required /></label>
+            <button class="primary-button" type="submit">Adicionar tarefa</button>
+          </form>
+          <div class="tasks-layout">
+            <section class="task-list-panel" aria-labelledby="active-tasks-title">
+              <div class="task-list-heading"><h3 id="active-tasks-title">Em aberto</h3><span id="active-task-count" class="muted"></span></div>
+              <div id="active-task-list" class="task-list"></div>
+            </section>
+            <section class="task-list-panel task-archive-panel" aria-labelledby="archived-tasks-title">
+              <div class="task-list-heading"><h3 id="archived-tasks-title">Arquivo do dia</h3><span id="archived-task-count" class="muted"></span></div>
+              <div id="archived-task-list" class="task-list"></div>
+            </section>
+          </div>
+        </section>
         <section id="visao-geral" class="overview" data-page="resumo">
           <div class="summary-panel">
             <div class="summary-heading">

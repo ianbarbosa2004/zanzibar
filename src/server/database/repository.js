@@ -88,6 +88,8 @@ const memoryMessagingFiles = new Map();
 let nextMessagingId = 1;
 const memoryTelegramLinks = new Map();
 const memoryTelegramCodes = new Map();
+const memoryTasks = new Map();
+let nextTaskId = 1;
 
 export async function initializeDatabase({ readJson, dataFile, settingsFile, incomesFile, cashClosingsFile, monthlyCashClosingsFile, limitsFile, defaultSettings }) {
   if (!dbPool) return;
@@ -259,6 +261,14 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
     authorized TINYINT(1) NOT NULL DEFAULT 0, role ENUM('admin', 'user') NOT NULL DEFAULT 'user',
     last_login_at TIMESTAMP NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+  await dbPool.query(`CREATE TABLE IF NOT EXISTS task_items (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, user_id INT UNSIGNED NOT NULL, task_date DATE NOT NULL,
+    title VARCHAR(240) NOT NULL, status ENUM('active', 'archived') NOT NULL DEFAULT 'active',
+    completed_at DATETIME NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_task_items_user_date_status (user_id, task_date, status),
+    CONSTRAINT fk_task_items_user FOREIGN KEY (user_id) REFERENCES authorized_users(id) ON DELETE CASCADE
   ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
   const [[pictureColumn]] = await dbPool.query("SELECT COUNT(*) AS total FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'authorized_users' AND column_name = 'picture_url'");
   if (!pictureColumn.total) await dbPool.query("ALTER TABLE authorized_users ADD COLUMN picture_url VARCHAR(500) NULL AFTER display_name");
@@ -526,6 +536,87 @@ export async function listMessagingUsers(userId) {
     [userId],
   );
   return rows;
+}
+
+function taskDate(value) {
+  const date = String(value || "");
+  const match = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const parsed = match ? new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]))) : null;
+  if (!parsed || parsed.toISOString().slice(0, 10) !== date) {
+    const error = new Error("Data da tarefa inválida.");
+    error.statusCode = 400;
+    throw error;
+  }
+  return date;
+}
+
+function taskTitle(value) {
+  const title = String(value || "").trim();
+  if (!title || title.length > 240) {
+    const error = new Error("A tarefa deve ter entre 1 e 240 caracteres.");
+    error.statusCode = 400;
+    throw error;
+  }
+  return title;
+}
+
+export async function listTasks(userId, date) {
+  const taskDay = taskDate(date);
+  if (!dbPool) {
+    return [...(memoryTasks.get(Number(userId)) || [])]
+      .filter((task) => task.date === taskDay)
+      .sort((left, right) => Number(left.archived) - Number(right.archived) || left.id - right.id);
+  }
+  const [rows] = await dbPool.query(
+    `SELECT id, task_date AS date, title, status, completed_at AS completedAt, created_at AS createdAt, updated_at AS updatedAt
+     FROM task_items WHERE user_id = ? AND task_date = ?
+     ORDER BY status = 'active' DESC, created_at ASC, id ASC`,
+    [Number(userId), taskDay],
+  );
+  return rows.map((task) => ({ ...task, id: Number(task.id), archived: task.status === "archived" }));
+}
+
+export async function saveTask(userId, { title, date }) {
+  const taskDay = taskDate(date);
+  const taskName = taskTitle(title);
+  if (!dbPool) {
+    const tasks = memoryTasks.get(Number(userId)) || [];
+    const task = { id: nextTaskId++, date: taskDay, title: taskName, status: "active", archived: false, completedAt: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    memoryTasks.set(Number(userId), [...tasks, task]);
+    return task;
+  }
+  const [result] = await dbPool.execute("INSERT INTO task_items (user_id, task_date, title) VALUES (?, ?, ?)", [Number(userId), taskDay, taskName]);
+  const [[task]] = await dbPool.query(
+    `SELECT id, task_date AS date, title, status, completed_at AS completedAt, created_at AS createdAt, updated_at AS updatedAt
+     FROM task_items WHERE id = ?`,
+    [result.insertId],
+  );
+  return { ...task, id: Number(task.id), archived: false };
+}
+
+export async function archiveTask(userId, id) {
+  const taskId = Number(id);
+  if (!Number.isInteger(taskId) || taskId < 1) throw new Error("Tarefa inválida.");
+  if (!dbPool) {
+    const tasks = memoryTasks.get(Number(userId)) || [];
+    const index = tasks.findIndex((task) => task.id === taskId && !task.archived);
+    if (index < 0) throw new Error("Tarefa não encontrada.");
+    const updated = { ...tasks[index], status: "archived", archived: true, completedAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    tasks[index] = updated;
+    memoryTasks.set(Number(userId), tasks);
+    return updated;
+  }
+  const [result] = await dbPool.execute(
+    "UPDATE task_items SET status = 'archived', completed_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ? AND status = 'active'",
+    [taskId, Number(userId)],
+  );
+  if (!result.affectedRows) throw new Error("Tarefa não encontrada.");
+  const [[task]] = await dbPool.query(
+    `SELECT id, task_date AS date, title, status, completed_at AS completedAt, created_at AS createdAt, updated_at AS updatedAt
+     FROM task_items WHERE id = ? AND user_id = ?`,
+    [taskId, Number(userId)],
+  );
+  return { ...task, id: Number(task.id), archived: true };
 }
 
 export async function saveMessagingConversation({ userId, participantId }) {

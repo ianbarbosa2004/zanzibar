@@ -68,6 +68,22 @@ html { overflow-y: scroll; }
 .messaging-composer textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-color: #87c49f; }
 .messaging-composer-actions { display: flex; justify-content: flex-end; gap: 9px; }
 .messaging-file-label { cursor: pointer; }
+.tasks-section { display: grid; gap: 20px; }
+.tasks-section .section-heading { align-items: end; }
+.tasks-section .month-picker input { min-width: 150px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; color: var(--ink); background: #fbfcfb; font: inherit; font-size: 12px; font-weight: 600; }
+.task-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: #fbfcfb; }
+.task-form label { display: grid; gap: 6px; color: var(--muted); font-size: 10px; font-weight: 700; }
+.task-form input { width: 100%; min-height: 42px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; color: var(--ink); background: #fff; font-size: 12px; }
+.tasks-layout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.task-list-panel { min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.task-list-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.task-list-heading h3 { margin: 0; color: var(--ink); font-size: 14px; }
+.task-list { display: grid; gap: 8px; margin-top: 12px; }
+.task-row { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 11px 12px; border: 1px solid #edf1ee; border-radius: 9px; color: var(--ink); background: #fbfdfb; font-size: 11px; }
+.task-row input { flex: 0 0 auto; width: 16px; height: 16px; accent-color: var(--accent); }
+.task-row span { min-width: 0; overflow-wrap: anywhere; }
+.task-row-archived { justify-content: space-between; color: #6f7e76; text-decoration: line-through; }
+.task-row-archived small { flex: 0 0 auto; color: var(--accent-dark); font-size: 9px; text-decoration: none; }
 @media (max-width: 700px) {
   .financial-advisor-panel { padding: 18px; }
   .financial-advisor-controls { display: grid; grid-template-columns: 1fr; align-items: stretch; }
@@ -79,6 +95,9 @@ html { overflow-y: scroll; }
   .financial-advisor-question button { width: 100%; }
   .messaging-layout { grid-template-columns: 1fr; }
   .messaging-message { max-width: 92%; }
+  .tasks-section .section-heading { align-items: stretch; }
+  .task-form, .tasks-layout { grid-template-columns: 1fr; }
+  .task-form .primary-button { width: 100%; }
 }
 body { margin: 0; background: #f6f8f7; }
 button, input, select, textarea { font: inherit; }

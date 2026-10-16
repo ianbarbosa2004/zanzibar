@@ -61,7 +61,11 @@ test("lista e abre documentos Markdown sem expor a rota como download", async (t
     basePath: "/clareza",
     auth: { current: async () => ({ id: 7, role: "user", authorized: true }) },
     listMarkdownFiles: async () => ["README.md", "docs/DEPLOYMENT.md"],
-    readMarkdownFile: async (path) => path === "README.md" ? { path, content: "# Clareza" } : null,
+    readMarkdownFile: async (path) => path === "README.md"
+      ? { path, content: "# Clareza" }
+      : path === "docs/DEPLOYMENT.md"
+        ? { path, content: "# Deploy" }
+        : null,
     readData: async () => ({}),
     readStaticFile: async () => null,
     logger: { error: () => {} },
@@ -76,6 +80,50 @@ test("lista e abre documentos Markdown sem expor a rota como download", async (t
   const document = await fetch(`${base}/README.md`);
   assert.equal(document.status, 200);
   assert.deepEqual(await document.json(), { path: "README.md", content: "# Clareza" });
+  const nestedDocument = await fetch(`${base}?path=${encodeURIComponent("docs/DEPLOYMENT.md")}`);
+  assert.equal(nestedDocument.status, 200);
+  assert.deepEqual(await nestedDocument.json(), { path: "docs/DEPLOYMENT.md", content: "# Deploy" });
+});
+
+test("cria, lista e arquiva tarefas do usuário", async (t) => {
+  const calls = [];
+  const tasksServer = createHttpServer({
+    basePath: "/clareza",
+    auth: { current: async () => ({ id: 9, role: "user", authorized: true }) },
+    listTasks: async (userId, date) => {
+      calls.push(["list", userId, date]);
+      return [{ id: 4, date, title: "Conferir caixa", status: "active", archived: false }];
+    },
+    writeTask: async (userId, task) => {
+      calls.push(["create", userId, task]);
+      return { id: 4, date: task.date, title: task.title, status: "active", archived: false };
+    },
+    archiveTask: async (userId, id) => {
+      calls.push(["archive", userId, id]);
+      return { id, date: "2026-10-15", title: "Conferir caixa", status: "archived", archived: true };
+    },
+    readData: async () => ({}),
+    readStaticFile: async () => null,
+    logger: { error: () => {} },
+  });
+  t.after(() => tasksServer.close());
+  tasksServer.listen(0);
+  await once(tasksServer, "listening");
+  const base = `http://localhost:${tasksServer.address().port}/clareza/api/tasks`;
+  const created = await fetch(base, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: "2026-10-15", title: "Conferir caixa" }) });
+  assert.equal(created.status, 201);
+  assert.equal((await created.json()).task.title, "Conferir caixa");
+  const listed = await fetch(`${base}?date=2026-10-15`);
+  assert.equal(listed.status, 200);
+  assert.equal((await listed.json()).tasks[0].title, "Conferir caixa");
+  const archived = await fetch(`${base}/4`, { method: "PUT" });
+  assert.equal(archived.status, 200);
+  assert.equal((await archived.json()).task.archived, true);
+  assert.deepEqual(calls, [
+    ["create", 9, { date: "2026-10-15", title: "Conferir caixa" }],
+    ["list", 9, "2026-10-15"],
+    ["archive", 9, 4],
+  ]);
 });
 
 test("atualiza billings pela API", async (t) => {

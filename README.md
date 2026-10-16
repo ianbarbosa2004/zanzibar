@@ -16,6 +16,8 @@ Aplicação web para organização financeira pessoal e empresarial. O sistema r
 - Interface organizada por resumo, movimentações, vendas, relatórios e cadastros, incluindo a área de Empréstimos.
 - Menu **Análise IA** para indicadores financeiros, comparações, histórico e perguntas assistidas, sem mutações automáticas.
 - Mensagens privadas entre usuários autorizados, com anexos protegidos e integração opcional com Telegram.
+- Ambiente de **Tarefas** organizado por dia: novas tarefas ficam em aberto e,
+  ao marcar uma tarefa, ela é arquivada no arquivo do próprio dia.
 - Visualizador autenticado de Markdown dentro do menu **Ferramentas**, usando
   os documentos versionados do próprio checkout.
 - Limites e metas mensais com meta, orçamento, previsão, patamar, resultado e status de fechamento.
@@ -174,7 +176,7 @@ tests/
 dist/                     # Saída gerada pelo Vite, não versionada
 ```
 
-`src/server/http-server.js` é uma fábrica testável do servidor HTTP. `server.js` permanece pequeno para manter a compatibilidade com o Passenger. O carregamento usa MySQL quando configurado; se o MySQL estiver indisponível, o sistema pode ler os arquivos JSON locais, mas bloqueia qualquer gravação para evitar perda ou divergência de dados. O menu **Mensagens** restringe conversas e downloads ao usuário autenticado e aos membros da conversa; anexos de até 10 MB ficam fora da raiz pública.
+`src/server/http-server.js` é uma fábrica testável do servidor HTTP. `server.js` permanece pequeno para manter a compatibilidade com o Passenger. O carregamento usa MySQL quando configurado; se o MySQL estiver indisponível, o sistema pode ler os arquivos JSON locais, mas bloqueia qualquer gravação financeira para evitar perda ou divergência de dados. O menu **Mensagens** restringe conversas e downloads ao usuário autenticado e aos membros da conversa; anexos de até 10 MB ficam fora da raiz pública. As tarefas são isoladas por usuário e persistidas na tabela `task_items`; no modo sem banco, a implementação mantém apenas um armazenamento de sessão em memória.
 
 O menu **Ferramentas > Documentação** lista e exibe os arquivos Markdown
 versionados no checkout por meio de endpoints protegidos. A lista percorre os
@@ -275,6 +277,10 @@ A tabela `monthly_cash_closings` é independente de `cash_closings`: armazena m�
 A tabela `limits` registra o planejamento mensal com `month`, `year`, `target`, `budget`, `forecast`, `patamar`, `result` e `closed`. Os cinco valores financeiros usam `DECIMAL(12,2)`, o fechamento usa `TINYINT(1)` com padrão `0`, e cada período (`year` + `month`) é único. O `result` é calculado como `target - budget - forecast - patamar`. A tabela também mantém `id`, `client_id`, `created_at` e `updated_at`.
 Na interface, os limites ficam na seção **Ferramentas**, com o formulário **Limites e Metas**, valores de meta, orçamento, previsão e resultado, status de fechamento controlado pela lógica, edição e paginação.
 Os cadastros auxiliares usam `display_order` e `is_active` quando aplicável. Registros inativos não aparecem em formulários ou filtros; a exclusão física só ocorre quando não há referência em `transactions` ou `cash_closings`.
+- A tabela `task_items` registra tarefas por usuário e data, com `status` `active`
+  ou `archived`. O endpoint protegido `/api/tasks` lista e cria tarefas; marcar
+  uma tarefa usa `PUT /api/tasks/:id` e grava `completed_at`, mantendo o item
+  no arquivo do dia.
 As mensagens privadas usam `messaging_conversations`,
 `messaging_conversation_members`, `messaging_messages`, `messaging_files`,
 `messaging_message_files` e `messaging_notification_outbox`. Os bytes dos
