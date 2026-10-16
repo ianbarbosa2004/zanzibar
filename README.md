@@ -12,12 +12,15 @@ Aplicação web para organização financeira pessoal e empresarial. O sistema r
 - Resumo do mês em três colunas, com Vendas e cada outra fonte de receita
   detalhadas separadamente, despesas Casa/Zanzibar/Empréstimos empilhadas e
   saldo destacado.
+- Módulo **Buffet** separado, com entradas, saídas, observações, cartões de
+  receitas/despesas/saldo e fechamentos diário e mensal por período.
 - Categorias, tomadores, locais, credores e fontes de receita.
 - Interface organizada por resumo, movimentações, vendas, relatórios e cadastros, incluindo a área de Empréstimos.
 - Menu **Análise IA** para indicadores financeiros, comparações, histórico e perguntas assistidas, sem mutações automáticas.
 - Mensagens privadas entre usuários autorizados, com anexos protegidos e integração opcional com Telegram.
 - Ambiente de **Tarefas** organizado por dia: novas tarefas ficam em aberto e,
-  ao marcar uma tarefa, ela é arquivada no arquivo do próprio dia.
+  ao marcar uma tarefa, ela é arquivada no arquivo do próprio dia; os botões
+  de dia anterior e próximo dia permitem navegar sem editar a data manualmente.
 - Visualizador autenticado de Markdown dentro do menu **Ferramentas**, usando
   os documentos versionados do próprio checkout.
 - Limites e metas mensais com meta, orçamento, previsão, patamar, resultado e status de fechamento.
@@ -280,7 +283,9 @@ Os cadastros auxiliares usam `display_order` e `is_active` quando aplicável. Re
 - A tabela `task_items` registra tarefas por usuário e data, com `status` `active`
   ou `archived`. O endpoint protegido `/api/tasks` lista e cria tarefas; marcar
   uma tarefa usa `PUT /api/tasks/:id` e grava `completed_at`, mantendo o item
-  no arquivo do dia.
+  no arquivo do dia. O título aceita de 1 a 240 caracteres e a data é
+  normalizada no servidor. Sem MySQL, as tarefas ficam somente no armazenamento
+  de memória da sessão e não são gravadas nos arquivos JSON.
 As mensagens privadas usam `messaging_conversations`,
 `messaging_conversation_members`, `messaging_messages`, `messaging_files`,
 `messaging_message_files` e `messaging_notification_outbox`. Os bytes dos
@@ -359,6 +364,9 @@ As principais rotas são:
 | `GET` | `/clareza/api/data` | Lê transações, receitas derivadas e configurações |
 | `GET` | `/clareza/api/documentation` | Lista os Markdown publicados para o visualizador interno |
 | `GET` | `/clareza/api/documentation/:path` | Lê um Markdown publicado, com validação de caminho |
+| `GET` | `/clareza/api/tasks?date=YYYY-MM-DD` | Lista as tarefas do usuário autenticado para um dia |
+| `POST` | `/clareza/api/tasks` | Cria uma tarefa aberta para a data informada |
+| `PUT` | `/clareza/api/tasks/:id` | Arquiva uma tarefa aberta do usuário autenticado |
 | `GET` | `/clareza/api/financial-insights` | Calcula indicadores determinísticos do período |
 | `POST` | `/clareza/api/financial-insights` | Calcula indicadores e, opcionalmente, chama IA ou salva histórico |
 | `GET` | `/clareza/api/financial-insights/history` | Lista o histórico do usuário autenticado |

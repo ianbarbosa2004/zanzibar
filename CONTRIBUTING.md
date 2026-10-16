@@ -49,6 +49,20 @@ devem atualizar o Markdown correspondente e manter o contrato HTTP descrito no
 `README.md`. Para documentação somente, confirme também que nenhum arquivo
 funcional ou gerado entrou no diff.
 
+O módulo **Tarefas** é isolado por usuário e por data. Use `GET
+/api/tasks?date=YYYY-MM-DD` para a leitura, `POST /api/tasks` para criar
+tarefas com título de 1 a 240 caracteres e `PUT /api/tasks/:id` para arquivar
+uma tarefa aberta. A conclusão deve preservar o item no dia original e só
+confirmar a interface depois da resposta bem-sucedida. No modo sem MySQL, o
+armazenamento em memória é deliberadamente temporário; não adicione gravação
+em JSON como fallback.
+
+O módulo **Buffet** usa as movimentações consolidadas existentes, identificadas
+por localização/produto, e mantém seus totais fora do escopo financeiro geral.
+Entradas e saídas podem ter observação persistida separadamente; não crie uma
+segunda tabela de transações nem misture os fechamentos do Buffet com
+`cash_closings` ou `monthly_cash_closings`.
+
 Toda operação de escrita da interface — despesa, receita ou cadastro auxiliar — deve tratar a persistência como transacional também no estado visual: preserve o estado anterior antes da mutação, confirme o sucesso do `PUT` antes de apresentar a operação como concluída e restaure o estado anterior quando a API falhar. A regra vale igualmente para edição, exclusão, ordenação e ativação de cadastros.
 
 Ao adicionar paginação a uma nova listagem, mantenha seu estado separado dos estados de filtros e listagens existentes. Não use a coleção inteira de `paginationState` para renderizar uma família específica de componentes: um estado de paginação sem painel correspondente pode lançar uma exceção após uma gravação bem-sucedida e mascarar o sucesso da API.

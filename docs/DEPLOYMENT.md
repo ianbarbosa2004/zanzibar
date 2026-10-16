@@ -21,6 +21,12 @@ inicialização, vinculada a `authorized_users`. O deploy não deve remover nem
 recriar destrutivamente tabelas existentes; a validação deve confirmar que a
 aplicação inicializa e que o banco permanece preservado.
 
+O ambiente de Tarefas cria a tabela `task_items` de forma não destrutiva,
+vinculada a `authorized_users`, com índice por usuário, data e status. O deploy
+preserva tarefas existentes; a conclusão apenas atualiza `status` e
+`completed_at`. Sem MySQL, a implementação de tarefas permanece em memória e
+não grava arquivos JSON de runtime.
+
 As Fases 4 e 5 usam somente os endpoints protegidos de comparação e perguntas
 assistidas. Não criam tabelas nem alteram o schema MySQL. Perguntas são
 limitadas a 500 caracteres e a IA recebe apenas indicadores agregados.
@@ -35,8 +41,10 @@ anexos (`CLAREZA_MESSAGING_FILES_DIR` ou `.messaging-files/`) e o outbox devem
 ser preservados entre reinícios.
 
 O visualizador interno de documentação lê os Markdown enviados pelo deploy.
-O script publica `README.md`, `CONTRIBUTING.md`, `docs/`, `.github/` e
-`.agents/` junto com o código, para que a documentação exibida em
+O script publica `README.md`, `CONTRIBUTING.md`, `docs/` e `.github/` junto com
+o código. O diretório `.agents/`, quando existir no checkout, também é
+publicado; ele é opcional e não deve ser recriado apenas para o deploy. Assim,
+a documentação exibida em
 **Ferramentas > Documentação** corresponda ao checkout validado. Diretórios de
 dependências, build, Git e backups não são listados pelo endpoint; não coloque
 segredos ou dados de runtime em Markdown.

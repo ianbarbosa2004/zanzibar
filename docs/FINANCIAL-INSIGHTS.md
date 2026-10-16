@@ -30,6 +30,12 @@ inclui somente movimentações reconhecidas como Buffet. A resposta geral pode
 conter um bloco Buffet separado para permitir visualização independente, mas
 esse bloco não altera os totais gerais.
 
+O módulo **Buffet** também possui uma visão operacional própria, com cartões de
+receitas, despesas e saldo, lançamentos com observação e fechamentos diário e
+mensal. Essa visão usa as mesmas movimentações consolidadas e não altera a
+regra de separação dos indicadores: o escopo geral continua excluindo Buffet,
+enquanto o escopo `buffet` considera somente essas entradas.
+
 ### Fase 2 — Interpretação opcional por IA
 
 A interpretação é opt-in e só ocorre quando o usuário aciona o botão próprio e
