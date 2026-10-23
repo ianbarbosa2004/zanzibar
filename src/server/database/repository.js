@@ -1,6 +1,7 @@
 import { dbPool } from "./pool.js";
 import { databaseName, databaseUser } from "../config.js";
 import { readMessageFile, writeMessageFile } from "../messaging-files.js";
+import { normalizeMessageFiles } from "../../shared/messaging.js";
 import { createHash, randomBytes } from "node:crypto";
 import { toSlug, uniqueSlug } from "../../shared/slugs.js";
 import { sendTelegramOutboxEvent } from "../telegram-notifications.js";
@@ -85,6 +86,7 @@ const memoryAuthSessions = new Map();
 const memoryMessagingConversations = new Map();
 const memoryMessagingMessages = new Map();
 const memoryMessagingFiles = new Map();
+const memoryMessagingReads = new Map();
 let nextMessagingId = 1;
 const memoryTelegramLinks = new Map();
 const memoryTelegramCodes = new Map();
@@ -311,6 +313,15 @@ export async function initializeDatabase({ readJson, dataFile, settingsFile, inc
     PRIMARY KEY (conversation_id, user_id),
     CONSTRAINT fk_messaging_members_conversation FOREIGN KEY (conversation_id) REFERENCES messaging_conversations(id) ON DELETE CASCADE,
     CONSTRAINT fk_messaging_members_user FOREIGN KEY (user_id) REFERENCES authorized_users(id) ON DELETE CASCADE
+  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+  await dbPool.query(`CREATE TABLE IF NOT EXISTS messaging_conversation_reads (
+    conversation_id BIGINT UNSIGNED NOT NULL,
+    user_id INT UNSIGNED NOT NULL,
+    last_read_message_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (conversation_id, user_id),
+    CONSTRAINT fk_messaging_reads_conversation FOREIGN KEY (conversation_id) REFERENCES messaging_conversations(id) ON DELETE CASCADE,
+    CONSTRAINT fk_messaging_reads_user FOREIGN KEY (user_id) REFERENCES authorized_users(id) ON DELETE CASCADE
   ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
   await dbPool.query(`CREATE TABLE IF NOT EXISTS messaging_files (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -664,11 +675,16 @@ export async function readMessagingConversations(userId) {
     .map((conversation) => {
       const participantId = [...conversation.members].find((id) => id !== Number(userId));
       const participant = [...memoryAuthUsers.values()].find((user) => user.id === participantId);
-      return { id: conversation.id, participant: participant ? { id: participant.id, email: participant.email, name: participant.name, picture: participant.picture } : { id: participantId }, lastMessage: [...memoryMessagingMessages.values()].filter((message) => message.conversationId === conversation.id).sort((a, b) => b.id - a.id)[0] || null };
+      const messages = [...memoryMessagingMessages.values()].filter((message) => message.conversationId === conversation.id).sort((a, b) => b.id - a.id);
+      const readId = memoryMessagingReads.get(`${conversation.id}:${Number(userId)}`) || 0;
+      return { id: conversation.id, participant: participant ? { id: participant.id, email: participant.email, name: participant.name, picture: participant.picture } : { id: participantId }, lastMessage: messages[0] || null, unreadCount: messages.filter((message) => message.senderId !== Number(userId) && message.id > readId).length };
     });
   const [rows] = await dbPool.query(
     `SELECT c.id, u.id AS participant_id, u.email AS participant_email, u.display_name AS participant_name, u.picture_url AS participant_picture,
-      lm.body AS last_body, lm.created_at AS last_created_at
+      lm.id AS last_message_id, lm.body AS last_body, lm.created_at AS last_created_at,
+      (SELECT COUNT(*) FROM messaging_messages um
+        LEFT JOIN messaging_conversation_reads ur ON ur.conversation_id = um.conversation_id AND ur.user_id = ?
+        WHERE um.conversation_id = c.id AND um.sender_id <> ? AND um.id > COALESCE(ur.last_read_message_id, 0)) AS unread_count
      FROM messaging_conversations c
      JOIN messaging_conversation_members mine ON mine.conversation_id = c.id AND mine.user_id = ?
      JOIN messaging_conversation_members other ON other.conversation_id = c.id AND other.user_id <> ?
@@ -677,13 +693,34 @@ export async function readMessagingConversations(userId) {
        SELECT m2.id FROM messaging_messages m2 WHERE m2.conversation_id = c.id ORDER BY m2.created_at DESC, m2.id DESC LIMIT 1
      )
      ORDER BY COALESCE(lm.created_at, c.created_at) DESC, c.id DESC`,
-    [userId, userId],
+    [userId, userId, userId, userId],
   );
   return rows.map((row) => ({
     id: Number(row.id),
     participant: { id: Number(row.participant_id), email: row.participant_email, name: row.participant_name, picture: row.participant_picture },
-    lastMessage: row.last_body === null ? null : { body: row.last_body, createdAt: row.last_created_at },
+    lastMessage: row.last_body === null ? null : { id: Number(row.last_message_id), body: row.last_body, createdAt: row.last_created_at },
+    unreadCount: Number(row.unread_count || 0),
   }));
+}
+
+export async function markMessagingConversationRead(userId, conversationId) {
+  if (!dbPool) {
+    await assertConversationMember(userId, conversationId);
+    const latest = [...memoryMessagingMessages.values()]
+      .filter((message) => message.conversationId === Number(conversationId))
+      .reduce((max, message) => Math.max(max, Number(message.id)), 0);
+    memoryMessagingReads.set(`${Number(conversationId)}:${Number(userId)}`, latest);
+    return { conversationId: Number(conversationId), lastReadMessageId: latest };
+  }
+  await assertConversationMember(userId, conversationId);
+  const [[latest]] = await dbPool.query("SELECT COALESCE(MAX(id), 0) AS id FROM messaging_messages WHERE conversation_id = ?", [conversationId]);
+  await dbPool.execute(
+    `INSERT INTO messaging_conversation_reads (conversation_id, user_id, last_read_message_id)
+     VALUES (?, ?, ?)
+     ON DUPLICATE KEY UPDATE last_read_message_id = VALUES(last_read_message_id), updated_at = CURRENT_TIMESTAMP`,
+    [conversationId, userId, Number(latest.id)],
+  );
+  return { conversationId: Number(conversationId), lastReadMessageId: Number(latest.id) };
 }
 
 async function assertConversationMember(userId, conversationId, connection = dbPool) {
@@ -716,7 +753,7 @@ export async function readMessagingMessages(userId, conversationId, limit = 50) 
      ORDER BY m.created_at DESC, m.id DESC LIMIT ?`,
     [conversationId, boundedLimit],
   );
-  return rows.reverse().map((row) => ({ ...row, id: Number(row.id), senderId: Number(row.senderId), files: typeof row.files === "string" ? JSON.parse(row.files).filter((file) => file.id !== null) : row.files }));
+  return rows.reverse().map((row) => ({ ...row, id: Number(row.id), senderId: Number(row.senderId), files: normalizeMessageFiles(typeof row.files === "string" ? JSON.parse(row.files) : row.files) }));
 }
 
 export async function saveMessageFile({ userId, originalName, mimeType, data }) {

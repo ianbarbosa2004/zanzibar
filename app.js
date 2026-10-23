@@ -13,6 +13,7 @@ import { catalogImportMarkdown } from "./src/shared/catalog-import-document.js";
 import { toSlug } from "./src/shared/slugs.js";
 import { refreshBillings, saveCashClosing, saveCatalog, saveLimit, saveMonthlyCashClosings, saveTransaction } from "./src/client/crud-api.js";
 import { buffetDailyClosings, buffetEntries, buffetMonthlyClosings, isBuffetExpense, isBuffetIncome } from "./src/shared/buffet.js";
+import { normalizeMessageFiles } from "./src/shared/messaging.js";
 
 const { expenseTypes: defaultExpenseTypes, takers: defaultTakers, locations: defaultLocations, creditors: defaultCreditors, paymentMethods: defaultPaymentMethods, incomeSources: defaultIncomeSources } = catalogDefaults;
 const API_URL = new URL("api/data", document.baseURI).pathname;
@@ -39,6 +40,7 @@ let financialAdvisorBusy = false;
 let latestFinancialInsightResult = null;
 let messagingConversationId = null;
 let messagingPendingFileIds = [];
+let messagingRefreshTimer = null;
 let tasks = [];
 const initialState = defaultAppState({
   expenseTypes: defaultExpenseTypes,
@@ -167,7 +169,7 @@ async function messagingRequest(path = "", options = {}) {
 function renderMessagingMessages(messages = []) {
   const target = $("#messaging-messages");
   if (!target) return;
-  target.innerHTML = messages.length ? messages.map((message) => `<article class="messaging-message ${Number(message.senderId) === Number(authUser?.id) ? "own" : ""}"><div class="messaging-message-meta">${escapeHtml(message.senderName || (Number(message.senderId) === Number(authUser?.id) ? "Você" : "Usuário"))} · ${escapeHtml(new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(String(message.createdAt).replace(" ", "T"))))}</div><p>${escapeHtml(message.body || "")}</p>${(message.files || []).map((file) => `<a class="messaging-file" href="${MESSAGING_URL}/files/${encodeURIComponent(file.id)}" target="_blank" rel="noopener noreferrer">📎 ${escapeHtml(file.name)}</a>`).join("")}</article>`).join("") : '<p class="empty-state">Nenhuma mensagem nesta conversa.</p>';
+  target.innerHTML = messages.length ? messages.map((message) => `<article class="messaging-message ${Number(message.senderId) === Number(authUser?.id) ? "own" : ""}"><div class="messaging-message-meta">${escapeHtml(message.senderName || (Number(message.senderId) === Number(authUser?.id) ? "Você" : "Usuário"))} · ${escapeHtml(new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(String(message.createdAt).replace(" ", "T"))))}</div><p>${escapeHtml(message.body || "")}</p>${normalizeMessageFiles(message.files).map((file) => `<a class="messaging-file" href="${MESSAGING_URL}/files/${encodeURIComponent(file.id)}" target="_blank" rel="noopener noreferrer">📎 ${escapeHtml(file.name)}</a>`).join("")}</article>`).join("") : '<p class="empty-state">Nenhuma mensagem nesta conversa.</p>';
   target.scrollTop = target.scrollHeight;
 }
 async function loadMessagingMessages() {
@@ -178,6 +180,12 @@ async function loadMessagingMessages() {
 function renderMessagingConversations(conversations = []) {
   const target = $("#messaging-conversations");
   if (!target) return;
+  const unreadCount = conversations.reduce((total, conversation) => total + Number(conversation.unreadCount || 0), 0);
+  const unreadTarget = $("#messaging-unread-count");
+  if (unreadTarget) {
+    unreadTarget.textContent = unreadCount > 99 ? "99+" : String(unreadCount);
+    unreadTarget.hidden = unreadCount === 0;
+  }
   target.innerHTML = conversations.length ? conversations.map((conversation) => `<button class="messaging-conversation ${Number(conversation.id) === Number(messagingConversationId) ? "selected" : ""}" type="button" data-messaging-conversation="${conversation.id}"><strong>${escapeHtml(conversation.participant?.name || conversation.participant?.email || "Usuário")}</strong><span>${escapeHtml(conversation.lastMessage?.body || "Sem mensagens")}</span></button>`).join("") : '<p class="empty-state">Nenhuma conversa iniciada.</p>';
 }
 async function loadMessagingConversations() {
@@ -198,6 +206,7 @@ async function selectMessagingConversation(id, title = "Conversa") {
   $("#messaging-file").disabled = false;
   $("#messaging-composer button[type=submit]").disabled = false;
   $("#messaging-status").textContent = "";
+  await messagingRequest(`/conversations/${messagingConversationId}/read`, { method: "POST" });
   await loadMessagingConversations();
   await loadMessagingMessages();
 }
@@ -205,6 +214,7 @@ async function initializeMessaging() {
   if (!$("#messaging-section") && !$("#messaging-conversations")) return;
   try {
     await loadMessagingConversations();
+    if (!messagingRefreshTimer) messagingRefreshTimer = window.setInterval(() => loadMessagingConversations().catch(() => {}), 30000);
   } catch (error) {
     $("#messaging-status").textContent = error.message;
   }

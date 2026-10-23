@@ -9,8 +9,12 @@ download.
 
 - `GET /api/messaging/users`: lista usuários autorizados disponíveis.
 - `GET /api/messaging/conversations`: lista as conversas do usuário autenticado.
+  Cada item inclui `unreadCount`, com a quantidade de mensagens recebidas desde
+  a última leitura.
 - `POST /api/messaging/conversations`: cria ou reutiliza uma conversa privada.
 - `GET /api/messaging/conversations/:id/messages`: lista mensagens da conversa.
+- `POST /api/messaging/conversations/:id/read`: marca como lidas as mensagens
+  atuais da conversa para o usuário autenticado.
 - `POST /api/messaging/conversations/:id/messages`: envia texto e associa anexos.
 - `POST /api/messaging/files`: recebe um arquivo multipart de até 10 MB.
 - `GET /api/messaging/files/:id`: baixa um arquivo somente quando o usuário é
@@ -46,8 +50,9 @@ real foi confirmado após a publicação da integração.
 ## Persistência e proteção
 
 No MySQL, as tabelas `messaging_conversations`,
-`messaging_conversation_members`, `messaging_messages`, `messaging_files` e
-`messaging_message_files` preservam a separação por usuário. Os bytes dos
+`messaging_conversation_members`, `messaging_messages`,
+`messaging_conversation_reads`, `messaging_files` e `messaging_message_files`
+preservam a separação por usuário. Os bytes dos
 arquivos ficam em `CLAREZA_MESSAGING_FILES_DIR` ou, por padrão, em
 `.messaging-files/`, fora da raiz pública.
 

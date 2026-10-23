@@ -71,7 +71,7 @@ function staticCacheHeaders(file) {
   return { "Cache-Control": "no-cache" };
 }
 
-export function createHttpServer({ basePath, readData, writeCashClosing, writeCatalog, writeLimit, writeMonthlyCashClosings, writeTransaction, writeBillings, writeTask, listTasks, archiveTask, readStaticFile, listMarkdownFiles, readMarkdownFile, auth, analyzeFinancialInsights, compareFinancialInsights, askFinancialQuestion, saveFinancialInsightHistory, readFinancialInsightHistory, listMessagingUsers, readMessagingConversations, readMessagingFile, readMessagingMessages, saveMessageFile, saveMessage, saveMessagingConversation, createTelegramLinkCode, consumeTelegramLink, sendTelegramTest, telegramBotToken = "", telegramWebhookSecret = "", logger = console }) {
+export function createHttpServer({ basePath, readData, writeCashClosing, writeCatalog, writeLimit, writeMonthlyCashClosings, writeTransaction, writeBillings, writeTask, listTasks, archiveTask, readStaticFile, listMarkdownFiles, readMarkdownFile, auth, analyzeFinancialInsights, compareFinancialInsights, askFinancialQuestion, saveFinancialInsightHistory, readFinancialInsightHistory, listMessagingUsers, readMessagingConversations, readMessagingFile, readMessagingMessages, saveMessageFile, saveMessage, saveMessagingConversation, markMessagingConversationRead, createTelegramLinkCode, consumeTelegramLink, sendTelegramTest, telegramBotToken = "", telegramWebhookSecret = "", logger = console }) {
   return createServer(async (request, response) => {
     try {
       const pathname = new URL(request.url || "/", "http://localhost").pathname;
@@ -120,6 +120,8 @@ export function createHttpServer({ basePath, readData, writeCashClosing, writeCa
         const payload = await readBody(request);
         return send(response, 201, { conversation: await saveMessagingConversation({ userId: currentUser.id, participantId: payload.participantId }) });
       }
+      const conversationRead = apiPath.match(/^\/api\/messaging\/conversations\/(\d+)\/read$/);
+      if (conversationRead && markMessagingConversationRead && request.method === "POST") return send(response, 200, { read: await markMessagingConversationRead(currentUser.id, Number(conversationRead[1])) });
       const conversationMessages = apiPath.match(/^\/api\/messaging\/conversations\/(\d+)\/messages$/);
       if (conversationMessages && readMessagingMessages && request.method === "GET") return send(response, 200, { messages: await readMessagingMessages(currentUser.id, Number(conversationMessages[1]), new URL(request.url || "/", "http://localhost").searchParams.get("limit")) });
       if (conversationMessages && saveMessage && request.method === "POST") {

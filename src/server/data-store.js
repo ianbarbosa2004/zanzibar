@@ -1,11 +1,11 @@
 import { cashClosingsFile, dataFile, defaultSettings, incomesFile, limitsFile, localSnapshotFile, localSnapshotMode, monthlyCashClosingsFile, settingsFile } from "./config.js";
-import { archiveTask, dbPool, consumeTelegramLink, createTelegramLinkCode, deleteAuthSession, findAuthSession, findAuthUser, initializeDatabase, listAuthUsers, listMessagingUsers, listTasks, processTelegramOutbox, readDatabase, readFinancialInsightHistory, readMessagingConversations, readMessagingFile, readMessagingMessages, refreshBillingsData, saveAuthSession, saveAuthUser, saveCashClosing, saveCatalog, saveFinancialInsightHistory, saveLimit, saveMessageFile, saveMessage, saveMessagingConversation, saveTask, saveTransaction, sendTelegramTest, touchAuthSession } from "./database/repository.js";
+import { archiveTask, dbPool, consumeTelegramLink, createTelegramLinkCode, deleteAuthSession, findAuthSession, findAuthUser, initializeDatabase, listAuthUsers, listMessagingUsers, listTasks, markMessagingConversationRead, processTelegramOutbox, readDatabase, readFinancialInsightHistory, readMessagingConversations, readMessagingFile, readMessagingMessages, refreshBillingsData, saveAuthSession, saveAuthUser, saveCashClosing, saveCatalog, saveFinancialInsightHistory, saveLimit, saveMessageFile, saveMessage, saveMessagingConversation, saveTask, saveTransaction, sendTelegramTest, touchAuthSession } from "./database/repository.js";
 import { readJson } from "./json-store.js";
 
 export { dbPool };
 export { deleteAuthSession, findAuthSession, findAuthUser, listAuthUsers, saveAuthSession, saveAuthUser, touchAuthSession };
 export { readFinancialInsightHistory, saveFinancialInsightHistory };
-export { consumeTelegramLink, createTelegramLinkCode, listMessagingUsers, readMessagingConversations, readMessagingFile, readMessagingMessages, saveMessageFile, saveMessage, saveMessagingConversation };
+export { consumeTelegramLink, createTelegramLinkCode, listMessagingUsers, markMessagingConversationRead, readMessagingConversations, readMessagingFile, readMessagingMessages, saveMessageFile, saveMessage, saveMessagingConversation };
 export { processTelegramOutbox };
 export { sendTelegramTest };
 

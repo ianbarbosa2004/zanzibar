@@ -19,7 +19,8 @@ function startMessagingServer() {
     writeBillings: async () => [],
     readStaticFile: async () => null,
     listMessagingUsers: async (userId) => [{ id: 8, email: "other@example.com", name: "Outro", userId }],
-    readMessagingConversations: async () => [{ id: 12, participant: { id: 8, name: "Outro" }, lastMessage: null }],
+    readMessagingConversations: async () => [{ id: 12, participant: { id: 8, name: "Outro" }, lastMessage: null, unreadCount: 1 }],
+    markMessagingConversationRead: async (userId, conversationId) => ({ userId, conversationId, lastReadMessageId: 1 }),
     saveMessagingConversation: async (input) => ({ id: 12, ...input }),
     readMessagingMessages: async () => [{ id: 1, senderId: 8, body: "Olá", files: [] }],
     saveMessage: async (input) => { calls.push(input); return { id: 2, ...input }; },
@@ -47,6 +48,9 @@ test("protege e expõe rotas de mensagens privadas", async (t) => {
   const messages = await fetch(`${base}/conversations/12/messages`);
   assert.equal(messages.status, 200);
   assert.equal((await messages.json()).messages[0].body, "Olá");
+  const read = await fetch(`${base}/conversations/12/read`, { method: "POST" });
+  assert.equal(read.status, 200);
+  assert.equal((await read.json()).read.lastReadMessageId, 1);
 
   const sent = await fetch(`${base}/conversations/12/messages`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body: "Tudo bem?", fileIds: [] }) });
   assert.equal(sent.status, 201);

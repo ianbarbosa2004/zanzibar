@@ -48,6 +48,7 @@ html { overflow-y: scroll; }
 .financial-advisor-controls select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-color: #87c49f; }
 .messaging-layout { display: grid; grid-template-columns: minmax(220px, .7fr) minmax(0, 1.5fr); gap: 20px; }
 .messaging-sidebar, .messaging-thread { min-width: 0; }
+.nav-unread-count { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; margin-left: 4px; padding: 0 5px; border-radius: 999px; color: #fff; background: var(--accent-dark); font-size: 10px; line-height: 1; }
 .messaging-sidebar-heading, .messaging-thread-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .messaging-sidebar-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .messaging-sidebar-heading h3, .messaging-thread-heading h3 { margin: 0; color: var(--ink); font-size: 15px; }
