@@ -17,7 +17,9 @@ Aplicação web para organização financeira pessoal e empresarial. O sistema r
 - Categorias, tomadores, locais, credores e fontes de receita.
 - Interface organizada por resumo, movimentações, vendas, relatórios e cadastros, incluindo a área de Empréstimos.
 - Menu **Análise IA** para indicadores financeiros, comparações, histórico e perguntas assistidas, sem mutações automáticas.
-- Mensagens privadas entre usuários autorizados, com anexos protegidos e integração opcional com Telegram.
+- Mensagens privadas entre usuários autorizados, com anexos protegidos,
+  contador de não lidas, marcação de leitura e integração opcional com
+  Telegram.
 - Ambiente de **Tarefas** organizado por dia: novas tarefas ficam em aberto e,
   ao marcar uma tarefa, ela é arquivada no arquivo do próprio dia; os botões
   de dia anterior e próximo dia permitem navegar sem editar a data manualmente.
@@ -287,11 +289,16 @@ Os cadastros auxiliares usam `display_order` e `is_active` quando aplicável. Re
   normalizada no servidor. Sem MySQL, as tarefas ficam somente no armazenamento
   de memória da sessão e não são gravadas nos arquivos JSON.
 As mensagens privadas usam `messaging_conversations`,
-`messaging_conversation_members`, `messaging_messages`, `messaging_files`,
-`messaging_message_files` e `messaging_notification_outbox`. Os bytes dos
-anexos ficam em `CLAREZA_MESSAGING_FILES_DIR` ou em `.messaging-files/`, nunca
-em uma pasta pública. O worker do Telegram envia eventos separados para texto
-e arquivo e encerra o pool MySQL ao terminar.
+`messaging_conversation_members`, `messaging_messages`,
+`messaging_conversation_reads`, `messaging_files`,
+`messaging_message_files` e `messaging_notification_outbox`. A lista de
+conversas informa `unreadCount`; ao abrir uma conversa, o cliente chama a rota
+de leitura e o servidor grava o maior `message_id` disponível naquela conversa.
+O contador agregado aparece no menu e é atualizado durante a consulta periódica
+das conversas. Os bytes dos anexos ficam em
+`CLAREZA_MESSAGING_FILES_DIR` ou em `.messaging-files/`, nunca em uma pasta
+pública. O worker do Telegram envia eventos separados para texto e arquivo e
+encerra o pool MySQL ao terminar.
 
 Nunca versionar senhas, arquivos de produção ou dumps do banco.
 
@@ -367,6 +374,8 @@ As principais rotas são:
 | `GET` | `/clareza/api/tasks?date=YYYY-MM-DD` | Lista as tarefas do usuário autenticado para um dia |
 | `POST` | `/clareza/api/tasks` | Cria uma tarefa aberta para a data informada |
 | `PUT` | `/clareza/api/tasks/:id` | Arquiva uma tarefa aberta do usuário autenticado |
+| `GET` | `/clareza/api/messaging/conversations` | Lista conversas autorizadas e a quantidade de mensagens não lidas |
+| `POST` | `/clareza/api/messaging/conversations/:id/read` | Marca como lidas as mensagens atuais da conversa |
 | `GET` | `/clareza/api/financial-insights` | Calcula indicadores determinísticos do período |
 | `POST` | `/clareza/api/financial-insights` | Calcula indicadores e, opcionalmente, chama IA ou salva histórico |
 | `GET` | `/clareza/api/financial-insights/history` | Lista o histórico do usuário autenticado |
@@ -392,6 +401,7 @@ O caminho `/clareza` é o padrão e pode ser alterado por `CLAREZA_BASE_PATH`. O
 - [Contribuição e validação](CONTRIBUTING.md)
 - [Publicação no cPanel](docs/DEPLOYMENT.md)
 - [Mensagens privadas e Telegram](docs/MESSAGING.md)
+- [Configuração externa da WhatsApp Cloud API](docs/WHATSAPP-API-SETUP.md)
 - [Assistente financeiro](docs/FINANCIAL-INSIGHTS.md)
 - [Regras das automações](docs/AUTOMATIONS.md)
 - [Contrato técnico dos prompts](docs/AUTOMATION-PROMPTS.md)

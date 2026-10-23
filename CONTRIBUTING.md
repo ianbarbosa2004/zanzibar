@@ -127,7 +127,16 @@ Mensagens privadas e anexos exigem autenticação e autorização por conversa.
 Uploads têm limite de 10 MB e devem permanecer fora da raiz pública. O vínculo
 e as notificações Telegram são opcionais; consulte
 [`docs/MESSAGING.md`](docs/MESSAGING.md) antes de alterar rotas, tabelas,
-outbox ou o worker `scripts/process-telegram-outbox.js`.
+outbox ou o worker `scripts/process-telegram-outbox.js`. A listagem de
+conversas deve preservar `unreadCount`; ao abrir uma conversa, use
+`POST /api/messaging/conversations/:id/read` para registrar a leitura no
+servidor, sem inferir estado apenas no navegador.
+
+Não existe integração WhatsApp no Clareza. O preparo externo da conta Meta,
+do webhook e das credenciais futuras está documentado em
+[`docs/WHATSAPP-API-SETUP.md`](docs/WHATSAPP-API-SETUP.md); não adicione
+segredos ou variáveis reais ao Markdown, ao código ou aos testes até que a
+integração seja implementada.
 
 ### Indicadores financeiros
 

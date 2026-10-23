@@ -31,6 +31,14 @@ precisa conter texto, pelo menos um anexo ou ambos. O upload é feito antes do
 envio da mensagem; se o envio falhar, o anexo órfão deve ser tratado como dado
 operacional e não é exposto por uma rota pública.
 
+O cliente exibe no menu a soma dos `unreadCount` das conversas e atualiza essa
+informação durante a consulta periódica da lista. Ao selecionar uma conversa,
+ele chama a rota `/read` antes de recarregar a lista e as mensagens; a
+persistência da leitura fica vinculada ao usuário e à conversa, não ao estado
+local do navegador. A marcação registra o maior `message_id` disponível na
+conversa naquele momento e nunca deve marcar mensagens de outra conversa como
+lidas.
+
 ### Teste autenticado
 
 Com o usuário autenticado no Clareza e o Telegram já vinculado, execute no
