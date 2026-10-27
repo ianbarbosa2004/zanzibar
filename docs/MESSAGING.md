@@ -19,6 +19,11 @@ download.
 - `POST /api/messaging/files`: recebe um arquivo multipart de até 10 MB.
 - `GET /api/messaging/files/:id`: baixa um arquivo somente quando o usuário é
   dono ou membro da conversa que o utiliza.
+
+As rotas de mensagens aceitam somente usuários autenticados. A criação de
+conversa recebe `participantId` e reutiliza a conversa individual existente
+entre os dois usuários; o envio recebe `body` e `fileIds`, permitindo texto,
+anexos ou ambos. A listagem de mensagens pode receber `limit` por query string.
 - `POST /api/telegram/link-code`: gera um código de vinculação válido por 15
   minutos para o usuário autenticado.
 - `POST /api/telegram/test`: envia uma mensagem de teste para o Telegram

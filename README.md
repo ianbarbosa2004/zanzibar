@@ -12,7 +12,8 @@ Aplicação web para organização financeira pessoal e empresarial. O sistema r
 - Resumo do mês em três colunas, com Vendas e cada outra fonte de receita
   detalhadas separadamente, despesas Casa/Zanzibar/Empréstimos empilhadas e
   saldo destacado.
-- Módulo **Buffet** separado, com entradas, saídas, observações, cartões de
+- Módulo **Buffet** separado, com entradas e saídas derivadas de
+  `transactions`, observações persistidas separadamente, cartões de
   receitas/despesas/saldo e fechamentos diário e mensal por período.
 - Categorias, tomadores, locais, credores e fontes de receita.
 - Interface organizada por resumo, movimentações, vendas, relatórios e cadastros, incluindo a área de Empréstimos.
@@ -181,7 +182,7 @@ tests/
 dist/                     # Saída gerada pelo Vite, não versionada
 ```
 
-`src/server/http-server.js` é uma fábrica testável do servidor HTTP. `server.js` permanece pequeno para manter a compatibilidade com o Passenger. O carregamento usa MySQL quando configurado; se o MySQL estiver indisponível, o sistema pode ler os arquivos JSON locais, mas bloqueia qualquer gravação financeira para evitar perda ou divergência de dados. O menu **Mensagens** restringe conversas e downloads ao usuário autenticado e aos membros da conversa; anexos de até 10 MB ficam fora da raiz pública. As tarefas são isoladas por usuário e persistidas na tabela `task_items`; no modo sem banco, a implementação mantém apenas um armazenamento de sessão em memória.
+`src/server/http-server.js` é uma fábrica testável do servidor HTTP. `server.js` permanece pequeno para manter a compatibilidade com o Passenger. O carregamento usa MySQL quando configurado; se o MySQL estiver indisponível, o sistema pode ler os arquivos JSON locais, mas bloqueia qualquer gravação financeira para evitar perda ou divergência de dados. O menu **Mensagens** restringe conversas e downloads ao usuário autenticado e aos membros da conversa; anexos de até 10 MB ficam fora da raiz pública. O módulo **Buffet** reutiliza a tabela consolidada `transactions` e guarda suas observações em `buffet_observations`, sem criar uma segunda fonte de lançamentos. As tarefas são isoladas por usuário e persistidas na tabela `task_items`; no modo sem banco, a implementação mantém apenas um armazenamento de sessão em memória.
 
 O menu **Ferramentas > Documentação** lista e exibe os arquivos Markdown
 versionados no checkout por meio de endpoints protegidos. A lista percorre os
@@ -374,17 +375,19 @@ As principais rotas são:
 | `GET` | `/clareza/api/tasks?date=YYYY-MM-DD` | Lista as tarefas do usuário autenticado para um dia |
 | `POST` | `/clareza/api/tasks` | Cria uma tarefa aberta para a data informada |
 | `PUT` | `/clareza/api/tasks/:id` | Arquiva uma tarefa aberta do usuário autenticado |
+| `GET` | `/clareza/api/messaging/users` | Lista usuários autorizados disponíveis para iniciar conversa |
 | `GET` | `/clareza/api/messaging/conversations` | Lista conversas autorizadas e a quantidade de mensagens não lidas |
+| `POST` | `/clareza/api/messaging/conversations` | Cria ou reutiliza uma conversa privada |
 | `POST` | `/clareza/api/messaging/conversations/:id/read` | Marca como lidas as mensagens atuais da conversa |
+| `GET` | `/clareza/api/messaging/conversations/:id/messages` | Lista mensagens de uma conversa autorizada |
+| `POST` | `/clareza/api/messaging/conversations/:id/messages` | Envia texto e associa anexos autorizados |
+| `POST` | `/clareza/api/messaging/files` | Recebe anexo multipart de até 10 MB |
+| `GET` | `/clareza/api/messaging/files/:id` | Baixa anexo autorizado da conversa |
 | `GET` | `/clareza/api/financial-insights` | Calcula indicadores determinísticos do período |
 | `POST` | `/clareza/api/financial-insights` | Calcula indicadores e, opcionalmente, chama IA ou salva histórico |
 | `GET` | `/clareza/api/financial-insights/history` | Lista o histórico do usuário autenticado |
 | `GET` | `/clareza/api/financial-insights/compare` | Compara períodos mensais do mesmo escopo |
 | `POST` | `/clareza/api/financial-insights/ask` | Envia pergunta assistida com indicadores agregados |
-| `GET` | `/clareza/api/messaging/conversations` | Lista as conversas privadas do usuário autenticado |
-| `POST` | `/clareza/api/messaging/files` | Recebe anexo multipart de até 10 MB |
-| `GET` | `/clareza/api/messaging/files/:id` | Baixa anexo autorizado da conversa |
-| `POST` | `/clareza/api/messaging/conversations/:id/messages` | Envia texto e anexos autorizados |
 | `POST` | `/clareza/api/telegram/link-code` | Gera código temporário para vincular o Telegram |
 | `POST` | `/clareza/api/telegram/test` | Envia teste autenticado ao Telegram vinculado |
 | `PUT` | `/clareza/api/transactions` | Insere ou atualiza uma despesa/receita |

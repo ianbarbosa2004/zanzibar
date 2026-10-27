@@ -57,11 +57,12 @@ confirmar a interface depois da resposta bem-sucedida. No modo sem MySQL, o
 armazenamento em memória é deliberadamente temporário; não adicione gravação
 em JSON como fallback.
 
-O módulo **Buffet** usa as movimentações consolidadas existentes, identificadas
-por localização/produto, e mantém seus totais fora do escopo financeiro geral.
-Entradas e saídas podem ter observação persistida separadamente; não crie uma
-segunda tabela de transações nem misture os fechamentos do Buffet com
-`cash_closings` ou `monthly_cash_closings`.
+O módulo **Buffet** usa as movimentações consolidadas de `transactions`,
+identificadas por localização/produto, e mantém seus totais fora do escopo
+financeiro geral. As observações ficam em `buffet_observations`, relacionadas
+ao lançamento correspondente. Não crie uma segunda tabela de transações nem
+misture os fechamentos do Buffet com `cash_closings` ou
+`monthly_cash_closings`.
 
 Toda operação de escrita da interface — despesa, receita ou cadastro auxiliar — deve tratar a persistência como transacional também no estado visual: preserve o estado anterior antes da mutação, confirme o sucesso do `PUT` antes de apresentar a operação como concluída e restaure o estado anterior quando a API falhar. A regra vale igualmente para edição, exclusão, ordenação e ativação de cadastros.
 
@@ -124,8 +125,10 @@ fechamento, atualize a documentação e valide a saída com os testes e o build
 existentes.
 
 Mensagens privadas e anexos exigem autenticação e autorização por conversa.
-Uploads têm limite de 10 MB e devem permanecer fora da raiz pública. O vínculo
-e as notificações Telegram são opcionais; consulte
+As rotas de usuários, conversas, mensagens, leitura e arquivos devem preservar
+essa verificação em cada operação. Uploads têm limite de 10 MB e devem
+permanecer fora da raiz pública. O vínculo e as notificações Telegram são
+opcionais; consulte
 [`docs/MESSAGING.md`](docs/MESSAGING.md) antes de alterar rotas, tabelas,
 outbox ou o worker `scripts/process-telegram-outbox.js`. A listagem de
 conversas deve preservar `unreadCount`; ao abrir uma conversa, use
